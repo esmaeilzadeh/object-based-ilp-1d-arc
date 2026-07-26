@@ -1,0 +1,11 @@
+# Core (Popper + evaluation)
+clingo>=5.6.2
+bitarray
+janus-swi
+python-sat
+multiprocess
+numpy
+scipy
+
+# Local vendored Popper (optional editable install)
+# pip install -e ./popper

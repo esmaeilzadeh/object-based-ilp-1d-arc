@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+work/
+results/
+programs/
+logs/
+*.egg-info/
+.popper_tmp/
+*.deb
+.DS_Store
