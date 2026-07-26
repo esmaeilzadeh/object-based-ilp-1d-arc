@@ -1,6 +1,6 @@
 """Unit tests for grid flatten and block segmentation."""
 
-from solver.grid import flatten, segment_blocks
+from solver.grid import flatten, segment_all_runs, segment_blocks
 
 
 def test_flatten_nested_and_flat():
@@ -15,12 +15,28 @@ def test_empty_row_no_blocks():
     assert segment_blocks([]) == []
 
 
+def test_segment_all_runs_includes_background():
+    assert segment_all_runs([0, 0, 0]) == [(0, 2, 0)]
+    assert segment_all_runs([]) == []
+    assert segment_all_runs([2, 2, 2, 0, 0, 9]) == [
+        (0, 2, 2),
+        (3, 4, 0),
+        (5, 5, 9),
+    ]
+
+
+def test_segment_blocks_filters_zeros():
+    assert segment_blocks([2, 2, 2, 0, 0, 9]) == [(0, 2, 2), (5, 5, 9)]
+
+
 def test_single_pixel():
     assert segment_blocks([0, 5, 0]) == [(1, 1, 5)]
+    assert segment_all_runs([0, 5, 0]) == [(0, 0, 0), (1, 1, 5), (2, 2, 0)]
 
 
 def test_two_adjacent_different_colors():
     assert segment_blocks([2, 3]) == [(0, 0, 2), (1, 1, 3)]
+    assert segment_all_runs([2, 3]) == [(0, 0, 2), (1, 1, 3)]
 
 
 def test_background_gaps():
@@ -33,3 +49,4 @@ def test_background_gaps():
 
 def test_full_width_block():
     assert segment_blocks([7, 7, 7, 7]) == [(0, 3, 7)]
+    assert segment_all_runs([7, 7, 7, 7]) == [(0, 3, 7)]

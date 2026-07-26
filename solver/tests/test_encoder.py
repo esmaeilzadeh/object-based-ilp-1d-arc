@@ -11,43 +11,57 @@ def _facts(row):
 
 
 def test_block_atom_is_id_len_color():
+    # [2,2,2, 0, 5,5] → colored ids 0 and 2; empty id 1
     facts = _facts([2, 2, 2, 0, 5, 5])
     assert "block(0,0,3,2)." in facts
-    assert "block(0,1,2,5)." in facts
-    assert "block(0,0,0,2,2)." not in facts
+    assert "block(0,2,2,5)." in facts
+    assert "empty_block(0,1,1)." in facts
+    assert "block(0,1,1,0)." not in facts
+    assert "obj_index(0,0,0)." in facts
+    assert "obj_index(0,2,1)." in facts
+    assert "block_count(0,2)." in facts
+    assert "empty_block_count(0,1)." in facts
 
 
 def test_length_comparisons_and_size_lt():
     facts = _facts([2, 2, 2, 0, 5, 5])
-    assert "shorter(0,1,0)." in facts
-    assert "longer(0,0,1)." in facts
+    assert "shorter(0,2,0)." in facts
+    assert "longer(0,0,2)." in facts
     assert "size_lt(2,3)." in facts
 
 
 def test_pixel_block_embedding():
+    # [0, 7,7,7, 0] → empty 0, colored 1, empty 2
     facts = _facts([0, 7, 7, 7, 0])
-    assert "pixel_block(0,1,0)." in facts
-    assert "pixel_block(0,2,0)." in facts
-    assert "pixel_block(0,3,0)." in facts
-    assert "pixel_block(0,0,0)." not in facts
+    assert "pixel_block(0,1,1)." in facts
+    assert "pixel_block(0,2,1)." in facts
+    assert "pixel_block(0,3,1)." in facts
+    assert "pixel_block(0,0,0)." in facts
+    assert "pixel_block(0,4,2)." in facts
+    assert "empty_block(0,0,1)." in facts
+    assert "empty_block(0,2,1)." in facts
 
 
 def test_non_largest_and_interior():
+    # [2,2,2,2, 0, 5,5] → colored 0 and 2
     facts = _facts([2, 2, 2, 2, 0, 5, 5])
     assert "largest(0,0)." in facts
-    assert "non_largest(0,1)." in facts
-    assert "solid_cell(0,1,5,5)." in facts
-    assert "solid_cell(0,1,6,5)." in facts
+    assert "non_largest(0,2)." in facts
+    assert "solid_cell(0,2,5,5)." in facts
+    assert "solid_cell(0,2,6,5)." in facts
     assert not any(f.startswith("solid_cell(0,0,") for f in facts)
     assert "interior_cell(0,0,1,2)." in facts
     assert "edge_cell(0,0,0,2)." in facts
 
 
 def test_in_gap_and_gap_cell():
+    # [2,2,2, 0,0, 5,5] → ids 0 colored, 1 empty, 2 colored
     facts = _facts([2, 2, 2, 0, 0, 5, 5])
-    assert "left_of(0,0,1)." in facts
-    assert "in_gap(0,0,1,3)." in facts
-    assert "gap_cell(0,0,1,3,5)." in facts  # shorter is block 1 color 5
+    assert "left_of(0,0,2)." in facts
+    assert "in_gap(0,0,2,3)." in facts
+    assert "gap_cell(0,0,2,3,5)." in facts  # shorter colored endpoint is id 2 color 5
+    assert "adjacent(0,0,1)." in facts
+    assert "adjacent(0,1,2)." in facts
 
 
 def test_block_bias_omits_position_and_size_constants():
@@ -59,6 +73,9 @@ def test_block_bias_omits_position_and_size_constants():
     assert "body_pred(non_largest,2)." in text
     assert "body_pred(interior_cell,4)." in text
     assert "body_pred(solid_cell,4)." in text
+    assert "body_pred(empty_block,3)." in text
+    assert "body_pred(obj_index,3)." in text
+    assert "body_pred(empty_block_count,2)." in text
 
 
 def test_dual_bias_keeps_position_arith_and_rank():
@@ -67,6 +84,7 @@ def test_dual_bias_keeps_position_arith_and_rank():
     assert "constant(r1, rank)." in text
     assert "body_pred(size_lt,2)." in text
     assert "type(len_rank,('ex', 'block_id', 'rank'))." in text
+    assert "type(obj_index,('ex', 'block_id', 'rank'))." in text
 
 
 def test_encode_instance_writes_new_schema(tmp_path: Path):
@@ -81,6 +99,8 @@ def test_encode_instance_writes_new_schema(tmp_path: Path):
     enc = encode_instance(inst, tmp_path / "enc")
     bk = enc.bk_path.read_text()
     assert "pixel_block(" in bk
+    assert "empty_block(" in bk
+    assert "obj_index(" in bk
     assert "non_largest(" in bk or "largest(" in bk
     assert "size_lt(" in bk
     assert "span(" not in bk

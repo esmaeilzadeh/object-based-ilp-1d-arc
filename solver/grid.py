@@ -24,23 +24,28 @@ def flatten(grid: Grid) -> List[int]:
     return [int(x) for x in grid]  # type: ignore[arg-type]
 
 
-def segment_blocks(row: Sequence[int]) -> List[Block]:
-    """Maximal runs of same non-zero color. Background (0) is not a block.
+def segment_all_runs(row: Sequence[int]) -> List[Block]:
+    """Maximal runs of the same color, including background 0.
 
     Returns list of ``(start, end, color)`` with inclusive indices, ordered left→right.
-    Block ids are implicit: index in the returned list.
+    Run ids are implicit: index in the returned list (shared with empty + colored).
     """
     blocks: List[Block] = []
     n = len(row)
     i = 0
     while i < n:
         c = int(row[i])
-        if c == 0:
-            i += 1
-            continue
         j = i
         while j + 1 < n and int(row[j + 1]) == c:
             j += 1
         blocks.append((i, j, c))
         i = j + 1
     return blocks
+
+
+def segment_blocks(row: Sequence[int]) -> List[Block]:
+    """Maximal runs of same non-zero color. Background (0) is not a colored block.
+
+    Returns list of ``(start, end, color)`` with inclusive indices, ordered left→right.
+    """
+    return [b for b in segment_all_runs(row) if b[2] != 0]

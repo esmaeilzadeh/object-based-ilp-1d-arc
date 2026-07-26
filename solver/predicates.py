@@ -31,9 +31,11 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("in", 3, ("ex", "position", "value"), "pixel", frozenset({3})),
     Predicate("empty", 2, ("ex", "position"), "pixel", frozenset({3})),
     Predicate("width", 2, ("ex", "position"), "pixel", frozenset({3})),
-    # block (Id + Len + Color only)
+    # block (Id + Len + Color only); empty runs use empty_block (not block(...,0))
     Predicate("block", 4, ("ex", "block_id", "size", "value"), "block", frozenset({2, 3})),
+    Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3})),
     Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3})),
+    Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3})),
     # geometry
     Predicate("left_of", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
     Predicate("adjacent", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
@@ -49,6 +51,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("smallest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
     Predicate("non_largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
     Predicate("block_count", 2, ("ex", "size"), "agg", frozenset({3})),
+    Predicate("empty_block_count", 2, ("ex", "size"), "agg", frozenset({2, 3})),
     Predicate("color_count", 3, ("ex", "value", "size"), "agg", frozenset({3})),
     Predicate("unique_color", 2, ("ex", "value"), "agg", frozenset({2, 3})),
     Predicate("len_rank", 3, ("ex", "block_id", "rank"), "agg", frozenset({3})),

@@ -44,13 +44,18 @@ level (or mix) expresses the transformation most compactly.
   odd/even position recoloring, pattern stamping.
 
 ### Block layer (the new core)
-Deterministic segmentation: a block is a **maximal run of same-colored,
-non-background cells**. This is preprocessing, not learning — it is the "object
-prior" made explicit.
+Deterministic segmentation: **maximal runs of the same color**, including
+background `0`. All runs share one left→right `block_id` space.
 
-Facts per block (searchable — no absolute coordinates):
-- `block(Ex, Id, Len, Color)` — index, length, color only
-- `block_len(Ex, Id, Len)` — thin alias for binding length alone
+- Colored run (`C ≠ 0`): `block(Ex, Id, Len, Color)` + paint bridges
+- Empty run (`C = 0`): `empty_block(Ex, Id, Len)` — **not** `block(..., 0)`
+  (keeps `0` out of `value` / `largest` / `block_cell`)
+- Dense nonempty ordinal: `obj_index(Ex, Bid, K)` with `K = 0,1,2,…` over
+  colored runs only (so rules can say “first/second object” without skipping
+  empty ids)
+
+`block_len(Ex, Id, Len)` remains a thin alias for colored lengths.
+`block_count` = colored count; `empty_block_count` = empty-run count.
 
 Absolute Start/End stay **encoder-internal**. Exposing them in the ILP body
 invites position-constant overfitting; geometry is pushed into relations and
@@ -60,17 +65,18 @@ bridges instead.
 - `value` — color symbols (`v0..v9`)
 - `position` — grid ordinals (`c*`, `my_succ`/`lt`/`add`; dual/pixel bias only)
 - `size` — cardinals (lengths); compare via `shorter`/`longer`/`size_lt`
-- `block_id` — object ordinals (variables only in block bias)
-- `rank` — length-rank ordinals (`len_rank`, dual only)
+- `block_id` — run ordinals over all runs (variables only in block bias)
+- `rank` — ordinals for `len_rank` and dense `obj_index` (dual may expose `r*`)
 
 **Grounding policy:** all object/geometry/paint priors are finite facts for the
 instance. No recursive object BK. Block bias omits `c*`/`s*` constants.
 
 Derived relations (computed during encoding, NOT learned):
-- geometry: `left_of`, `adjacent`, `gap`, `touches_edge`
-- length compare: `shorter`, `longer`, `same_len`, `size_lt`
-- ranking: `largest`, `smallest`, `non_largest`, `block_count`, `color_count`,
-  `unique_color`, `len_rank`
+- geometry: `left_of`, `adjacent`, `gap`, `touches_edge` over **all** run ids
+- length compare: `shorter`, `longer`, `same_len`, `size_lt` (all runs)
+- ranking: `largest`, `smallest`, `non_largest`, `block_count`,
+  `empty_block_count`, `color_count`, `unique_color`, `len_rank` —
+  **colored runs only**
 - position anchors: `mid`, `mirror_index`, `from_right` (dual bias)
 
 ### Arithmetic / order primitives
@@ -85,11 +91,12 @@ The learned program's head stays pixel-level: `out(Ex, Pos, Color)`. This keeps
 one uniform target for every task. Block→pixel painting uses **precomputed
 bridges** (Start/End never appear as free body vars):
 
-- `pixel_block(Ex, Pos, Bid)` — Pos-first block membership (pixel-headed rules)
-- `in_block(Ex, Id, Pos)` / `block_edge` / `in_gap`
+- `pixel_block(Ex, Pos, Bid)` — Pos-first membership for **any** run (colored or empty)
+- `in_block(Ex, Id, Pos)` / `block_edge` / `in_gap` (`in_block`/`block_edge` colored only)
 - `block_cell` / `edge_cell` / `interior_cell` / `solid_cell` — paint bridges
-  (`solid_cell` = full non-largest blocks; use with `edge_cell`+`largest` for hollow)
-- `gap_cell(Ex, Id1, Id2, Pos, Color)` — gap filled with **shorter** endpoint color
+  (`solid_cell` = full non-largest **colored** blocks; use with `edge_cell`+`largest` for hollow)
+- `gap_cell(Ex, Id1, Id2, Pos, Color)` — gap filled with **shorter** endpoint color;
+  only when **both** endpoints are colored
 
 Decode rule: a test cell is background unless some rule derives a color for it.
 If two rules derive different colors for one cell, the program fails verification

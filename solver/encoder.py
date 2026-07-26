@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from solver.grid import Block, flatten, segment_blocks
+from solver.grid import flatten, segment_all_runs
 
 PathLike = Union[str, Path]
 
@@ -53,34 +53,58 @@ def _pixel_facts(ex: int, row: Sequence[int]) -> List[str]:
 def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
     """Emit searchable block facts + fully grounded bridges.
 
-    Searchable: ``block(Ex,Id,Len,Color)`` — no absolute Start/End.
-    Pixel embedding: ``pixel_block(Ex,Pos,Bid)``.
+    All maximal runs (including color 0) share one left→right ``block_id`` space.
+    Colored: ``block(Ex,Id,Len,Color)`` + ``obj_index(Ex,Bid,K)`` (dense nonempty ordinal).
+    Empty: ``empty_block(Ex,Id,Len)`` — not ``block(...,0)``.
+    Geometry over all run ids; aggregations / paint bridges over colored only.
     """
     facts: List[str] = []
-    blocks = segment_blocks(row)
+    runs = segment_all_runs(row)
     w = len(row)
-    facts.append(f"block_count({ex},{len(blocks)}).")
+    n_runs = len(runs)
+    colored_ids: List[int] = []
+    empty_ids: List[int] = []
+    for bid, (_s, _e, c) in enumerate(runs):
+        if c == 0:
+            empty_ids.append(bid)
+        else:
+            colored_ids.append(bid)
+
+    facts.append(f"block_count({ex},{len(colored_ids)}).")
+    facts.append(f"empty_block_count({ex},{len(empty_ids)}).")
     if w:
         facts.append(f"mid({ex},{w // 2}).")
     for i in range(w):
         facts.append(f"from_right({ex},{i},{w - 1 - i}).")
         facts.append(f"mirror_index({ex},{i},{w - 1 - i}).")
 
-    lengths: List[Tuple[int, int]] = []  # (len, id)
+    lengths: List[int] = [0] * n_runs  # bid -> length
+    colored_lengths: List[Tuple[int, int]] = []  # (len, id) for aggregations
     color_counts: Dict[int, int] = {}
     observed_sizes: set = set()
+    obj_k = 0
 
-    for bid, (s, e, c) in enumerate(blocks):
+    for bid, (s, e, c) in enumerate(runs):
         L = e - s + 1
+        lengths[bid] = L
         observed_sizes.add(L)
-        facts.append(f"block({ex},{bid},{L},{c}).")
-        facts.append(f"block_len({ex},{bid},{L}).")
-        lengths.append((L, bid))
-        color_counts[c] = color_counts.get(c, 0) + 1
         if s == 0:
             facts.append(f"touches_edge({ex},{bid},left).")
         if e == w - 1:
             facts.append(f"touches_edge({ex},{bid},right).")
+
+        if c == 0:
+            facts.append(f"empty_block({ex},{bid},{L}).")
+            for p in range(s, e + 1):
+                facts.append(f"pixel_block({ex},{p},{bid}).")
+            continue
+
+        facts.append(f"block({ex},{bid},{L},{c}).")
+        facts.append(f"block_len({ex},{bid},{L}).")
+        facts.append(f"obj_index({ex},{bid},{obj_k}).")
+        obj_k += 1
+        colored_lengths.append((L, bid))
+        color_counts[c] = color_counts.get(c, 0) + 1
         for p in range(s, e + 1):
             facts.append(f"in_block({ex},{bid},{p}).")
             facts.append(f"pixel_block({ex},{p},{bid}).")
@@ -91,12 +115,12 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
             else:
                 facts.append(f"interior_cell({ex},{bid},{p},{c}).")
 
-    lens_only = [L for L, _ in lengths]
-    for i in range(len(blocks)):
-        for j in range(len(blocks)):
+    # Length compares over all run ids (empty participates)
+    for i in range(n_runs):
+        for j in range(n_runs):
             if i == j:
                 continue
-            Li, Lj = lens_only[i], lens_only[j]
+            Li, Lj = lengths[i], lengths[j]
             if Li < Lj:
                 facts.append(f"shorter({ex},{i},{j}).")
             elif Li > Lj:
@@ -104,10 +128,11 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
             else:
                 facts.append(f"same_len({ex},{i},{j}).")
 
-    for i in range(len(blocks)):
-        for j in range(i + 1, len(blocks)):
-            s1, e1, c1 = blocks[i]
-            s2, e2, c2 = blocks[j]
+    # Geometry over all run pairs; gap_cell only when both endpoints colored
+    for i in range(n_runs):
+        for j in range(i + 1, n_runs):
+            s1, e1, c1 = runs[i]
+            s2, e2, c2 = runs[j]
             facts.append(f"left_of({ex},{i},{j}).")
             g = s2 - e1 - 1
             facts.append(f"gap({ex},{i},{j},{g}).")
@@ -115,10 +140,14 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
             if g == 0:
                 facts.append(f"adjacent({ex},{i},{j}).")
                 facts.append(f"adjacent({ex},{j},{i}).")
-            if lens_only[i] < lens_only[j]:
-                fill_c = c1
-            elif lens_only[j] < lens_only[i]:
-                fill_c = c2
+            both_colored = c1 != 0 and c2 != 0
+            if both_colored:
+                if lengths[i] < lengths[j]:
+                    fill_c: Optional[int] = c1
+                elif lengths[j] < lengths[i]:
+                    fill_c = c2
+                else:
+                    fill_c = None
             else:
                 fill_c = None
             for p in range(e1 + 1, s2):
@@ -126,26 +155,27 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
                 if fill_c is not None:
                     facts.append(f"gap_cell({ex},{i},{j},{p},{fill_c}).")
 
-    if lengths:
-        max_L = max(L for L, _ in lengths)
-        min_L = min(L for L, _ in lengths)
-        for L, bid in lengths:
+    # Aggregations over colored runs only
+    if colored_lengths:
+        max_L = max(L for L, _ in colored_lengths)
+        min_L = min(L for L, _ in colored_lengths)
+        for L, bid in colored_lengths:
             if L == max_L:
                 facts.append(f"largest({ex},{bid}).")
             else:
                 facts.append(f"non_largest({ex},{bid}).")
-                s, e, c = blocks[bid]
+                s, e, c = runs[bid]
                 for p in range(s, e + 1):
                     facts.append(f"solid_cell({ex},{bid},{p},{c}).")
             if L == min_L:
                 facts.append(f"smallest({ex},{bid}).")
-        unique_lens = sorted({L for L, _ in lengths}, reverse=True)
+        unique_lens = sorted({L for L, _ in colored_lengths}, reverse=True)
         rank = {L: r + 1 for r, L in enumerate(unique_lens)}
-        for L, bid in lengths:
+        for L, bid in colored_lengths:
             facts.append(f"len_rank({ex},{bid},{rank[L]}).")
 
     # Cardinal compares on sizes observed in this example (not position lt)
-    sizes = sorted(observed_sizes | {len(blocks)})
+    sizes = sorted(observed_sizes | {len(colored_ids), len(empty_ids)})
     for a in sizes:
         for b in sizes:
             if a < b:
@@ -262,6 +292,7 @@ def encode_instance(
                     "smallest",
                     "non_largest",
                     "block_count",
+                    "empty_block_count",
                     "color_count",
                     "unique_color",
                     "len_rank",
