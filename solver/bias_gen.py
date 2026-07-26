@@ -19,15 +19,31 @@ def _bad_body_for_ex_preds(preds) -> str:
     for p in preds:
         if not p.types or p.types[0] != "ex":
             continue
-        if p.arity == 2:
-            lines.append(f"bad_body({p.name}, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.")
-        elif p.arity == 3:
-            lines.append(f"bad_body({p.name}, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.")
-        elif p.arity == 4:
-            lines.append(f"bad_body({p.name}, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.")
-        elif p.arity == 5:
-            lines.append(f"bad_body({p.name}, Vars):- vars(_, Vars), Vars = (V0,_,_,_,_), V0 != 0.")
+        n = p.arity
+        if n < 2 or n > 6:
+            continue
+        slots = ",".join(["_"] * (n - 1))
+        lines.append(
+            f"bad_body({p.name}, Vars):- vars(_, Vars), Vars = (V0,{slots}), V0 != 0."
+        )
     return "\n".join(lines)
+
+
+def _constants_for_level(level: int) -> list[str]:
+    """Typed constants. Block bias omits position/size constants to stop overfit."""
+    lines = []
+    for i in range(10):
+        lines.append(f"constant(v{i}, value).")
+    if level >= 3:
+        for i in range(10):
+            lines.append(f"constant(c{i}, position).")
+        for i in range(10):
+            lines.append(f"constant(s{i}, size).")
+        for i in range(1, 10):
+            lines.append(f"constant(r{i}, rank).")
+    lines.append("constant(left, edge).")
+    lines.append("constant(right, edge).")
+    return lines
 
 
 def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
@@ -45,12 +61,7 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
         parts.append(f"body_pred({p.name},{p.arity}).")
     parts.append("body_pred(C,1):- constant(C,_).")
     parts.append("")
-    for i in range(10):
-        parts.append(f"constant(v{i}, value).")
-    for i in range(10):
-        parts.append(f"constant(c{i}, position).")
-    parts.append("constant(left, edge).")
-    parts.append("constant(right, edge).")
+    parts.extend(_constants_for_level(level))
     parts.append("")
     parts.append(_types_block(all_typed))
     parts.append("type(C,(T,)):- constant(C,T).")
@@ -113,8 +124,8 @@ bad_body(width, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
 def write_bias_files(out_dir: Optional[Path] = None) -> None:
     out_dir = out_dir or _BIAS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "block.pl").write_text(render_bias(2, max_vars=6, max_body=12))
-    (out_dir / "dual.pl").write_text(render_bias(3, max_vars=7, max_body=16))
+    (out_dir / "block.pl").write_text(render_bias(2, max_vars=8, max_body=12))
+    (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 

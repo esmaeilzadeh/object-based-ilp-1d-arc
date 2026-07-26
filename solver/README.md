@@ -14,8 +14,9 @@ Uses Popper with a **dual pixel + color-block** representation. See [docs/SOLVER
 
 ## Pipeline
 
-1. Encode grids as pixels + maximal same-color blocks (+ derived relations).
-2. Cheap-first ladder: trivial checks → block-only ILP → dual ILP.
+1. Encode grids as `block(Ex,Id,Len,Color)` + length compares + pixel bridges
+   (`in_block` / `in_gap` / `block_edge`); Start/End stay encoder-internal.
+2. Cheap-first ladder: trivial checks → block-only ILP → pixel ILP → dual ILP.
 3. Accept only programs that exactly reproduce all train outputs.
 4. Apply to test input; closed-world decode (background = 0).
 

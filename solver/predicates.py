@@ -1,12 +1,11 @@
 """Frozen predicate inventory for the dual-granularity 1D-ARC solver.
 
-Layers:
-  pixel   — raw cells
-  block   — maximal same-color runs
-  geometry / agg / anchors — derived (precomputed, not learned)
-  arith   — successor / order / addition
-  bridge  — paint block spans onto pixels
-  head    — induction target
+Number roles (types — never cross-role arithmetic):
+  value    — color symbols
+  position — grid ordinals (pixel index)
+  size     — cardinals (block lengths, counts)
+  block_id — object ordinals
+  rank     — length-rank ordinals (1 = longest)
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ class Predicate:
     arity: int
     types: Tuple[str, ...]
     layer: str
-    # Ladder levels that expose this as a body_pred (1=trivial unused, 2=block, 3=dual)
+    # Ladder levels that expose this as a body_pred (2=block, 3=dual)
     ladder_levels: FrozenSet[int]
 
 
@@ -31,33 +30,47 @@ PREDICATES: Tuple[Predicate, ...] = (
     # pixel
     Predicate("in", 3, ("ex", "position", "value"), "pixel", frozenset({3})),
     Predicate("empty", 2, ("ex", "position"), "pixel", frozenset({3})),
-    Predicate("width", 2, ("ex", "position"), "pixel", frozenset({2, 3})),
-    # block
-    Predicate("block", 5, ("ex", "block_id", "position", "position", "value"), "block", frozenset({2, 3})),
+    Predicate("width", 2, ("ex", "position"), "pixel", frozenset({3})),
+    # block (Id + Len + Color only)
+    Predicate("block", 4, ("ex", "block_id", "size", "value"), "block", frozenset({2, 3})),
+    Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3})),
     # geometry
-    Predicate("block_len", 3, ("ex", "block_id", "position"), "geometry", frozenset({2, 3})),
     Predicate("left_of", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
     Predicate("adjacent", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
-    Predicate("gap", 4, ("ex", "block_id", "block_id", "position"), "geometry", frozenset({2, 3})),
+    Predicate("gap", 4, ("ex", "block_id", "block_id", "size"), "geometry", frozenset({3})),
     Predicate("touches_edge", 3, ("ex", "block_id", "edge"), "geometry", frozenset({2, 3})),
+    # length comparison
+    Predicate("shorter", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
+    Predicate("longer", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
+    Predicate("same_len", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
+    Predicate("size_lt", 2, ("size", "size"), "geometry", frozenset({3})),
     # aggregation
     Predicate("largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
     Predicate("smallest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
-    Predicate("block_count", 2, ("ex", "position"), "agg", frozenset({2, 3})),
-    Predicate("color_count", 3, ("ex", "value", "position"), "agg", frozenset({2, 3})),
+    Predicate("non_largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
+    Predicate("block_count", 2, ("ex", "size"), "agg", frozenset({3})),
+    Predicate("color_count", 3, ("ex", "value", "size"), "agg", frozenset({3})),
     Predicate("unique_color", 2, ("ex", "value"), "agg", frozenset({2, 3})),
-    Predicate("len_rank", 3, ("ex", "block_id", "position"), "agg", frozenset({2, 3})),
+    Predicate("len_rank", 3, ("ex", "block_id", "rank"), "agg", frozenset({3})),
     # anchors
-    Predicate("mid", 2, ("ex", "position"), "anchors", frozenset({2, 3})),
-    Predicate("mirror_index", 3, ("ex", "position", "position"), "anchors", frozenset({2, 3})),
-    Predicate("from_right", 3, ("ex", "position", "position"), "anchors", frozenset({2, 3})),
-    # arithmetic
-    Predicate("my_succ", 2, ("position", "position"), "arith", frozenset({2, 3})),
-    Predicate("lt", 2, ("position", "position"), "arith", frozenset({2, 3})),
-    Predicate("add", 3, ("position", "position", "position"), "arith", frozenset({2, 3})),
-    # bridges
-    Predicate("span", 3, ("position", "position", "position"), "bridge", frozenset({2, 3})),
-    Predicate("span_shift", 4, ("position", "position", "position", "position"), "bridge", frozenset({2, 3})),
+    Predicate("mid", 2, ("ex", "position"), "anchors", frozenset({3})),
+    Predicate("mirror_index", 3, ("ex", "position", "position"), "anchors", frozenset({3})),
+    Predicate("from_right", 3, ("ex", "position", "position"), "anchors", frozenset({3})),
+    # arithmetic (position ordinals only — dual / pixel)
+    Predicate("my_succ", 2, ("position", "position"), "arith", frozenset({3})),
+    Predicate("lt", 2, ("position", "position"), "arith", frozenset({3})),
+    Predicate("add", 3, ("position", "position", "position"), "arith", frozenset({3})),
+    # bridges — grounded; hide Start/End
+    Predicate("pixel_block", 3, ("ex", "position", "block_id"), "bridge", frozenset({2, 3})),
+    Predicate("in_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
+    Predicate("block_edge", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
+    Predicate("in_gap", 4, ("ex", "block_id", "block_id", "position"), "bridge", frozenset({2, 3})),
+    Predicate("block_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
+    Predicate("edge_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
+    Predicate("interior_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
+    # Full paint of non-largest blocks (hollow prior baked in)
+    Predicate("solid_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
+    Predicate("gap_cell", 5, ("ex", "block_id", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
 )
 
 

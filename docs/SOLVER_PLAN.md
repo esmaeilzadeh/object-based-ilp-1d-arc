@@ -48,34 +48,48 @@ Deterministic segmentation: a block is a **maximal run of same-colored,
 non-background cells**. This is preprocessing, not learning — it is the "object
 prior" made explicit.
 
-Facts per block:
-- `block(Ex, Id, Start, End, Color)`
+Facts per block (searchable — no absolute coordinates):
+- `block(Ex, Id, Len, Color)` — index, length, color only
+- `block_len(Ex, Id, Len)` — thin alias for binding length alone
 
-Derived relations (computed during encoding, NOT learned — these are the
-aggregations ILP cannot invent under timeout):
-- geometry: `block_len(Ex,Id,L)`, `left_of(Ex,Id1,Id2)`, `adjacent(Ex,Id1,Id2)`,
-  `gap(Ex,Id1,Id2,G)`, `touches_edge(Ex,Id,left|right)`
-- ranking/aggregation: `largest(Ex,Id)`, `smallest(Ex,Id)`, `block_count(Ex,N)`,
-  `color_count(Ex,Color,N)`, `unique_color(Ex,Color)`, `len_rank(Ex,Id,K)`
-- position anchors: `mid(Ex,M)`, `mirror_index(Ex,I,J)` (I+J = W-1),
-  `from_right(Ex,Pos,Offset)`
+Absolute Start/End stay **encoder-internal**. Exposing them in the ILP body
+invites position-constant overfitting; geometry is pushed into relations and
+bridges instead.
 
-### Arithmetic / order primitives (unchanged from paper)
-`my_succ/2`, `lt/2`, `add/3`, small-integer and color constants, plus type
-declarations and the example-id threading constraint (every body literal about a
-grid must use the head's example variable — prevents mixing examples).
+**Typed number roles** (Popper types — no cross-role arithmetic):
+- `value` — color symbols (`v0..v9`)
+- `position` — grid ordinals (`c*`, `my_succ`/`lt`/`add`; dual/pixel bias only)
+- `size` — cardinals (lengths); compare via `shorter`/`longer`/`size_lt`
+- `block_id` — object ordinals (variables only in block bias)
+- `rank` — length-rank ordinals (`len_rank`, dual only)
+
+**Grounding policy:** all object/geometry/paint priors are finite facts for the
+instance. No recursive object BK. Block bias omits `c*`/`s*` constants.
+
+Derived relations (computed during encoding, NOT learned):
+- geometry: `left_of`, `adjacent`, `gap`, `touches_edge`
+- length compare: `shorter`, `longer`, `same_len`, `size_lt`
+- ranking: `largest`, `smallest`, `non_largest`, `block_count`, `color_count`,
+  `unique_color`, `len_rank`
+- position anchors: `mid`, `mirror_index`, `from_right` (dual bias)
+
+### Arithmetic / order primitives
+Position tables only: `my_succ/2`, `lt/2`, `add/3` (dual/pixel). Cardinal
+compares use grounded `size_lt`, not position `lt`.
 
 ---
 
 ## Stage 2 — Output semantics and the bridge problem
 
 The learned program's head stays pixel-level: `out(Ex, Pos, Color)`. This keeps
-one uniform target for every task. But block-level reasoning must be able to
-*produce* pixel outputs cheaply, so BK provides bridge predicates, e.g.:
+one uniform target for every task. Block→pixel painting uses **precomputed
+bridges** (Start/End never appear as free body vars):
 
-- `span(Start, End, Pos)` — Pos lies in [Start, End]; lets one rule paint a whole
-  block: `out(E,P,C) :- block(E,B,S,T,_), span(S,T,P), ...`
-- shifted/scaled spans: `span_shift(S,T,K,Pos)` for "block moved by K".
+- `pixel_block(Ex, Pos, Bid)` — Pos-first block membership (pixel-headed rules)
+- `in_block(Ex, Id, Pos)` / `block_edge` / `in_gap`
+- `block_cell` / `edge_cell` / `interior_cell` / `solid_cell` — paint bridges
+  (`solid_cell` = full non-largest blocks; use with `edge_cell`+`largest` for hollow)
+- `gap_cell(Ex, Id1, Id2, Pos, Color)` — gap filled with **shorter** endpoint color
 
 Decode rule: a test cell is background unless some rule derives a color for it.
 If two rules derive different colors for one cell, the program fails verification

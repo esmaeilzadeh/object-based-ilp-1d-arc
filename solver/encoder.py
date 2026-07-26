@@ -51,6 +51,11 @@ def _pixel_facts(ex: int, row: Sequence[int]) -> List[str]:
 
 
 def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
+    """Emit searchable block facts + fully grounded bridges.
+
+    Searchable: ``block(Ex,Id,Len,Color)`` — no absolute Start/End.
+    Pixel embedding: ``pixel_block(Ex,Pos,Bid)``.
+    """
     facts: List[str] = []
     blocks = segment_blocks(row)
     w = len(row)
@@ -63,9 +68,12 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
 
     lengths: List[Tuple[int, int]] = []  # (len, id)
     color_counts: Dict[int, int] = {}
+    observed_sizes: set = set()
+
     for bid, (s, e, c) in enumerate(blocks):
-        facts.append(f"block({ex},{bid},{s},{e},{c}).")
         L = e - s + 1
+        observed_sizes.add(L)
+        facts.append(f"block({ex},{bid},{L},{c}).")
         facts.append(f"block_len({ex},{bid},{L}).")
         lengths.append((L, bid))
         color_counts[c] = color_counts.get(c, 0) + 1
@@ -73,17 +81,50 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
             facts.append(f"touches_edge({ex},{bid},left).")
         if e == w - 1:
             facts.append(f"touches_edge({ex},{bid},right).")
+        for p in range(s, e + 1):
+            facts.append(f"in_block({ex},{bid},{p}).")
+            facts.append(f"pixel_block({ex},{p},{bid}).")
+            facts.append(f"block_cell({ex},{bid},{p},{c}).")
+            if p == s or p == e:
+                facts.append(f"block_edge({ex},{bid},{p}).")
+                facts.append(f"edge_cell({ex},{bid},{p},{c}).")
+            else:
+                facts.append(f"interior_cell({ex},{bid},{p},{c}).")
+
+    lens_only = [L for L, _ in lengths]
+    for i in range(len(blocks)):
+        for j in range(len(blocks)):
+            if i == j:
+                continue
+            Li, Lj = lens_only[i], lens_only[j]
+            if Li < Lj:
+                facts.append(f"shorter({ex},{i},{j}).")
+            elif Li > Lj:
+                facts.append(f"longer({ex},{i},{j}).")
+            else:
+                facts.append(f"same_len({ex},{i},{j}).")
 
     for i in range(len(blocks)):
         for j in range(i + 1, len(blocks)):
-            s1, e1, _ = blocks[i]
-            s2, e2, _ = blocks[j]
+            s1, e1, c1 = blocks[i]
+            s2, e2, c2 = blocks[j]
             facts.append(f"left_of({ex},{i},{j}).")
             g = s2 - e1 - 1
             facts.append(f"gap({ex},{i},{j},{g}).")
+            observed_sizes.add(g)
             if g == 0:
                 facts.append(f"adjacent({ex},{i},{j}).")
                 facts.append(f"adjacent({ex},{j},{i}).")
+            if lens_only[i] < lens_only[j]:
+                fill_c = c1
+            elif lens_only[j] < lens_only[i]:
+                fill_c = c2
+            else:
+                fill_c = None
+            for p in range(e1 + 1, s2):
+                facts.append(f"in_gap({ex},{i},{j},{p}).")
+                if fill_c is not None:
+                    facts.append(f"gap_cell({ex},{i},{j},{p},{fill_c}).")
 
     if lengths:
         max_L = max(L for L, _ in lengths)
@@ -91,13 +132,24 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
         for L, bid in lengths:
             if L == max_L:
                 facts.append(f"largest({ex},{bid}).")
+            else:
+                facts.append(f"non_largest({ex},{bid}).")
+                s, e, c = blocks[bid]
+                for p in range(s, e + 1):
+                    facts.append(f"solid_cell({ex},{bid},{p},{c}).")
             if L == min_L:
                 facts.append(f"smallest({ex},{bid}).")
-        # dense rank by length descending
         unique_lens = sorted({L for L, _ in lengths}, reverse=True)
         rank = {L: r + 1 for r, L in enumerate(unique_lens)}
         for L, bid in lengths:
             facts.append(f"len_rank({ex},{bid},{rank[L]}).")
+
+    # Cardinal compares on sizes observed in this example (not position lt)
+    sizes = sorted(observed_sizes | {len(blocks)})
+    for a in sizes:
+        for b in sizes:
+            if a < b:
+                facts.append(f"size_lt({a},{b}).")
 
     for c, n in color_counts.items():
         facts.append(f"color_count({ex},{c},{n}).")
@@ -107,9 +159,8 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
 
 
 def _arith_ground(max_w: int) -> List[str]:
-    """Ground position arithmetic for 0..max_w inclusive (max_position)."""
+    """Ground position arithmetic + typed constant tables."""
     facts: List[str] = []
-    # positions used are 0..max_w-1 for cells; allow max_w for width constants
     P = max(max_w, 1)
     facts.append(f"max_position({P}).")
     for i in range(P + 1):
@@ -117,6 +168,10 @@ def _arith_ground(max_w: int) -> List[str]:
     for i in range(10):
         facts.append(f"value({i}).")
         facts.append(f"v{i}({i}).")
+    for i in range(10):
+        facts.append(f"s{i}({i}).")
+    for i in range(1, 10):
+        facts.append(f"r{i}({i}).")
     for i in range(min(P + 1, 33)):
         facts.append(f"c{i}({i}).")
         facts.append(f"x{i}({i}).")
@@ -135,11 +190,6 @@ def _arith_ground(max_w: int) -> List[str]:
     facts.extend(lts)
     facts.extend(succs)
     facts.extend(adds)
-    # Bridge rules (keeps BK small)
-    facts.append("span(S,T,P) :- position(S), position(T), position(P), S =< P, P =< T.")
-    facts.append(
-        "span_shift(S,T,K,P) :- add(S,K,S2), add(T,K,T2), span(S2,T2,P)."
-    )
     return facts
 
 
@@ -210,6 +260,7 @@ def encode_instance(
                 agg_names = (
                     "largest",
                     "smallest",
+                    "non_largest",
                     "block_count",
                     "color_count",
                     "unique_color",

@@ -107,9 +107,9 @@ def solve(
             if r:
                 return r
 
-        # Level 2 — block-only ILP (cap ~25% of budget)
+        # Level 2 — block-only ILP (cap ~40% of budget; relational prior pays here)
         if include_blocks and _remaining() > 0:
-            budget = min(max(int(0.25 * timeout), 1), _remaining())
+            budget = min(max(int(0.40 * timeout), 1), _remaining())
             prog = induce(
                 encoded.exs_path,
                 encoded.bk_path,
