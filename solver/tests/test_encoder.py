@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from solver.bias_gen import render_bias
+from solver.bias_gen import render_bias, render_object_bias
 from solver.encoder import _block_and_derived, encode_instance
 
 
@@ -21,6 +21,16 @@ def test_block_atom_is_id_len_color():
     assert "obj_index(0,2,1)." in facts
     assert "block_count(0,2)." in facts
     assert "empty_block_count(0,1)." in facts
+
+
+def test_succ_and_after_block():
+    facts = _facts([2, 2, 2, 0, 5, 5])
+    assert "block_succ(0,0,1)." in facts
+    assert "block_succ(0,1,2)." in facts
+    assert "obj_succ(0,0,2)." in facts
+    assert "after_block(0,0,3)." in facts
+    assert "block_start(0,0,0)." in facts
+    assert "block_end(0,0,2)." in facts
 
 
 def test_length_comparisons_and_size_lt():
@@ -76,6 +86,23 @@ def test_block_bias_omits_position_and_size_constants():
     assert "body_pred(empty_block,3)." in text
     assert "body_pred(obj_index,3)." in text
     assert "body_pred(empty_block_count,2)." in text
+    assert "body_pred(block_succ,3)." in text
+    assert "body_pred(obj_succ,3)." not in text  # object/dual only; keep block bias lean
+
+
+def test_object_bias_head_and_no_paint_priors():
+    text = render_object_bias()
+    assert "head_pred(out_block,4)." in text
+    assert "head_pred(out,3)." not in text
+    assert "body_pred(obj_succ,3)." in text
+    assert "body_pred(after_block,3)." in text
+    assert "body_pred(block_start,3)." in text
+    assert "body_pred(smallest,2)." in text
+    assert "body_pred(gap_cell,5)." not in text
+    assert "body_pred(solid_cell,4)." not in text
+    assert "body_pred(left_of,3)." not in text
+    assert "constant(c0, position)." not in text
+    assert "constant(v0, value)." not in text
 
 
 def test_dual_bias_keeps_position_arith_and_rank():
@@ -87,20 +114,30 @@ def test_dual_bias_keeps_position_arith_and_rank():
     assert "type(obj_index,('ex', 'block_id', 'rank'))." in text
 
 
-def test_encode_instance_writes_new_schema(tmp_path: Path):
+def test_encode_instance_writes_pixel_and_object_exs(tmp_path: Path):
     inst = {
         "train": [
-            {"input": [[1, 1, 0, 2]], "output": [[1, 1, 2, 2]]},
-            {"input": [[3, 0, 4, 4]], "output": [[3, 4, 4, 4]]},
-            {"input": [[5, 5, 5, 0, 6]], "output": [[5, 5, 5, 6, 6]]},
+            {"input": [[2, 2, 0, 9]], "output": [[0, 0, 9, 2]]},
+            {"input": [[5, 0, 1]], "output": [[0, 1, 5]]},
+            {"input": [[8, 8, 0, 3]], "output": [[0, 0, 3, 8]]},
         ],
-        "test": [{"input": [[7, 7, 0, 0, 8]], "output": [[7, 7, 8, 8, 8]]}],
+        "test": [{"input": [[7, 7, 7, 0, 4]], "output": [[0, 0, 0, 4, 7]]}],
     }
     enc = encode_instance(inst, tmp_path / "enc")
     bk = enc.bk_path.read_text()
     assert "pixel_block(" in bk
     assert "empty_block(" in bk
     assert "obj_index(" in bk
-    assert "non_largest(" in bk or "largest(" in bk
-    assert "size_lt(" in bk
+    assert "block_succ(" in bk
+    assert "after_block(" in bk
     assert "span(" not in bk
+
+    pix = enc.exs_pixel_path.read_text()
+    assert "pos(out(" in pix
+    assert "out_block(" not in pix
+
+    obj = enc.exs_object_path.read_text()
+    assert "pos(out_block(0,2,1,9))." in obj
+    assert "pos(out_block(0,3,1,2))." in obj
+    assert "pos(out(" not in obj
+    assert "block_succ(" not in obj

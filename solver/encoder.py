@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from solver.grid import flatten, segment_all_runs
+from solver.grid import flatten, segment_all_runs, segment_blocks
 
 PathLike = Union[str, Path]
 
@@ -25,7 +25,9 @@ class EncodeResult:
     test: List[ExampleGrids]
     out_dir: Path
     bk_path: Path
-    exs_path: Path
+    exs_path: Path  # pixel-head examples (alias of exs_pixel_path)
+    exs_pixel_path: Path
+    exs_object_path: Path
     bias_hint: str = "dual"
     color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)  # ex -> role->orig (unused unless canonicalize)
     inv_color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)
@@ -93,6 +95,14 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
         if e == w - 1:
             facts.append(f"touches_edge({ex},{bid},right).")
 
+        # Generic placement binders (input geometry only; all runs)
+        facts.append(f"block_start({ex},{bid},{s}).")
+        facts.append(f"block_end({ex},{bid},{e}).")
+        if e + 1 < w:
+            facts.append(f"after_block({ex},{bid},{e + 1}).")
+        if s - 1 >= 0:
+            facts.append(f"before_block({ex},{bid},{s - 1}).")
+
         if c == 0:
             facts.append(f"empty_block({ex},{bid},{L}).")
             for p in range(s, e + 1):
@@ -114,6 +124,12 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
                 facts.append(f"edge_cell({ex},{bid},{p},{c}).")
             else:
                 facts.append(f"interior_cell({ex},{bid},{p},{c}).")
+
+    # Directed successors over runs / nonempty objects
+    for i in range(n_runs - 1):
+        facts.append(f"block_succ({ex},{i},{i + 1}).")
+    for a, b in zip(colored_ids, colored_ids[1:]):
+        facts.append(f"obj_succ({ex},{a},{b}).")
 
     # Length compares over all run ids (empty participates)
     for i in range(n_runs):
@@ -224,6 +240,7 @@ def _arith_ground(max_w: int) -> List[str]:
 
 
 def _exs_pos_neg(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
+    """Pixel-head examples: pos/neg ``out(Ex, Pos, Color)``."""
     pos: List[str] = []
     neg: List[str] = []
     for eg in train:
@@ -238,6 +255,43 @@ def _exs_pos_neg(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
     return pos + neg
 
 
+def _exs_out_blocks(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
+    """Object-head examples: pos/neg ``out_block(Ex, Start, Len, Color)`` only.
+
+    Negatives are compact: wrong color at each true (Start,Len), plus every
+    other (Start,Len) paired with each train-output color (not the full
+    Start×Len×Color cube — that stalls Popper on long 1D rows).
+    """
+    pos: List[str] = []
+    neg: List[str] = []
+    for eg in train:
+        assert eg.out is not None
+        w = len(eg.out)
+        true_blocks: List[Tuple[int, int, int]] = []
+        true_set: set = set()
+        colors_used: set = set()
+        for s, e, c in segment_blocks(eg.out):
+            L = e - s + 1
+            true_blocks.append((s, L, c))
+            true_set.add((s, L, c))
+            colors_used.add(c)
+            pos.append(f"pos(out_block({eg.ex_id},{s},{L},{c})).")
+        # Wrong color at a true span
+        for s, L, c in true_blocks:
+            for v in range(1, max_color + 1):
+                if v != c:
+                    neg.append(f"neg(out_block({eg.ex_id},{s},{L},{v})).")
+        # Wrong spans using only colors that appear in this output
+        if not colors_used:
+            continue
+        for s in range(w):
+            for L in range(1, w - s + 1):
+                for c in colors_used:
+                    if (s, L, c) not in true_set:
+                        neg.append(f"neg(out_block({eg.ex_id},{s},{L},{c})).")
+    return pos + neg
+
+
 def encode_instance(
     src: Union[PathLike, dict],
     out_dir: PathLike,
@@ -247,7 +301,7 @@ def encode_instance(
     include_blocks: bool = True,
     include_pixels: bool = True,
 ) -> EncodeResult:
-    """Write ``bk.pl`` and ``exs.pl`` under ``out_dir``; return EncodeResult."""
+    """Write ``bk.pl``, pixel ``exs.pl``, and object ``exs_object.pl`` under ``out_dir``."""
     obj = _load_json(src)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -307,9 +361,11 @@ def encode_instance(
     bk_lines.extend(_arith_ground(max_w))
 
     bk_path = out_dir / "bk.pl"
-    exs_path = out_dir / "exs.pl"
+    exs_pixel_path = out_dir / "exs.pl"
+    exs_object_path = out_dir / "exs_object.pl"
     bk_path.write_text("\n".join(bk_lines) + "\n")
-    exs_path.write_text("\n".join(_exs_pos_neg(train)) + "\n")
+    exs_pixel_path.write_text("\n".join(_exs_pos_neg(train)) + "\n")
+    exs_object_path.write_text("\n".join(_exs_out_blocks(train)) + "\n")
 
     # sidecar for harness
     meta = {
@@ -323,7 +379,9 @@ def encode_instance(
         test=test,
         out_dir=out_dir,
         bk_path=bk_path,
-        exs_path=exs_path,
+        exs_path=exs_pixel_path,
+        exs_pixel_path=exs_pixel_path,
+        exs_object_path=exs_object_path,
         color_maps=color_maps,
         inv_color_maps=inv_maps,
     )

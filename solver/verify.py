@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Sequence, Union
 
+from solver.decode import apply_object_program
 from solver.encoder import EncodeResult, ExampleGrids
 
 PathLike = Union[str, Path]
@@ -37,7 +38,6 @@ def apply_program(
 
     out: Dict[int, List[int]] = {}
     for eg in examples:
-        w = len(eg.inp) if eg.out is None else max(len(eg.inp), len(eg.out or []))
         if eg.out is not None:
             w = len(eg.out)
         else:
@@ -45,7 +45,6 @@ def apply_program(
         row = [0] * w
         for pos in range(w):
             colors = []
-            # query all possible colors 0..9
             for c in range(10):
                 try:
                     res = query_once(f"out({eg.ex_id},{pos},{c})")
@@ -70,6 +69,18 @@ def grids_equal(pred: Sequence[int], gold: Sequence[int]) -> bool:
 def verify_on_train(program: str, encoded: EncodeResult) -> bool:
     try:
         preds = apply_program(program, encoded.bk_path, encoded.train)
+    except Exception:
+        return False
+    for eg in encoded.train:
+        assert eg.out is not None
+        if not grids_equal(preds[eg.ex_id], eg.out):
+            return False
+    return True
+
+
+def verify_object_on_train(program: str, encoded: EncodeResult) -> bool:
+    try:
+        preds = apply_object_program(program, encoded.bk_path, encoded.train)
     except Exception:
         return False
     for eg in encoded.train:

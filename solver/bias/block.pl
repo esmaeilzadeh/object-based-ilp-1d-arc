@@ -9,6 +9,7 @@ body_pred(obj_index,3).
 body_pred(left_of,3).
 body_pred(adjacent,3).
 body_pred(touches_edge,3).
+body_pred(block_succ,3).
 body_pred(shorter,3).
 body_pred(longer,3).
 body_pred(same_len,3).
@@ -48,6 +49,7 @@ type(obj_index,('ex', 'block_id', 'rank')).
 type(left_of,('ex', 'block_id', 'block_id')).
 type(adjacent,('ex', 'block_id', 'block_id')).
 type(touches_edge,('ex', 'block_id', 'edge')).
+type(block_succ,('ex', 'block_id', 'block_id')).
 type(shorter,('ex', 'block_id', 'block_id')).
 type(longer,('ex', 'block_id', 'block_id')).
 type(same_len,('ex', 'block_id', 'block_id')).
@@ -73,6 +75,7 @@ bad_body(obj_index, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(left_of, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(adjacent, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(touches_edge, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(block_succ, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(shorter, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(longer, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(same_len, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.

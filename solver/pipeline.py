@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from solver.bias_gen import write_bias_files
+from solver.decode import apply_object_program
 from solver.encoder import encode_instance
 from solver.induce import induce
 from solver.trivial import try_trivial
-from solver.verify import apply_program, verify_on_train
+from solver.verify import apply_program, verify_object_on_train, verify_on_train
 
 PathLike = Union[str, Path]
 _BIAS = Path(__file__).resolve().parent / "bias"
@@ -60,42 +61,64 @@ def solve(
     def _remaining() -> int:
         return max(int(deadline - time.time()), 0)
 
-    def _ok(prog: str, level: str) -> Optional[SolveResult]:
+    def _remap(grid: List[int]) -> List[int]:
+        if canonicalize_colors and test0.ex_id in encoded.inv_color_maps:
+            inv = encoded.inv_color_maps[test0.ex_id]
+            return [0 if c == 0 else inv.get(c, c) for c in grid]
+        return grid
+
+    def _ok_pixel(prog: str, level: str) -> Optional[SolveResult]:
         if not verify_on_train(prog, encoded):
             return None
         preds = apply_program(prog, encoded.bk_path, encoded.test)
-        grid = preds[test0.ex_id]
-        if canonicalize_colors and test0.ex_id in encoded.inv_color_maps:
-            inv = encoded.inv_color_maps[test0.ex_id]
-            grid = [0 if c == 0 else inv.get(c, c) for c in grid]
-        return SolveResult(grid, prog, level, True, "high")
+        return SolveResult(_remap(preds[test0.ex_id]), prog, level, True, "high")
+
+    def _ok_object(prog: str, level: str) -> Optional[SolveResult]:
+        if not verify_object_on_train(prog, encoded):
+            return None
+        preds = apply_object_program(prog, encoded.bk_path, encoded.test)
+        return SolveResult(_remap(preds[test0.ex_id]), prog, level, True, "high")
 
     if force_bias == "pixel":
         rem = _remaining()
         if rem > 0:
             prog = induce(
-                encoded.exs_path,
+                encoded.exs_pixel_path,
                 encoded.bk_path,
                 _BIAS / "pixel.pl",
                 rem,
                 work_dir / "popper",
             )
             if prog:
-                r = _ok(prog, "pixel_ilp")
+                r = _ok_pixel(prog, "pixel_ilp")
+                if r:
+                    return r
+    elif force_bias == "object":
+        rem = _remaining()
+        if rem > 0 and include_blocks:
+            prog = induce(
+                encoded.exs_object_path,
+                encoded.bk_path,
+                _BIAS / "object.pl",
+                rem,
+                work_dir / "popper_object",
+            )
+            if prog:
+                r = _ok_object(prog, "object_ilp")
                 if r:
                     return r
     elif not ladder:
         rem = _remaining()
         if rem > 0:
             prog = induce(
-                encoded.exs_path,
+                encoded.exs_pixel_path,
                 encoded.bk_path,
                 _BIAS / "dual.pl",
                 rem,
                 work_dir / "popper",
             )
             if prog:
-                r = _ok(prog, "dual_no_ladder")
+                r = _ok_pixel(prog, "dual_no_ladder")
                 if r:
                     return r
     else:
@@ -103,50 +126,65 @@ def solve(
         triv = try_trivial(encoded)
         if triv:
             prog, name = triv
-            r = _ok(prog, name)
+            r = _ok_pixel(prog, name)
             if r:
                 return r
 
-        # Level 2 — block-only ILP (cap ~40% of budget; relational prior pays here)
+        # Level 2 — block-only pixel-head ILP (fill/hollow/paint bridges)
         if include_blocks and _remaining() > 0:
-            budget = min(max(int(0.40 * timeout), 1), _remaining())
+            budget = min(70, max(int(0.35 * timeout), 1), _remaining())
             prog = induce(
-                encoded.exs_path,
+                encoded.exs_pixel_path,
                 encoded.bk_path,
                 _BIAS / "block.pl",
                 budget,
                 work_dir / "popper_block",
             )
             if prog:
-                r = _ok(prog, "block_ilp")
+                r = _ok_pixel(prog, "block_ilp")
                 if r:
                     return r
 
-        # Level 3 — pixel ILP (paper-comparable; remaining wall-clock)
+        # Level 3 — object-head ILP (out_block + decoder; move / object relations)
+        if include_blocks and _remaining() > 0:
+            budget = min(55, max(int(0.35 * timeout), 1), _remaining())
+            prog = induce(
+                encoded.exs_object_path,
+                encoded.bk_path,
+                _BIAS / "object.pl",
+                budget,
+                work_dir / "popper_object",
+            )
+            if prog:
+                r = _ok_object(prog, "object_ilp")
+                if r:
+                    return r
+
+        # Level 4 — pixel ILP
         if include_pixels and _remaining() > 0:
             prog = induce(
-                encoded.exs_path,
+                encoded.exs_pixel_path,
                 encoded.bk_path,
                 _BIAS / "pixel.pl",
                 _remaining(),
                 work_dir / "popper_pixel",
             )
             if prog:
-                r = _ok(prog, "pixel_ilp")
+                r = _ok_pixel(prog, "pixel_ilp")
                 if r:
                     return r
 
-        # Level 4 — dual ILP (if any time left)
+        # Level 5 — dual ILP (if any time left)
         if include_pixels and include_blocks and _remaining() > 0:
             prog = induce(
-                encoded.exs_path,
+                encoded.exs_pixel_path,
                 encoded.bk_path,
                 _BIAS / "dual.pl",
                 _remaining(),
                 work_dir / "popper_dual",
             )
             if prog:
-                r = _ok(prog, "dual_ilp")
+                r = _ok_pixel(prog, "dual_ilp")
                 if r:
                     return r
 

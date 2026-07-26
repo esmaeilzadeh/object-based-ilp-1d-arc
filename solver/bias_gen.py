@@ -3,18 +3,23 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
-from solver.predicates import body_preds_for_level, head_pred
+from solver.predicates import (
+    Predicate,
+    body_preds_for_level,
+    head_pred,
+    head_pred_object,
+)
 
 _BIAS_DIR = Path(__file__).resolve().parent / "bias"
 
 
-def _types_block(preds) -> str:
+def _types_block(preds: Sequence[Predicate]) -> str:
     return "\n".join(f"type({p.name},{p.types})." for p in preds)
 
 
-def _bad_body_for_ex_preds(preds) -> str:
+def _bad_body_for_ex_preds(preds: Sequence[Predicate]) -> str:
     lines = []
     for p in preds:
         if not p.types or p.types[0] != "ex":
@@ -30,26 +35,29 @@ def _bad_body_for_ex_preds(preds) -> str:
 
 
 def _constants_for_level(level: int) -> list[str]:
-    """Typed constants. Block bias omits position/size constants to stop overfit."""
+    """Typed constants. Block/object bias omit position/size constants to stop overfit.
+
+    Object bias (level 4) also omits value constants — colors bind from ``block/4``.
+    """
     lines = []
-    for i in range(10):
-        lines.append(f"constant(v{i}, value).")
-    if level >= 3:
+    if level != 4:
+        for i in range(10):
+            lines.append(f"constant(v{i}, value).")
+    if level >= 3 and level != 4:
         for i in range(10):
             lines.append(f"constant(c{i}, position).")
         for i in range(10):
             lines.append(f"constant(s{i}, size).")
         for i in range(1, 10):
             lines.append(f"constant(r{i}, rank).")
-    lines.append("constant(left, edge).")
-    lines.append("constant(right, edge).")
+    if level != 4:
+        lines.append("constant(left, edge).")
+        lines.append("constant(right, edge).")
     return lines
 
 
-def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
-    head = head_pred()
-    bodies = body_preds_for_level(level)
-    all_typed = (head,) + bodies
+def _render(head: Predicate, bodies: Sequence[Predicate], *, max_vars: int, max_body: int, level: int) -> str:
+    all_typed = (head,) + tuple(bodies)
     parts = [
         f"max_vars({max_vars}).",
         f"max_body({max_body}).",
@@ -69,6 +77,27 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     parts.append(_bad_body_for_ex_preds(bodies))
     parts.append("")
     return "\n".join(parts) + "\n"
+
+
+def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
+    return _render(
+        head_pred(),
+        body_preds_for_level(level),
+        max_vars=max_vars,
+        max_body=max_body,
+        level=level,
+    )
+
+
+def render_object_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
+    """Object-head bias: minimal body set so Popper can find short out_block rules."""
+    return _render(
+        head_pred_object(),
+        body_preds_for_level(4),
+        max_vars=max_vars,
+        max_body=max_body,
+        level=4,
+    )
 
 
 def _pixel_only_bias() -> str:
@@ -126,6 +155,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "block.pl").write_text(render_bias(2, max_vars=8, max_body=12))
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
+    (out_dir / "object.pl").write_text(render_object_bias())
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 

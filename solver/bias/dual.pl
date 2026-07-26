@@ -14,6 +14,8 @@ body_pred(left_of,3).
 body_pred(adjacent,3).
 body_pred(gap,4).
 body_pred(touches_edge,3).
+body_pred(block_succ,3).
+body_pred(obj_succ,3).
 body_pred(shorter,3).
 body_pred(longer,3).
 body_pred(same_len,3).
@@ -35,6 +37,10 @@ body_pred(add,3).
 body_pred(pixel_block,3).
 body_pred(in_block,3).
 body_pred(block_edge,3).
+body_pred(block_start,3).
+body_pred(block_end,3).
+body_pred(after_block,3).
+body_pred(before_block,3).
 body_pred(in_gap,4).
 body_pred(block_cell,4).
 body_pred(edge_cell,4).
@@ -97,6 +103,8 @@ type(left_of,('ex', 'block_id', 'block_id')).
 type(adjacent,('ex', 'block_id', 'block_id')).
 type(gap,('ex', 'block_id', 'block_id', 'size')).
 type(touches_edge,('ex', 'block_id', 'edge')).
+type(block_succ,('ex', 'block_id', 'block_id')).
+type(obj_succ,('ex', 'block_id', 'block_id')).
 type(shorter,('ex', 'block_id', 'block_id')).
 type(longer,('ex', 'block_id', 'block_id')).
 type(same_len,('ex', 'block_id', 'block_id')).
@@ -118,6 +126,10 @@ type(add,('position', 'position', 'position')).
 type(pixel_block,('ex', 'position', 'block_id')).
 type(in_block,('ex', 'block_id', 'position')).
 type(block_edge,('ex', 'block_id', 'position')).
+type(block_start,('ex', 'block_id', 'position')).
+type(block_end,('ex', 'block_id', 'position')).
+type(after_block,('ex', 'block_id', 'position')).
+type(before_block,('ex', 'block_id', 'position')).
 type(in_gap,('ex', 'block_id', 'block_id', 'position')).
 type(block_cell,('ex', 'block_id', 'position', 'value')).
 type(edge_cell,('ex', 'block_id', 'position', 'value')).
@@ -137,6 +149,8 @@ bad_body(left_of, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(adjacent, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(gap, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(touches_edge, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(block_succ, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(obj_succ, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(shorter, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(longer, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(same_len, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
@@ -154,6 +168,10 @@ bad_body(from_right, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(pixel_block, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(in_block, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(block_edge, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(block_start, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(block_end, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(after_block, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
+bad_body(before_block, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(in_gap, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(block_cell, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(edge_cell, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.

@@ -57,22 +57,23 @@ background `0`. All runs share one left→right `block_id` space.
 `block_len(Ex, Id, Len)` remains a thin alias for colored lengths.
 `block_count` = colored count; `empty_block_count` = empty-run count.
 
-Absolute Start/End stay **encoder-internal**. Exposing them in the ILP body
-invites position-constant overfitting; geometry is pushed into relations and
-bridges instead.
+Absolute coordinates are not free search constants (`c*` omitted in block/object
+bias). They appear only as **grounded binders** tied to a run id:
+`block_start` / `block_end` / `after_block` / `before_block`.
 
 **Typed number roles** (Popper types — no cross-role arithmetic):
 - `value` — color symbols (`v0..v9`)
 - `position` — grid ordinals (`c*`, `my_succ`/`lt`/`add`; dual/pixel bias only)
 - `size` — cardinals (lengths); compare via `shorter`/`longer`/`size_lt`
-- `block_id` — run ordinals over all runs (variables only in block bias)
+- `block_id` — run ordinals over all runs (variables only in block/object bias)
 - `rank` — ordinals for `len_rank` and dense `obj_index` (dual may expose `r*`)
 
 **Grounding policy:** all object/geometry/paint priors are finite facts for the
-instance. No recursive object BK. Block bias omits `c*`/`s*` constants.
+instance. No recursive object BK. Block/object bias omits `c*`/`s*` constants.
 
 Derived relations (computed during encoding, NOT learned):
-- geometry: `left_of`, `adjacent`, `gap`, `touches_edge` over **all** run ids
+- geometry: `left_of`, `adjacent`, `gap`, `touches_edge`, `block_succ`,
+  `obj_succ` over run / nonempty ids
 - length compare: `shorter`, `longer`, `same_len`, `size_lt` (all runs)
 - ranking: `largest`, `smallest`, `non_largest`, `block_count`,
   `empty_block_count`, `color_count`, `unique_color`, `len_rank` —
@@ -81,27 +82,34 @@ Derived relations (computed during encoding, NOT learned):
 
 ### Arithmetic / order primitives
 Position tables only: `my_succ/2`, `lt/2`, `add/3` (dual/pixel). Cardinal
-compares use grounded `size_lt`, not position `lt`.
+compares use grounded `size_lt`, not position `lt`. Block-layer successors are
+`block_succ` / `obj_succ` (grounded), not `my_succ` on `block_id`.
 
 ---
 
-## Stage 2 — Output semantics and the bridge problem
+## Stage 2 — Dual induction targets and decode
 
-The learned program's head stays pixel-level: `out(Ex, Pos, Color)`. This keeps
-one uniform target for every task. Block→pixel painting uses **precomputed
-bridges** (Start/End never appear as free body vars):
+Two separate example files (never mixed in one Popper run):
 
-- `pixel_block(Ex, Pos, Bid)` — Pos-first membership for **any** run (colored or empty)
-- `in_block(Ex, Id, Pos)` / `block_edge` / `in_gap` (`in_block`/`block_edge` colored only)
-- `block_cell` / `edge_cell` / `interior_cell` / `solid_cell` — paint bridges
-  (`solid_cell` = full non-largest **colored** blocks; use with `edge_cell`+`largest` for hollow)
-- `gap_cell(Ex, Id1, Id2, Pos, Color)` — gap filled with **shorter** endpoint color;
-  only when **both** endpoints are colored
+- **Pixel head** (`exs.pl`): `pos/neg out(Ex, Pos, Color)` — denoise / sub-object
+- **Object head** (`exs_object.pl`): `pos/neg out_block(Ex, Start, Len, Color)` —
+  only the minimal colored-run description of each train **output**. No out
+  geometry (succ/left_of/…) in exs or BK — that would leak or add noise.
 
-Decode rule: a test cell is background unless some rule derives a color for it.
-If two rules derive different colors for one cell, the program fails verification
-on trains (exact match), so ambiguity is filtered out in Stage 3 rather than
-resolved by heuristics.
+BK is always **input-only** reframe.
+
+**Object decoder:** query all `out_block(E,S,L,C)`, paint `[S,S+L)` on a zero
+canvas; fail verify on overlap / OOB.
+
+**Pixel decode:** closed-world `out/3` as before (background default 0).
+
+Pixel-head block stage may still use paint bridges:
+- `pixel_block` / `in_block` / `block_edge` / `in_gap`
+- `block_cell` / `edge_cell` / `interior_cell` / `solid_cell` / `gap_cell`
+  (`gap_cell` = shorter-endpoint fill when both endpoints colored)
+
+Object-head bias **omits** those paint priors; it uses geometry +
+`after_block` / `block_start` binders so ILP learns I/O object relations.
 
 ---
 
@@ -113,13 +121,12 @@ train pairs:
 
 1. **Trivial checks** (constant-time): identity, global recolor (bijective color
    map), uniform shift by k, reversal. These are closed-form testable — no search.
-2. **Block-level ILP** (small search space): bias exposes only block facts,
-   derived relations, and bridges. Most move/fill/hollow/recolor tasks should
-   resolve here with 1–3 short clauses.
-3. **Full dual ILP**: pixel + block predicates together, larger clause budget.
-   Catches sub-object tasks and mixed-granularity tasks.
-4. **Fallback**: if nothing verifies within the time budget, emit the best
-   partial program's prediction (or identity) and flag low confidence.
+2. **Block pixel-head ILP**: pixel `exs` + `block.pl` — fill / hollow via paint
+   bridges (cheap when priors fit).
+3. **Object-head ILP**: `exs_object` + `object.pl` + out_block decoder — move /
+   object-relation tasks.
+4. **Pixel ILP** / **dual ILP**: sub-object and mixed tasks.
+5. **Fallback**: identity prediction, low confidence.
 
 Rationale: the ladder preserves generality (every level is domain-generic) while
 spending the timeout where the representation insight says it pays off.
