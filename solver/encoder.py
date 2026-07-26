@@ -120,15 +120,21 @@ def _arith_ground(max_w: int) -> List[str]:
     for i in range(min(P + 1, 33)):
         facts.append(f"c{i}({i}).")
         facts.append(f"x{i}({i}).")
+    lts: List[str] = []
+    succs: List[str] = []
+    adds: List[str] = []
     for a in range(P + 1):
         for b in range(P + 1):
             if a < b:
-                facts.append(f"lt({a},{b}).")
+                lts.append(f"lt({a},{b}).")
             if b == a + 1:
-                facts.append(f"my_succ({a},{b}).")
+                succs.append(f"my_succ({a},{b}).")
             s = a + b
             if s <= P:
-                facts.append(f"add({a},{b},{s}).")
+                adds.append(f"add({a},{b},{s}).")
+    facts.extend(lts)
+    facts.extend(succs)
+    facts.extend(adds)
     # Bridge rules (keeps BK small)
     facts.append("span(S,T,P) :- position(S), position(T), position(P), S =< P, P =< T.")
     facts.append(
@@ -138,20 +144,18 @@ def _arith_ground(max_w: int) -> List[str]:
 
 
 def _exs_pos_neg(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
-    lines: List[str] = []
+    pos: List[str] = []
+    neg: List[str] = []
     for eg in train:
         assert eg.out is not None
-        w = len(eg.out)
         for i, c in enumerate(eg.out):
             c = int(c)
             if c != 0:
-                lines.append(f"pos(out({eg.ex_id},{i},{c})).")
+                pos.append(f"pos(out({eg.ex_id},{i},{c})).")
             for v in range(0, max_color + 1):
                 if v != c:
-                    lines.append(f"neg(out({eg.ex_id},{i},{v})).")
-        # also forbid out beyond? not needed
-        _ = w
-    return lines
+                    neg.append(f"neg(out({eg.ex_id},{i},{v})).")
+    return pos + neg
 
 
 def encode_instance(
@@ -195,10 +199,12 @@ def encode_instance(
         if eg.out is not None:
             max_w = max(max_w, len(eg.out))
 
-    for eg in train + test:
-        if include_pixels:
+    # Emit per-layer across all examples so predicates stay contiguous.
+    if include_pixels:
+        for eg in train + test:
             bk_lines.extend(_pixel_facts(eg.ex_id, eg.inp))
-        if include_blocks:
+    if include_blocks:
+        for eg in train + test:
             derived = _block_and_derived(eg.ex_id, eg.inp)
             if not include_aggregations:
                 agg_names = (

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -54,8 +55,10 @@ def solve(
         include_pixels=include_pixels,
     )
     test0 = encoded.test[0]
-    b1 = max(int(0.40 * timeout), 1)
-    b2 = max(int(0.45 * timeout), 1)
+    deadline = time.time() + float(timeout)
+
+    def _remaining() -> int:
+        return max(int(deadline - time.time()), 0)
 
     def _ok(prog: str, level: str) -> Optional[SolveResult]:
         if not verify_on_train(prog, encoded):
@@ -68,47 +71,78 @@ def solve(
         return SolveResult(grid, prog, level, True, "high")
 
     if force_bias == "pixel":
-        bias = _BIAS / "pixel.pl"
-        prog = induce(encoded.exs_path, encoded.bk_path, bias, timeout, work_dir / "popper")
-        if prog:
-            r = _ok(prog, "pixel_ilp")
-            if r:
-                return r
+        rem = _remaining()
+        if rem > 0:
+            prog = induce(
+                encoded.exs_path,
+                encoded.bk_path,
+                _BIAS / "pixel.pl",
+                rem,
+                work_dir / "popper",
+            )
+            if prog:
+                r = _ok(prog, "pixel_ilp")
+                if r:
+                    return r
     elif not ladder:
-        bias = _BIAS / "dual.pl"
-        prog = induce(encoded.exs_path, encoded.bk_path, bias, timeout, work_dir / "popper")
-        if prog:
-            r = _ok(prog, "dual_no_ladder")
-            if r:
-                return r
+        rem = _remaining()
+        if rem > 0:
+            prog = induce(
+                encoded.exs_path,
+                encoded.bk_path,
+                _BIAS / "dual.pl",
+                rem,
+                work_dir / "popper",
+            )
+            if prog:
+                r = _ok(prog, "dual_no_ladder")
+                if r:
+                    return r
     else:
-        # Level 1
+        # Level 1 — trivial (constant time)
         triv = try_trivial(encoded)
         if triv:
             prog, name = triv
             r = _ok(prog, name)
             if r:
                 return r
-        # Level 2 block-only
-        if include_blocks:
+
+        # Level 2 — block-only ILP (cap ~25% of budget)
+        if include_blocks and _remaining() > 0:
+            budget = min(max(int(0.25 * timeout), 1), _remaining())
             prog = induce(
                 encoded.exs_path,
                 encoded.bk_path,
                 _BIAS / "block.pl",
-                b1,
+                budget,
                 work_dir / "popper_block",
             )
             if prog:
                 r = _ok(prog, "block_ilp")
                 if r:
                     return r
-        # Level 3 dual (needs pixel BK)
-        if include_pixels:
+
+        # Level 3 — pixel ILP (paper-comparable; remaining wall-clock)
+        if include_pixels and _remaining() > 0:
+            prog = induce(
+                encoded.exs_path,
+                encoded.bk_path,
+                _BIAS / "pixel.pl",
+                _remaining(),
+                work_dir / "popper_pixel",
+            )
+            if prog:
+                r = _ok(prog, "pixel_ilp")
+                if r:
+                    return r
+
+        # Level 4 — dual ILP (if any time left)
+        if include_pixels and include_blocks and _remaining() > 0:
             prog = induce(
                 encoded.exs_path,
                 encoded.bk_path,
                 _BIAS / "dual.pl",
-                b2,
+                _remaining(),
                 work_dir / "popper_dual",
             )
             if prog:
@@ -116,7 +150,6 @@ def solve(
                 if r:
                     return r
 
-    # Fallback: identity
     return SolveResult(
         list(test0.inp),
         "out(E,P,C) :- in(E,P,C).\n",

@@ -13,7 +13,8 @@ pip install -q -r requirements.txt
 pip install -q -e ./popper
 
 JSON="${1:-raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json}"
-TIMEOUT="${TIMEOUT:-60}"
+# Denoising needs ~60s of pixel ILP; ladder spends a little on block first.
+TIMEOUT="${TIMEOUT:-90}"
 
-python -m solver.cli "$JSON" --timeout "$TIMEOUT" --out pred.json
+python -m solver.cli "$JSON" --timeout "$TIMEOUT" --out pred.json --work-dir work/smoke
 echo "Wrote pred.json"

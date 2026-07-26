@@ -15,6 +15,18 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 
+def _import_popper():
+    """Prefer editable install (`pip install -e ./popper`); fall back to vendored path."""
+    try:
+        from popper.util import Settings
+        from popper.loop import learn_solution
+        return Settings, learn_solution
+    except ImportError:
+        from popper.popper.util import Settings
+        from popper.popper.loop import learn_solution
+        return Settings, learn_solution
+
+
 def induce(
     exs_path: PathLike,
     bk_path: PathLike,
@@ -23,8 +35,7 @@ def induce(
     work_dir: Optional[PathLike] = None,
 ) -> Optional[str]:
     """Run Popper; return program source or None."""
-    from popper.popper.util import Settings
-    from popper.popper.loop import learn_solution
+    Settings, learn_solution = _import_popper()
 
     cleanup = False
     if work_dir is None:
