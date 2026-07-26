@@ -9,3 +9,4 @@ logs/
 .popper_tmp/
 *.deb
 .DS_Store
+pred.json
