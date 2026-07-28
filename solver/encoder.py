@@ -31,8 +31,30 @@ class EncodeResult:
     exs_pixel_path: Path
     exs_object_path: Path
     bias_hint: str = "dual"
+    # Hard role isolation for block-primary: atoms b*/p*/s*/v* instead of raw ints.
+    typed_roles: bool = False
     color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)  # ex -> role->orig (unused unless canonicalize)
     inv_color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)
+
+
+def _bid(i: int, typed: bool) -> str:
+    return f"b{i}" if typed else str(i)
+
+
+def _pos(i: int, typed: bool) -> str:
+    return f"p{i}" if typed else str(i)
+
+
+def _sz(i: int, typed: bool) -> str:
+    return f"s{i}" if typed else str(i)
+
+
+def _col(i: int, typed: bool) -> str:
+    return f"v{i}" if typed else str(i)
+
+
+def _rank(i: int, typed: bool) -> str:
+    return f"r{i}" if typed else str(i)
 
 
 def _load_json(src: Union[PathLike, dict]) -> dict:
@@ -54,14 +76,18 @@ def _pixel_facts(ex: int, row: Sequence[int]) -> List[str]:
     return facts
 
 
-def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
+def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False) -> List[str]:
     """Emit searchable block facts + fully grounded bridges.
 
     All maximal runs (including color 0) share one left→right ``block_id`` space.
     Colored: ``block(Ex,Id,Len,Color)`` + ``obj_index(Ex,Bid,K)`` (dense nonempty ordinal).
     Empty: ``empty_block(Ex,Id,Len)`` — not ``block(...,0)``.
     Geometry over all run ids; aggregations / paint bridges over colored only.
+
+    When ``typed_roles`` is True (block-primary), numeric roles are distinct atoms
+    ``b*`` / ``p*`` / ``s*`` / ``v*`` so block_id cannot unify with position/size/value.
     """
+    t = typed_roles
     facts: List[str] = []
     runs = segment_all_runs(row)
     w = len(row)
@@ -74,13 +100,13 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
         else:
             colored_ids.append(bid)
 
-    facts.append(f"block_count({ex},{len(colored_ids)}).")
-    facts.append(f"empty_block_count({ex},{len(empty_ids)}).")
+    facts.append(f"block_count({ex},{_sz(len(colored_ids), t)}).")
+    facts.append(f"empty_block_count({ex},{_sz(len(empty_ids), t)}).")
     if w:
-        facts.append(f"mid({ex},{w // 2}).")
+        facts.append(f"mid({ex},{_pos(w // 2, t)}).")
     for i in range(w):
-        facts.append(f"from_right({ex},{i},{w - 1 - i}).")
-        facts.append(f"mirror_index({ex},{i},{w - 1 - i}).")
+        facts.append(f"from_right({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
+        facts.append(f"mirror_index({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
 
     lengths: List[int] = [0] * n_runs  # bid -> length
     colored_lengths: List[Tuple[int, int]] = []  # (len, id) for aggregations
@@ -92,72 +118,71 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
         L = e - s + 1
         lengths[bid] = L
         observed_sizes.add(L)
+        bb = _bid(bid, t)
         if s == 0:
-            facts.append(f"touches_edge({ex},{bid},left).")
+            facts.append(f"touches_edge({ex},{bb},left).")
         if e == w - 1:
-            facts.append(f"touches_edge({ex},{bid},right).")
+            facts.append(f"touches_edge({ex},{bb},right).")
 
-        # Generic placement binders (input geometry only; all runs)
-        facts.append(f"block_start({ex},{bid},{s}).")
-        facts.append(f"block_end({ex},{bid},{e}).")
+        facts.append(f"block_start({ex},{bb},{_pos(s, t)}).")
+        facts.append(f"block_end({ex},{bb},{_pos(e, t)}).")
         if e + 1 < w:
-            facts.append(f"after_block({ex},{bid},{e + 1}).")
+            facts.append(f"after_block({ex},{bb},{_pos(e + 1, t)}).")
         if s - 1 >= 0:
-            facts.append(f"before_block({ex},{bid},{s - 1}).")
+            facts.append(f"before_block({ex},{bb},{_pos(s - 1, t)}).")
 
         if c == 0:
-            facts.append(f"empty_block({ex},{bid},{L}).")
+            facts.append(f"empty_block({ex},{bb},{_sz(L, t)}).")
             for p in range(s, e + 1):
-                facts.append(f"pixel_block({ex},{p},{bid}).")
+                facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
             continue
 
-        facts.append(f"block({ex},{bid},{L},{c}).")
-        facts.append(f"block_len({ex},{bid},{L}).")
-        facts.append(f"obj_index({ex},{bid},{obj_k}).")
+        facts.append(f"block({ex},{bb},{_sz(L, t)},{_col(c, t)}).")
+        facts.append(f"block_len({ex},{bb},{_sz(L, t)}).")
+        facts.append(f"obj_index({ex},{bb},{_rank(obj_k, t)}).")
         obj_k += 1
         colored_lengths.append((L, bid))
         color_counts[c] = color_counts.get(c, 0) + 1
         for p in range(s, e + 1):
-            facts.append(f"in_block({ex},{bid},{p}).")
-            facts.append(f"pixel_block({ex},{p},{bid}).")
-            facts.append(f"block_cell({ex},{bid},{p},{c}).")
+            facts.append(f"in_block({ex},{bb},{_pos(p, t)}).")
+            facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
+            facts.append(f"block_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
             if p == s or p == e:
-                facts.append(f"block_edge({ex},{bid},{p}).")
-                facts.append(f"edge_cell({ex},{bid},{p},{c}).")
+                facts.append(f"block_edge({ex},{bb},{_pos(p, t)}).")
+                facts.append(f"edge_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
             else:
-                facts.append(f"interior_cell({ex},{bid},{p},{c}).")
+                facts.append(f"interior_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
 
-    # Directed successors over runs / nonempty objects
     for i in range(n_runs - 1):
-        facts.append(f"block_succ({ex},{i},{i + 1}).")
+        facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
-        facts.append(f"obj_succ({ex},{a},{b}).")
+        facts.append(f"obj_succ({ex},{_bid(a, t)},{_bid(b, t)}).")
 
-    # Length compares over all run ids (empty participates)
     for i in range(n_runs):
         for j in range(n_runs):
             if i == j:
                 continue
             Li, Lj = lengths[i], lengths[j]
+            bi, bj = _bid(i, t), _bid(j, t)
             if Li < Lj:
-                facts.append(f"shorter({ex},{i},{j}).")
+                facts.append(f"shorter({ex},{bi},{bj}).")
             elif Li > Lj:
-                facts.append(f"longer({ex},{i},{j}).")
+                facts.append(f"longer({ex},{bi},{bj}).")
             else:
-                facts.append(f"same_len({ex},{i},{j}).")
+                facts.append(f"same_len({ex},{bi},{bj}).")
 
-    # Geometry over all run pairs; gap_cell only when both endpoints colored
     for i in range(n_runs):
         for j in range(i + 1, n_runs):
             s1, e1, c1 = runs[i]
             s2, e2, c2 = runs[j]
-            facts.append(f"left_of({ex},{i},{j}).")
+            bi, bj = _bid(i, t), _bid(j, t)
+            facts.append(f"left_of({ex},{bi},{bj}).")
             g = s2 - e1 - 1
-            facts.append(f"gap({ex},{i},{j},{g}).")
+            facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
             observed_sizes.add(g)
             if g == 0:
-                facts.append(f"adjacent({ex},{i},{j}).")
-                facts.append(f"adjacent({ex},{j},{i}).")
+                facts.append(f"adjacent({ex},{bi},{bj}).")
+                facts.append(f"adjacent({ex},{bj},{bi}).")
             both_colored = c1 != 0 and c2 != 0
             if both_colored:
                 if lengths[i] < lengths[j]:
@@ -169,56 +194,53 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
             else:
                 fill_c = None
             for p in range(e1 + 1, s2):
-                facts.append(f"in_gap({ex},{i},{j},{p}).")
+                facts.append(f"in_gap({ex},{bi},{bj},{_pos(p, t)}).")
                 if fill_c is not None:
-                    facts.append(f"gap_cell({ex},{i},{j},{p},{fill_c}).")
+                    facts.append(f"gap_cell({ex},{bi},{bj},{_pos(p, t)},{_col(fill_c, t)}).")
 
-    # Aggregations over colored runs only
     if colored_lengths:
         max_L = max(L for L, _ in colored_lengths)
         min_L = min(L for L, _ in colored_lengths)
         for L, bid in colored_lengths:
+            bb = _bid(bid, t)
             if L == max_L:
-                facts.append(f"largest({ex},{bid}).")
+                facts.append(f"largest({ex},{bb}).")
             else:
-                facts.append(f"non_largest({ex},{bid}).")
+                facts.append(f"non_largest({ex},{bb}).")
                 s, e, c = runs[bid]
                 for p in range(s, e + 1):
-                    facts.append(f"solid_cell({ex},{bid},{p},{c}).")
+                    facts.append(f"solid_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
             if L == min_L:
-                facts.append(f"smallest({ex},{bid}).")
+                facts.append(f"smallest({ex},{bb}).")
         unique_lens = sorted({L for L, _ in colored_lengths}, reverse=True)
         rank = {L: r + 1 for r, L in enumerate(unique_lens)}
         for L, bid in colored_lengths:
-            facts.append(f"len_rank({ex},{bid},{rank[L]}).")
+            facts.append(f"len_rank({ex},{_bid(bid, t)},{_rank(rank[L], t)}).")
 
-    # Cardinal compares on sizes observed in this example (not position lt)
     sizes = sorted(observed_sizes | {len(colored_ids), len(empty_ids)})
     for a in sizes:
         for b in sizes:
             if a < b:
-                facts.append(f"size_lt({a},{b}).")
+                facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
 
-    # Size addition table (compositional; mirrors position add for object stage).
     size_universe = sorted(set(sizes) | set(range(0, w + 1)))
     for a in size_universe:
         for b in size_universe:
             s = a + b
             if s <= w:
-                facts.append(f"size_add({a},{b},{s}).")
+                facts.append(f"size_add({_sz(a, t)},{_sz(b, t)},{_sz(s, t)}).")
 
-    # Small offsets as sugar over add (object bias has no c*/add).
     for k in (1, 2, 3):
         for p in range(w):
             if p + k < w:
-                facts.append(f"offset_pos({p},{k},{p + k}).")
+                facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p + k, t)}).")
             if p - k >= 0:
-                facts.append(f"offset_pos({p},{k},{p - k}).")
+                facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p - k, t)}).")
 
     for c, n in color_counts.items():
-        facts.append(f"color_count({ex},{c},{n}).")
+        facts.append(f"color_count({ex},{_col(c, t)},{_sz(n, t)}).")
         if n == 1:
-            facts.append(f"unique_color({ex},{c}).")
+            facts.append(f"unique_color({ex},{_col(c, t)}).")
 
     return facts
 
@@ -293,6 +315,7 @@ def _bk_lines_for(
     include_blocks: bool,
     include_aggregations: bool,
     max_w: int,
+    typed_roles: bool = False,
 ) -> List[str]:
     """Ground pixel/block facts for ``examples`` plus shared arithmetic tables."""
     lines: List[str] = []
@@ -301,7 +324,7 @@ def _bk_lines_for(
             lines.extend(_pixel_facts(eg.ex_id, eg.inp))
     if include_blocks:
         for eg in examples:
-            derived = _block_and_derived(eg.ex_id, eg.inp)
+            derived = _block_and_derived(eg.ex_id, eg.inp, typed_roles=typed_roles)
             if not include_aggregations:
                 derived = [
                     f
@@ -309,17 +332,34 @@ def _bk_lines_for(
                     if not any(f.startswith(n + "(") for n in _AGG_NAMES)
                 ]
             lines.extend(derived)
-    lines.extend(_arith_ground(max_w))
+    # Pixel/dual arith tables stay raw ints; object path does not expose them.
+    if include_pixels:
+        lines.extend(_arith_ground(max_w))
+    elif include_blocks and typed_roles:
+        # Minimal role atoms for constants that appear only as typed wrappers.
+        for i in range(max(max_w, 1) + 1):
+            lines.append(f"position_atom({_pos(i, True)}).")
+            lines.append(f"size_atom({_sz(i, True)}).")
+        for i in range(10):
+            lines.append(f"value_atom({_col(i, True)}).")
+    else:
+        lines.extend(_arith_ground(max_w))
     return lines
 
 
-def _exs_out_blocks(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
+def _exs_out_blocks(
+    train: List[ExampleGrids],
+    max_color: int = 9,
+    *,
+    typed_roles: bool = False,
+) -> List[str]:
     """Object-head examples: pos/neg ``out_block(Ex, Start, Len, Color)`` only.
 
     Negatives are compact: wrong color at each true (Start,Len), plus every
     other (Start,Len) paired with each train-output color (not the full
     Start×Len×Color cube — that stalls Popper on long 1D rows).
     """
+    t = typed_roles
     pos: List[str] = []
     neg: List[str] = []
     for eg in train:
@@ -333,20 +373,24 @@ def _exs_out_blocks(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
             true_blocks.append((s, L, c))
             true_set.add((s, L, c))
             colors_used.add(c)
-            pos.append(f"pos(out_block({eg.ex_id},{s},{L},{c})).")
-        # Wrong color at a true span
+            pos.append(
+                f"pos(out_block({eg.ex_id},{_pos(s, t)},{_sz(L, t)},{_col(c, t)}))."
+            )
         for s, L, c in true_blocks:
             for v in range(1, max_color + 1):
                 if v != c:
-                    neg.append(f"neg(out_block({eg.ex_id},{s},{L},{v})).")
-        # Wrong spans using only colors that appear in this output
+                    neg.append(
+                        f"neg(out_block({eg.ex_id},{_pos(s, t)},{_sz(L, t)},{_col(v, t)}))."
+                    )
         if not colors_used:
             continue
         for s in range(w):
             for L in range(1, w - s + 1):
                 for c in colors_used:
                     if (s, L, c) not in true_set:
-                        neg.append(f"neg(out_block({eg.ex_id},{s},{L},{c})).")
+                        neg.append(
+                            f"neg(out_block({eg.ex_id},{_pos(s, t)},{_sz(L, t)},{_col(c, t)}))."
+                        )
     return pos + neg
 
 
@@ -394,11 +438,14 @@ def encode_instance(
         if eg.out is not None:
             max_w = max(max_w, len(eg.out))
 
+    typed_roles = bool(include_blocks and not include_pixels)
+
     bk_kw = dict(
         include_pixels=include_pixels,
         include_blocks=include_blocks,
         include_aggregations=include_aggregations,
         max_w=max_w,
+        typed_roles=typed_roles,
     )
     train_bk = _bk_lines_for(train, **bk_kw)
     test_bk = _bk_lines_for(test, **bk_kw)
@@ -418,12 +465,15 @@ def encode_instance(
     test_path.write_text("\n".join(test_exs + test_bk) + "\n")
 
     exs_pixel_path.write_text("\n".join(_exs_pos_neg(train)) + "\n")
-    exs_object_path.write_text("\n".join(_exs_out_blocks(train)) + "\n")
+    exs_object_path.write_text(
+        "\n".join(_exs_out_blocks(train, typed_roles=typed_roles)) + "\n"
+    )
 
     # sidecar for harness
     meta = {
         "train": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in train],
         "test": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in test],
+        "typed_roles": typed_roles,
     }
     (out_dir / "grids.json").write_text(json.dumps(meta))
 
@@ -437,6 +487,7 @@ def encode_instance(
         exs_path=exs_pixel_path,
         exs_pixel_path=exs_pixel_path,
         exs_object_path=exs_object_path,
+        typed_roles=typed_roles,
         color_maps=color_maps,
         inv_color_maps=inv_maps,
     )

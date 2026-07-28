@@ -96,7 +96,12 @@ def solve(
     ) -> SolveResult:
         try:
             if object_head:
-                preds = apply_object_program(prog, encoded.test_bk_path, encoded.test)
+                preds = apply_object_program(
+                    prog,
+                    encoded.test_bk_path,
+                    encoded.test,
+                    typed_roles=encoded.typed_roles,
+                )
             else:
                 preds = apply_program(prog, encoded.test_bk_path, encoded.test)
             pred = _remap(preds[test0.ex_id])

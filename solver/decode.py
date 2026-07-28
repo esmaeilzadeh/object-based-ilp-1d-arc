@@ -20,7 +20,9 @@ def _strip_program(text: str) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def _collect_out_blocks(ex_id: int, width: int) -> List[Tuple[int, int, int]]:
+def _collect_out_blocks(
+    ex_id: int, width: int, *, typed_roles: bool = False
+) -> List[Tuple[int, int, int]]:
     """Enumerate grounded ``out_block`` atoms for one example (janus-safe)."""
     from janus_swi import query_once
 
@@ -28,8 +30,12 @@ def _collect_out_blocks(ex_id: int, width: int) -> List[Tuple[int, int, int]]:
     for s in range(width):
         for L in range(1, width - s + 1):
             for c in range(1, 10):
+                if typed_roles:
+                    atom = f"out_block({ex_id},p{s},s{L},v{c})"
+                else:
+                    atom = f"out_block({ex_id},{s},{L},{c})"
                 try:
-                    res = query_once(f"out_block({ex_id},{s},{L},{c})")
+                    res = query_once(atom)
                 except Exception:
                     continue
                 if res.get("truth"):
@@ -41,6 +47,8 @@ def apply_object_program(
     program: str,
     bk_path: PathLike,
     examples: Sequence[ExampleGrids],
+    *,
+    typed_roles: bool = False,
 ) -> Dict[int, List[int]]:
     """Paint pixels from derived ``out_block(Ex, Start, Len, Color)`` atoms.
 
@@ -63,7 +71,7 @@ def apply_object_program(
             w = len(eg.inp)
         row = [0] * w
         occupied: Dict[int, int] = {}
-        for s, L, c in _collect_out_blocks(eg.ex_id, w):
+        for s, L, c in _collect_out_blocks(eg.ex_id, w, typed_roles=typed_roles):
             if L <= 0 or s < 0 or s + L > w:
                 raise ValueError(
                     f"out_block({eg.ex_id},{s},{L},{c}) out of bounds width={w}"

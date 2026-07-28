@@ -6,8 +6,8 @@ from solver.bias_gen import render_bias, render_object_bias
 from solver.encoder import _block_and_derived, encode_instance
 
 
-def _facts(row):
-    return set(_block_and_derived(0, row))
+def _facts(row, *, typed_roles: bool = False):
+    return set(_block_and_derived(0, row, typed_roles=typed_roles))
 
 
 def test_block_atom_is_id_len_color():
@@ -209,3 +209,25 @@ def test_encode_instance_writes_pixel_and_object_exs(tmp_path: Path):
     assert "pos(out_block(0,3,1,2))." in obj
     assert "pos(out(" not in obj
     assert "block_succ(" not in obj
+
+
+def test_typed_roles_on_block_primary_encode(tmp_path: Path):
+    inst = {
+        "train": [
+            {"input": [[7, 0, 7]], "output": [[7, 7, 7]]},
+        ],
+        "test": [{"input": [[4, 0, 4]], "output": [[4, 4, 4]]}],
+    }
+    enc = encode_instance(
+        inst, tmp_path / "enc", include_pixels=False, include_blocks=True
+    )
+    assert enc.typed_roles is True
+    bk = enc.bk_path.read_text()
+    assert "block(0,b0,s1,v7)." in bk
+    assert "gap(0,b0,b2,s1)." in bk
+    assert "size_add(s1,s1,s2)." in bk
+    assert "block(0,0,1,7)." not in bk
+    obj = enc.exs_object_path.read_text()
+    assert "pos(out_block(0,p0,s3,v7))." in obj
+    # roles cannot be the same bare int atom
+    assert "pos(out_block(0,0,3,7))." not in obj

@@ -80,7 +80,12 @@ def verify_on_train(program: str, encoded: EncodeResult) -> bool:
 
 def verify_object_on_train(program: str, encoded: EncodeResult) -> bool:
     try:
-        preds = apply_object_program(program, encoded.bk_path, encoded.train)
+        preds = apply_object_program(
+            program,
+            encoded.bk_path,
+            encoded.train,
+            typed_roles=encoded.typed_roles,
+        )
     except Exception:
         return False
     for eg in encoded.train:

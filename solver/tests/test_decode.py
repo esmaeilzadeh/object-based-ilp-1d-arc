@@ -19,6 +19,23 @@ def test_object_decoder_paints_blocks(tmp_path: Path):
     assert preds[0] == [0, 0, 9, 2]
 
 
+def test_object_decoder_typed_roles(tmp_path: Path):
+    enc = encode_instance(
+        {
+            "train": [{"input": [[2, 2, 0, 9]], "output": [[0, 0, 9, 2]]}],
+            "test": [{"input": [[2, 2, 0, 9]]}],
+        },
+        tmp_path / "enc",
+        include_pixels=False,
+    )
+    assert enc.typed_roles
+    prog = "out_block(0,p2,s1,v9).\nout_block(0,p3,s1,v2).\n"
+    preds = apply_object_program(
+        prog, enc.bk_path, enc.train, typed_roles=True
+    )
+    assert preds[0] == [0, 0, 9, 2]
+
+
 def test_object_decoder_rejects_overlap(tmp_path: Path):
     enc = encode_instance(
         {
