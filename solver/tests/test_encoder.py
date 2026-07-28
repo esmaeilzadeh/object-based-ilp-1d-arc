@@ -106,6 +106,7 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(adjacent,3)." in text
     assert "body_pred(gap,4)." in text
     assert "body_pred(block_succ,3)." in text
+    assert "body_pred(obj_succ,3)." in text
     assert "body_pred(shorter,3)." in text
     assert "body_pred(longer,3)." in text
     assert "body_pred(same_len,3)." in text
@@ -126,7 +127,6 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(reflect_end" not in text
     assert "body_pred(block_marker_gap" not in text
     assert "body_pred(after_block,3)." not in text
-    assert "body_pred(obj_succ,3)." not in text
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
     assert "constant(c0, position)." not in text

@@ -49,7 +49,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("gap", 4, ("ex", "block_id", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("touches_edge", 3, ("ex", "block_id", "edge"), "geometry", frozenset({2, 3, 4})),
     Predicate("block_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
-    Predicate("obj_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({3})),
+    Predicate("obj_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({3, 4})),
     # length comparison
     Predicate("shorter", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("longer", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
