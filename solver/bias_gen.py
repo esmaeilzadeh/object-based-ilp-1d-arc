@@ -89,15 +89,31 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     )
 
 
-def render_object_bias(*, max_vars: int = 9, max_body: int = 12) -> str:
-    """Object-head bias: block geometry + marker/size tools for out_block rules."""
-    return _render(
+def render_object_bias(*, max_vars: int = 8, max_body: int = 8) -> str:
+    """Lean object-head bias: few compositional tools + multi-clause room."""
+    text = _render(
         head_pred_object(),
         body_preds_for_level(4),
         max_vars=max_vars,
         max_body=max_body,
         level=4,
     )
+    # Multi-clause (marker copy + transform) and force body vars like paper Decom.
+    extra = (
+        "max_clauses(3).\n"
+        ":- not body_var(_,1).\n"
+        ":- not body_var(_,2).\n"
+    )
+    # Insert after max_body line
+    lines = text.splitlines(keepends=True)
+    out = []
+    inserted = False
+    for ln in lines:
+        out.append(ln)
+        if not inserted and ln.startswith("max_body("):
+            out.append(extra)
+            inserted = True
+    return "".join(out)
 
 
 def _pixel_only_bias() -> str:
@@ -159,7 +175,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "block.pl").write_text(render_bias(2, max_vars=8, max_body=12))
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
-    (out_dir / "object.pl").write_text(render_object_bias(max_vars=9, max_body=12))
+    (out_dir / "object.pl").write_text(render_object_bias())
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 

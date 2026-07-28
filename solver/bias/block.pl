@@ -29,6 +29,7 @@ body_pred(solid_cell,4).
 body_pred(gap_cell,5).
 body_pred(marker_block,2).
 body_pred(reflect_pos,4).
+body_pred(reflect_end,4).
 body_pred(between_block_marker,4).
 body_pred(block_marker_gap,4).
 body_pred(same_side_marker,3).
@@ -77,6 +78,7 @@ type(solid_cell,('ex', 'block_id', 'position', 'value')).
 type(gap_cell,('ex', 'block_id', 'block_id', 'position', 'value')).
 type(marker_block,('ex', 'block_id')).
 type(reflect_pos,('ex', 'position', 'position', 'position')).
+type(reflect_end,('ex', 'block_id', 'block_id', 'position')).
 type(between_block_marker,('ex', 'block_id', 'block_id', 'position')).
 type(block_marker_gap,('ex', 'block_id', 'block_id', 'size')).
 type(same_side_marker,('ex', 'block_id', 'block_id')).
@@ -111,6 +113,7 @@ bad_body(solid_cell, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(gap_cell, Vars):- vars(_, Vars), Vars = (V0,_,_,_,_), V0 != 0.
 bad_body(marker_block, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
 bad_body(reflect_pos, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
+bad_body(reflect_end, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(between_block_marker, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(block_marker_gap, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(same_side_marker, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.

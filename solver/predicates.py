@@ -40,7 +40,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     # block — level 4 = tight object-head body set for searchability
     Predicate("block", 4, ("ex", "block_id", "size", "value"), "block", frozenset({2, 3, 4})),
     Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3})),
-    Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3})),
+    Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3})),
     # geometry
     Predicate("left_of", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
@@ -48,7 +48,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("gap", 4, ("ex", "block_id", "block_id", "size"), "geometry", frozenset({3})),
     Predicate("touches_edge", 3, ("ex", "block_id", "edge"), "geometry", frozenset({2, 3})),
     Predicate("block_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
-    Predicate("obj_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({3, 4})),
+    Predicate("obj_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({3})),
     # length comparison
     Predicate("shorter", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
     Predicate("longer", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3})),
@@ -56,7 +56,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("size_lt", 2, ("size", "size"), "geometry", frozenset({3})),
     # aggregation
     Predicate("largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
-    Predicate("smallest", 2, ("ex", "block_id"), "agg", frozenset({2, 3, 4})),
+    Predicate("smallest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
     Predicate("non_largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3})),
     Predicate("block_count", 2, ("ex", "size"), "agg", frozenset({3})),
     Predicate("empty_block_count", 2, ("ex", "size"), "agg", frozenset({2, 3})),
@@ -77,7 +77,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("block_edge", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
     Predicate("block_start", 3, ("ex", "block_id", "position"), "bridge", frozenset({3, 4})),
     Predicate("block_end", 3, ("ex", "block_id", "position"), "bridge", frozenset({3, 4})),
-    Predicate("after_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({3, 4})),
+    Predicate("after_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({3})),
     Predicate("before_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({3})),
     Predicate("in_gap", 4, ("ex", "block_id", "block_id", "position"), "bridge", frozenset({2, 3})),
     Predicate("block_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
@@ -87,14 +87,22 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("solid_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("gap_cell", 5, ("ex", "block_id", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     # Marker-centered geometry (compositional tools — not precomputed outputs)
+    # Level 4 = lean object-head set only
     Predicate("marker_block", 2, ("ex", "block_id"), "marker", frozenset({2, 3, 4})),
     Predicate("reflect_pos", 4, ("ex", "position", "position", "position"), "marker", frozenset({2, 3, 4})),
+    Predicate(
+        "reflect_end",
+        4,
+        ("ex", "block_id", "block_id", "position"),
+        "marker",
+        frozenset({2, 3, 4}),
+    ),
     Predicate(
         "between_block_marker",
         4,
         ("ex", "block_id", "block_id", "position"),
         "marker",
-        frozenset({2, 3, 4}),
+        frozenset({2, 3}),
     ),
     Predicate(
         "block_marker_gap",
@@ -108,14 +116,14 @@ PREDICATES: Tuple[Predicate, ...] = (
         3,
         ("ex", "block_id", "block_id"),
         "marker",
-        frozenset({2, 3, 4}),
+        frozenset({2, 3}),
     ),
     Predicate(
         "opp_side_marker",
         3,
         ("ex", "block_id", "block_id"),
         "marker",
-        frozenset({2, 3, 4}),
+        frozenset({2, 3}),
     ),
     Predicate("offset_pos", 3, ("position", "size", "position"), "marker", frozenset({2, 3, 4})),
     Predicate("size_add", 3, ("size", "size", "size"), "marker", frozenset({2, 3, 4})),

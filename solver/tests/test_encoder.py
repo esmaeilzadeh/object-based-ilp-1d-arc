@@ -94,24 +94,27 @@ def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
-    assert "max_body(12)." in text
-    assert "body_pred(obj_succ,3)." in text
-    assert "body_pred(after_block,3)." in text
+    assert "max_body(8)." in text
+    assert "max_clauses(3)." in text
+    assert ":- not body_var(_,1)." in text
     assert "body_pred(block_start,3)." in text
     assert "body_pred(block_end,3)." in text
+    assert "body_pred(block_len,3)." in text
     assert "body_pred(size_add,3)." in text
-    assert "body_pred(smallest,2)." in text
     assert "body_pred(marker_block,2)." in text
     assert "body_pred(reflect_pos,4)." in text
-    assert "body_pred(between_block_marker,4)." in text
+    assert "body_pred(reflect_end,4)." in text
     assert "body_pred(offset_pos,3)." in text
+    assert "body_pred(block_marker_gap,4)." in text
+    # Lean: noisy preds not on object level
+    assert "body_pred(after_block,3)." not in text
+    assert "body_pred(obj_succ,3)." not in text
+    assert "body_pred(smallest,2)." not in text
+    assert "body_pred(between_block_marker,4)." not in text
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
-    assert "body_pred(left_of,3)." not in text
     assert "constant(c0, position)." not in text
-    assert "constant(v0, value)." not in text
     assert "mirrored_out_block" not in text
-    assert "extended_out_block" not in text
 
 
 def test_marker_geometry_mirror_fixture():
@@ -121,13 +124,13 @@ def test_marker_geometry_mirror_fixture():
     assert "marker_block(0,2)." in facts  # runs: 4s, empty, 9
     assert "reflect_pos(0,6,0,12)." in facts
     assert "reflect_pos(0,6,4,8)." in facts
+    assert "reflect_end(0,0,2,8)." in facts  # 2*6-4
     assert "between_block_marker(0,0,2,5)." in facts
     assert "block_marker_gap(0,0,2,1)." in facts
     assert "same_side_marker(0,0,2)." in facts
     assert "offset_pos(0,2,2)." in facts
     assert "size_add(5,1,6)." in facts
     assert "block_end(0,0,4)." in facts
-    # No answer-leak output tuples
     assert not any("mirrored_out_block(" in f for f in facts)
     assert not any("extended_out_block(" in f for f in facts)
     assert not any("shifted_out_block(" in f for f in facts)

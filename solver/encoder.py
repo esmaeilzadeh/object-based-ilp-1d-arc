@@ -273,12 +273,19 @@ def _marker_geometry_facts(
                 facts.append(f"block_marker_gap({ex},{bid},{mbid},{g}).")
                 for p in range(e + 1, ms):
                     facts.append(f"between_block_marker({ex},{bid},{mbid},{p}).")
+                # Input-geometry binder: reflect block end across marker (not an out_block).
+                s_ref = 2 * mpos - e
+                if 0 <= s_ref < w:
+                    facts.append(f"reflect_end({ex},{bid},{mbid},{s_ref}).")
             elif s > me:
                 facts.append(f"same_side_marker({ex},{bid},{mbid}).")
                 g = s - me - 1
                 facts.append(f"block_marker_gap({ex},{bid},{mbid},{g}).")
                 for p in range(me + 1, s):
                     facts.append(f"between_block_marker({ex},{bid},{mbid},{p}).")
+                s_ref = 2 * mpos - e
+                if 0 <= s_ref < w:
+                    facts.append(f"reflect_end({ex},{bid},{mbid},{s_ref}).")
 
             if e < ms:
                 for other in colored_ids:
