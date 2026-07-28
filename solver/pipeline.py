@@ -144,7 +144,8 @@ def solve(
                 r = _consider_pixel(prog, "pixel_ilp")
                 if r:
                     return r
-    elif force_bias == "object":
+    elif force_bias == "object" or (include_blocks and not include_pixels):
+        # Pure block-level: single object ILP, no ladder / trivial / pixel.
         rem = _remaining()
         if rem > 0 and include_blocks:
             prog = induce(
@@ -173,6 +174,7 @@ def solve(
                 if r:
                     return r
     else:
+        # Legacy dual ladder (pixel+block) for ablation modes only.
         triv = try_trivial(encoded)
         if triv:
             prog, name = triv
@@ -180,87 +182,71 @@ def solve(
             if r:
                 return r
 
-        if include_blocks and not include_pixels:
-            # Block-primary: almost all budget on object ILP (no pixel BK noise).
-            if _remaining() > 0:
-                prog = induce(
-                    encoded.exs_object_path,
-                    encoded.bk_path,
-                    _BIAS / "object.pl",
-                    _remaining(),
-                    work_dir / "popper_object",
-                )
-                if prog:
-                    r = _consider_object(prog, "object_ilp")
-                    if r:
-                        return r
-        else:
-            if include_blocks and _remaining() > 0:
-                # Cap early stages; reserve ≥50% of timeout for pixel fallback.
-                early_cap = (
-                    min(30, max(int(0.15 * timeout), 1))
-                    if timeout >= 120
-                    else min(70, max(int(0.35 * timeout), 1))
-                )
-                budget = min(early_cap, _remaining())
-                budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
-                prog = induce(
-                    encoded.exs_pixel_path,
-                    encoded.bk_path,
-                    _BIAS / "block.pl",
-                    budget,
-                    work_dir / "popper_block",
-                )
-                if prog:
-                    r = _consider_pixel(prog, "block_ilp")
-                    if r:
-                        return r
+        if include_blocks and _remaining() > 0:
+            early_cap = (
+                min(30, max(int(0.15 * timeout), 1))
+                if timeout >= 120
+                else min(70, max(int(0.35 * timeout), 1))
+            )
+            budget = min(early_cap, _remaining())
+            budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
+            prog = induce(
+                encoded.exs_pixel_path,
+                encoded.bk_path,
+                _BIAS / "block.pl",
+                budget,
+                work_dir / "popper_block",
+            )
+            if prog:
+                r = _consider_pixel(prog, "block_ilp")
+                if r:
+                    return r
 
-            if include_blocks and _remaining() > 0:
-                early_cap = (
-                    min(30, max(int(0.15 * timeout), 1))
-                    if timeout >= 120
-                    else min(55, max(int(0.35 * timeout), 1))
-                )
-                budget = min(early_cap, _remaining())
-                budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
-                prog = induce(
-                    encoded.exs_object_path,
-                    encoded.bk_path,
-                    _BIAS / "object.pl",
-                    budget,
-                    work_dir / "popper_object",
-                )
-                if prog:
-                    r = _consider_object(prog, "object_ilp")
-                    if r:
-                        return r
+        if include_blocks and _remaining() > 0:
+            early_cap = (
+                min(30, max(int(0.15 * timeout), 1))
+                if timeout >= 120
+                else min(55, max(int(0.35 * timeout), 1))
+            )
+            budget = min(early_cap, _remaining())
+            budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
+            prog = induce(
+                encoded.exs_object_path,
+                encoded.bk_path,
+                _BIAS / "object.pl",
+                budget,
+                work_dir / "popper_object",
+            )
+            if prog:
+                r = _consider_object(prog, "object_ilp")
+                if r:
+                    return r
 
-            if include_pixels and _remaining() > 0:
-                prog = induce(
-                    encoded.exs_pixel_path,
-                    encoded.bk_path,
-                    _BIAS / "pixel.pl",
-                    _remaining(),
-                    work_dir / "popper_pixel",
-                )
-                if prog:
-                    r = _consider_pixel(prog, "pixel_ilp")
-                    if r:
-                        return r
+        if include_pixels and _remaining() > 0:
+            prog = induce(
+                encoded.exs_pixel_path,
+                encoded.bk_path,
+                _BIAS / "pixel.pl",
+                _remaining(),
+                work_dir / "popper_pixel",
+            )
+            if prog:
+                r = _consider_pixel(prog, "pixel_ilp")
+                if r:
+                    return r
 
-            if include_pixels and include_blocks and _remaining() > 0:
-                prog = induce(
-                    encoded.exs_pixel_path,
-                    encoded.bk_path,
-                    _BIAS / "dual.pl",
-                    _remaining(),
-                    work_dir / "popper_dual",
-                )
-                if prog:
-                    r = _consider_pixel(prog, "dual_ilp")
-                    if r:
-                        return r
+        if include_pixels and include_blocks and _remaining() > 0:
+            prog = induce(
+                encoded.exs_pixel_path,
+                encoded.bk_path,
+                _BIAS / "dual.pl",
+                _remaining(),
+                work_dir / "popper_dual",
+            )
+            if prog:
+                r = _consider_pixel(prog, "dual_ilp")
+                if r:
+                    return r
 
     if candidate is not None:
         prog, level, object_head = candidate

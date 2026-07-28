@@ -102,10 +102,12 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(block_len,3)." in text
     assert "body_pred(size_add,3)." in text
     assert "body_pred(marker_block,2)." in text
+    assert "body_pred(unit_block,2)." in text
     assert "body_pred(reflect_pos,4)." in text
     assert "body_pred(reflect_end,4)." in text
     assert "body_pred(offset_pos,3)." in text
     assert "body_pred(block_marker_gap,4)." in text
+    assert "constant(s1, size)." in text
     # Lean: noisy preds not on object level
     assert "body_pred(after_block,3)." not in text
     assert "body_pred(obj_succ,3)." not in text
@@ -114,6 +116,7 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
     assert "constant(c0, position)." not in text
+    assert "constant(s0, size)." not in text
     assert "mirrored_out_block" not in text
 
 
@@ -122,6 +125,7 @@ def test_marker_geometry_mirror_fixture():
     row = [4, 4, 4, 4, 4, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     facts = _facts(row)
     assert "marker_block(0,2)." in facts  # runs: 4s, empty, 9
+    assert "unit_block(0,2)." in facts
     assert "reflect_pos(0,6,0,12)." in facts
     assert "reflect_pos(0,6,4,8)." in facts
     assert "reflect_end(0,0,2,8)." in facts  # 2*6-4

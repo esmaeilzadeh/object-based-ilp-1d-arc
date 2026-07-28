@@ -89,6 +89,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     # Marker-centered geometry (compositional tools — not precomputed outputs)
     # Level 4 = lean object-head set only
     Predicate("marker_block", 2, ("ex", "block_id"), "marker", frozenset({2, 3, 4})),
+    Predicate("unit_block", 2, ("ex", "block_id"), "marker", frozenset({2, 3, 4})),
     Predicate("reflect_pos", 4, ("ex", "position", "position", "position"), "marker", frozenset({2, 3, 4})),
     Predicate(
         "reflect_end",

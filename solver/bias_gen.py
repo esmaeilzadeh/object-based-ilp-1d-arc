@@ -35,9 +35,10 @@ def _bad_body_for_ex_preds(preds: Sequence[Predicate]) -> str:
 
 
 def _constants_for_level(level: int) -> list[str]:
-    """Typed constants. Block/object bias omit position/size constants to stop overfit.
+    """Typed constants. Block/object bias omit most position/size constants.
 
-    Object bias (level 4) also omits value constants — colors bind from ``block/4``.
+    Object bias (level 4) omits value/position constants — colors bind from
+    ``block/4``. Expose ``s1`` only so ILP can write a dedicated length-1 clause.
     """
     lines = []
     if level != 4:
@@ -50,6 +51,8 @@ def _constants_for_level(level: int) -> list[str]:
             lines.append(f"constant(s{i}, size).")
         for i in range(1, 10):
             lines.append(f"constant(r{i}, rank).")
+    if level == 4:
+        lines.append("constant(s1, size).")
     if level != 4:
         lines.append("constant(left, edge).")
         lines.append("constant(right, edge).")

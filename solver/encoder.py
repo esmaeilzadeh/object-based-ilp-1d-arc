@@ -244,12 +244,15 @@ def _marker_geometry_facts(
         return facts
 
     # Marker = length-1 colored run whose color appears once (delimiter style).
+    # unit_block = any colored length-1 run (enables a separate 1-pixel clause).
     markers: List[int] = []
     for bid in colored_ids:
         s, e, c = runs[bid]
-        if e == s and color_counts.get(c, 0) == 1:
-            markers.append(bid)
-            facts.append(f"marker_block({ex},{bid}).")
+        if e == s:
+            facts.append(f"unit_block({ex},{bid}).")
+            if color_counts.get(c, 0) == 1:
+                markers.append(bid)
+                facts.append(f"marker_block({ex},{bid}).")
 
     if not markers:
         return facts
