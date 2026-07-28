@@ -104,6 +104,7 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(offset_pos,3)." in text
     assert "body_pred(left_of,3)." in text
     assert "body_pred(adjacent,3)." in text
+    assert "body_pred(gap,4)." in text
     assert "body_pred(block_succ,3)." in text
     assert "body_pred(shorter,3)." in text
     assert "body_pred(longer,3)." in text
