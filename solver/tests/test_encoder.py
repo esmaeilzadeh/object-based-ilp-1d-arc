@@ -94,10 +94,12 @@ def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
-    assert "max_body(10)." in text
+    assert "max_body(12)." in text
     assert "body_pred(obj_succ,3)." in text
     assert "body_pred(after_block,3)." in text
     assert "body_pred(block_start,3)." in text
+    assert "body_pred(block_end,3)." in text
+    assert "body_pred(size_add,3)." in text
     assert "body_pred(smallest,2)." in text
     assert "body_pred(marker_block,2)." in text
     assert "body_pred(reflect_pos,4)." in text
@@ -123,6 +125,8 @@ def test_marker_geometry_mirror_fixture():
     assert "block_marker_gap(0,0,2,1)." in facts
     assert "same_side_marker(0,0,2)." in facts
     assert "offset_pos(0,2,2)." in facts
+    assert "size_add(5,1,6)." in facts
+    assert "block_end(0,0,4)." in facts
     # No answer-leak output tuples
     assert not any("mirrored_out_block(" in f for f in facts)
     assert not any("extended_out_block(" in f for f in facts)

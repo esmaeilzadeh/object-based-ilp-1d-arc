@@ -76,7 +76,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("in_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
     Predicate("block_edge", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
     Predicate("block_start", 3, ("ex", "block_id", "position"), "bridge", frozenset({3, 4})),
-    Predicate("block_end", 3, ("ex", "block_id", "position"), "bridge", frozenset({3})),
+    Predicate("block_end", 3, ("ex", "block_id", "position"), "bridge", frozenset({3, 4})),
     Predicate("after_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({3, 4})),
     Predicate("before_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({3})),
     Predicate("in_gap", 4, ("ex", "block_id", "block_id", "position"), "bridge", frozenset({2, 3})),
@@ -118,6 +118,7 @@ PREDICATES: Tuple[Predicate, ...] = (
         frozenset({2, 3, 4}),
     ),
     Predicate("offset_pos", 3, ("position", "size", "position"), "marker", frozenset({2, 3, 4})),
+    Predicate("size_add", 3, ("size", "size", "size"), "marker", frozenset({2, 3, 4})),
 )
 
 

@@ -199,6 +199,14 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
             if a < b:
                 facts.append(f"size_lt({a},{b}).")
 
+    # Size addition table (compositional; mirrors position add for object stage).
+    size_universe = sorted(set(sizes) | set(range(0, w + 1)))
+    for a in size_universe:
+        for b in size_universe:
+            s = a + b
+            if s <= w:
+                facts.append(f"size_add({a},{b},{s}).")
+
     for c, n in color_counts.items():
         facts.append(f"color_count({ex},{c},{n}).")
         if n == 1:

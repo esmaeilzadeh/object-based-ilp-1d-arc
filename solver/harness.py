@@ -25,6 +25,13 @@ MODES = {
         include_aggregations=True,
         ladder=True,
     ),
+    "block_primary": dict(
+        include_blocks=True,
+        include_pixels=False,
+        include_aggregations=True,
+        ladder=True,
+        canonicalize_colors=False,
+    ),
     "dual": dict(
         include_blocks=True,
         include_pixels=True,

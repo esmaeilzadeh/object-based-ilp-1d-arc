@@ -34,6 +34,7 @@ body_pred(block_marker_gap,4).
 body_pred(same_side_marker,3).
 body_pred(opp_side_marker,3).
 body_pred(offset_pos,3).
+body_pred(size_add,3).
 body_pred(C,1):- constant(C,_).
 
 constant(v0, value).
@@ -81,6 +82,7 @@ type(block_marker_gap,('ex', 'block_id', 'block_id', 'size')).
 type(same_side_marker,('ex', 'block_id', 'block_id')).
 type(opp_side_marker,('ex', 'block_id', 'block_id')).
 type(offset_pos,('position', 'size', 'position')).
+type(size_add,('size', 'size', 'size')).
 type(C,(T,)):- constant(C,T).
 
 bad_body(block, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
