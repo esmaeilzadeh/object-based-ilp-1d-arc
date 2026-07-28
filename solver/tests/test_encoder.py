@@ -227,6 +227,15 @@ def test_typed_roles_on_block_primary_encode(tmp_path: Path):
     assert "gap(0,b0,b2,s1)." in bk
     assert "size_add(s1,s1,s2)." in bk
     assert "block(0,0,1,7)." not in bk
+    # No per-cell / paint bridges on block-primary BK
+    assert "pixel_block(" not in bk
+    assert "in_block(" not in bk
+    assert "in_gap(" not in bk
+    assert "gap_cell(" not in bk
+    assert "block_cell(" not in bk
+    assert "offset_pos(" not in bk
+    assert "mirror_index(" not in bk
+    assert "from_right(" not in bk
     obj = enc.exs_object_path.read_text()
     assert "pos(out_block(0,p0,s3,v7))." in obj
     # roles cannot be the same bare int atom

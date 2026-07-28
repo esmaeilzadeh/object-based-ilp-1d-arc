@@ -76,18 +76,29 @@ def _pixel_facts(ex: int, row: Sequence[int]) -> List[str]:
     return facts
 
 
-def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False) -> List[str]:
-    """Emit searchable block facts + fully grounded bridges.
+def _block_and_derived(
+    ex: int,
+    row: Sequence[int],
+    *,
+    typed_roles: bool = False,
+    include_cell_bridges: bool = True,
+) -> List[str]:
+    """Emit searchable block facts + optional cell/pixel bridges.
 
     All maximal runs (including color 0) share one left→right ``block_id`` space.
     Colored: ``block(Ex,Id,Len,Color)`` + ``obj_index(Ex,Bid,K)`` (dense nonempty ordinal).
     Empty: ``empty_block(Ex,Id,Len)`` — not ``block(...,0)``.
-    Geometry over all run ids; aggregations / paint bridges over colored only.
+    Geometry over all run ids; aggregations over colored only.
 
     When ``typed_roles`` is True (block-primary), numeric roles are distinct atoms
     ``b*`` / ``p*`` / ``s*`` / ``v*`` so block_id cannot unify with position/size/value.
+
+    ``include_cell_bridges`` (False on block-primary): omit per-cell / paint bridges
+    ``pixel_block``, ``in_block``, ``*_cell``, ``in_gap``, ``offset_pos``, mirrors, etc.
+    Block/dual bias still needs them; object bias does not.
     """
     t = typed_roles
+    cell = include_cell_bridges
     facts: List[str] = []
     runs = segment_all_runs(row)
     w = len(row)
@@ -104,9 +115,10 @@ def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False
     facts.append(f"empty_block_count({ex},{_sz(len(empty_ids), t)}).")
     if w:
         facts.append(f"mid({ex},{_pos(w // 2, t)}).")
-    for i in range(w):
-        facts.append(f"from_right({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
-        facts.append(f"mirror_index({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
+    if cell:
+        for i in range(w):
+            facts.append(f"from_right({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
+            facts.append(f"mirror_index({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
 
     lengths: List[int] = [0] * n_runs  # bid -> length
     colored_lengths: List[Tuple[int, int]] = []  # (len, id) for aggregations
@@ -126,15 +138,17 @@ def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False
 
         facts.append(f"block_start({ex},{bb},{_pos(s, t)}).")
         facts.append(f"block_end({ex},{bb},{_pos(e, t)}).")
-        if e + 1 < w:
-            facts.append(f"after_block({ex},{bb},{_pos(e + 1, t)}).")
-        if s - 1 >= 0:
-            facts.append(f"before_block({ex},{bb},{_pos(s - 1, t)}).")
+        if cell:
+            if e + 1 < w:
+                facts.append(f"after_block({ex},{bb},{_pos(e + 1, t)}).")
+            if s - 1 >= 0:
+                facts.append(f"before_block({ex},{bb},{_pos(s - 1, t)}).")
 
         if c == 0:
             facts.append(f"empty_block({ex},{bb},{_sz(L, t)}).")
-            for p in range(s, e + 1):
-                facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
+            if cell:
+                for p in range(s, e + 1):
+                    facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
             continue
 
         facts.append(f"block({ex},{bb},{_sz(L, t)},{_col(c, t)}).")
@@ -143,15 +157,16 @@ def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False
         obj_k += 1
         colored_lengths.append((L, bid))
         color_counts[c] = color_counts.get(c, 0) + 1
-        for p in range(s, e + 1):
-            facts.append(f"in_block({ex},{bb},{_pos(p, t)}).")
-            facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
-            facts.append(f"block_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
-            if p == s or p == e:
-                facts.append(f"block_edge({ex},{bb},{_pos(p, t)}).")
-                facts.append(f"edge_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
-            else:
-                facts.append(f"interior_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
+        if cell:
+            for p in range(s, e + 1):
+                facts.append(f"in_block({ex},{bb},{_pos(p, t)}).")
+                facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
+                facts.append(f"block_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
+                if p == s or p == e:
+                    facts.append(f"block_edge({ex},{bb},{_pos(p, t)}).")
+                    facts.append(f"edge_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
+                else:
+                    facts.append(f"interior_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
 
     for i in range(n_runs - 1):
         facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
@@ -183,6 +198,8 @@ def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False
             if g == 0:
                 facts.append(f"adjacent({ex},{bi},{bj}).")
                 facts.append(f"adjacent({ex},{bj},{bi}).")
+            if not cell:
+                continue
             both_colored = c1 != 0 and c2 != 0
             if both_colored:
                 if lengths[i] < lengths[j]:
@@ -207,9 +224,10 @@ def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False
                 facts.append(f"largest({ex},{bb}).")
             else:
                 facts.append(f"non_largest({ex},{bb}).")
-                s, e, c = runs[bid]
-                for p in range(s, e + 1):
-                    facts.append(f"solid_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
+                if cell:
+                    s, e, c = runs[bid]
+                    for p in range(s, e + 1):
+                        facts.append(f"solid_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
             if L == min_L:
                 facts.append(f"smallest({ex},{bb}).")
         unique_lens = sorted({L for L, _ in colored_lengths}, reverse=True)
@@ -230,12 +248,13 @@ def _block_and_derived(ex: int, row: Sequence[int], *, typed_roles: bool = False
             if s <= w:
                 facts.append(f"size_add({_sz(a, t)},{_sz(b, t)},{_sz(s, t)}).")
 
-    for k in (1, 2, 3):
-        for p in range(w):
-            if p + k < w:
-                facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p + k, t)}).")
-            if p - k >= 0:
-                facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p - k, t)}).")
+    if cell:
+        for k in (1, 2, 3):
+            for p in range(w):
+                if p + k < w:
+                    facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p + k, t)}).")
+                if p - k >= 0:
+                    facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p - k, t)}).")
 
     for c, n in color_counts.items():
         facts.append(f"color_count({ex},{_col(c, t)},{_sz(n, t)}).")
@@ -323,8 +342,15 @@ def _bk_lines_for(
         for eg in examples:
             lines.extend(_pixel_facts(eg.ex_id, eg.inp))
     if include_blocks:
+        # Cell/pixel bridges are for block+dual bias only; object/block-primary omits them.
+        include_cell_bridges = not typed_roles
         for eg in examples:
-            derived = _block_and_derived(eg.ex_id, eg.inp, typed_roles=typed_roles)
+            derived = _block_and_derived(
+                eg.ex_id,
+                eg.inp,
+                typed_roles=typed_roles,
+                include_cell_bridges=include_cell_bridges,
+            )
             if not include_aggregations:
                 derived = [
                     f
