@@ -24,7 +24,9 @@ class EncodeResult:
     train: List[ExampleGrids]
     test: List[ExampleGrids]
     out_dir: Path
-    bk_path: Path
+    bk_path: Path  # train-input BK only (learning)
+    test_bk_path: Path  # test-input BK only (apply / decode)
+    test_path: Path  # test.pl: pos/neg + test BK (paper-style soft score)
     exs_path: Path  # pixel-head examples (alias of exs_pixel_path)
     exs_pixel_path: Path
     exs_object_path: Path
@@ -239,11 +241,11 @@ def _arith_ground(max_w: int) -> List[str]:
     return facts
 
 
-def _exs_pos_neg(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
-    """Pixel-head examples: pos/neg ``out(Ex, Pos, Color)``."""
+def _exs_pos_neg(examples: List[ExampleGrids], max_color: int = 9) -> List[str]:
+    """Pixel-head examples: pos/neg ``out(Ex, Pos, Color)`` (nonzero pos only)."""
     pos: List[str] = []
     neg: List[str] = []
-    for eg in train:
+    for eg in examples:
         assert eg.out is not None
         for i, c in enumerate(eg.out):
             c = int(c)
@@ -253,6 +255,45 @@ def _exs_pos_neg(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
                 if v != c:
                     neg.append(f"neg(out({eg.ex_id},{i},{v})).")
     return pos + neg
+
+
+_AGG_NAMES = (
+    "largest",
+    "smallest",
+    "non_largest",
+    "block_count",
+    "empty_block_count",
+    "color_count",
+    "unique_color",
+    "len_rank",
+)
+
+
+def _bk_lines_for(
+    examples: Sequence[ExampleGrids],
+    *,
+    include_pixels: bool,
+    include_blocks: bool,
+    include_aggregations: bool,
+    max_w: int,
+) -> List[str]:
+    """Ground pixel/block facts for ``examples`` plus shared arithmetic tables."""
+    lines: List[str] = []
+    if include_pixels:
+        for eg in examples:
+            lines.extend(_pixel_facts(eg.ex_id, eg.inp))
+    if include_blocks:
+        for eg in examples:
+            derived = _block_and_derived(eg.ex_id, eg.inp)
+            if not include_aggregations:
+                derived = [
+                    f
+                    for f in derived
+                    if not any(f.startswith(n + "(") for n in _AGG_NAMES)
+                ]
+            lines.extend(derived)
+    lines.extend(_arith_ground(max_w))
+    return lines
 
 
 def _exs_out_blocks(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
@@ -301,7 +342,11 @@ def encode_instance(
     include_blocks: bool = True,
     include_pixels: bool = True,
 ) -> EncodeResult:
-    """Write ``bk.pl``, pixel ``exs.pl``, and object ``exs_object.pl`` under ``out_dir``."""
+    """Write train ``bk.pl``, test BK / ``test.pl``, and train exs under ``out_dir``.
+
+    Matches the paper repo layout: learning BK is train-input only; test input
+    facts live in ``test.pl`` (and ``test_bk.pl`` for apply).
+    """
     obj = _load_json(src)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -326,44 +371,35 @@ def encode_instance(
     else:
         color_maps, inv_maps = {}, {}
 
-    bk_lines: List[str] = []
     max_w = 1
     for eg in train + test:
         max_w = max(max_w, len(eg.inp))
         if eg.out is not None:
             max_w = max(max_w, len(eg.out))
 
-    # Emit per-layer across all examples so predicates stay contiguous.
-    if include_pixels:
-        for eg in train + test:
-            bk_lines.extend(_pixel_facts(eg.ex_id, eg.inp))
-    if include_blocks:
-        for eg in train + test:
-            derived = _block_and_derived(eg.ex_id, eg.inp)
-            if not include_aggregations:
-                agg_names = (
-                    "largest",
-                    "smallest",
-                    "non_largest",
-                    "block_count",
-                    "empty_block_count",
-                    "color_count",
-                    "unique_color",
-                    "len_rank",
-                )
-                derived = [
-                    f
-                    for f in derived
-                    if not any(f.startswith(n + "(") for n in agg_names)
-                ]
-            bk_lines.extend(derived)
-
-    bk_lines.extend(_arith_ground(max_w))
+    bk_kw = dict(
+        include_pixels=include_pixels,
+        include_blocks=include_blocks,
+        include_aggregations=include_aggregations,
+        max_w=max_w,
+    )
+    train_bk = _bk_lines_for(train, **bk_kw)
+    test_bk = _bk_lines_for(test, **bk_kw)
 
     bk_path = out_dir / "bk.pl"
+    test_bk_path = out_dir / "test_bk.pl"
+    test_path = out_dir / "test.pl"
     exs_pixel_path = out_dir / "exs.pl"
     exs_object_path = out_dir / "exs_object.pl"
-    bk_path.write_text("\n".join(bk_lines) + "\n")
+
+    bk_path.write_text("\n".join(train_bk) + "\n")
+    test_bk_path.write_text("\n".join(test_bk) + "\n")
+
+    labeled_test = [eg for eg in test if eg.out is not None]
+    test_exs = _exs_pos_neg(labeled_test) if labeled_test else []
+    # Original layout: pos/neg first, then test BK facts.
+    test_path.write_text("\n".join(test_exs + test_bk) + "\n")
+
     exs_pixel_path.write_text("\n".join(_exs_pos_neg(train)) + "\n")
     exs_object_path.write_text("\n".join(_exs_out_blocks(train)) + "\n")
 
@@ -379,6 +415,8 @@ def encode_instance(
         test=test,
         out_dir=out_dir,
         bk_path=bk_path,
+        test_bk_path=test_bk_path,
+        test_path=test_path,
         exs_path=exs_pixel_path,
         exs_pixel_path=exs_pixel_path,
         exs_object_path=exs_object_path,

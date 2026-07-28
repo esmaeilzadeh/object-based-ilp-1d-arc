@@ -131,6 +131,21 @@ def test_encode_instance_writes_pixel_and_object_exs(tmp_path: Path):
     assert "block_succ(" in bk
     assert "after_block(" in bk
     assert "span(" not in bk
+    # Train-only learning BK: train ex 0 present, test ex 3 absent.
+    assert "in(0," in bk or "empty(0," in bk or "block(0," in bk
+    assert "in(3," not in bk
+    assert "empty(3," not in bk
+    assert "block(3," not in bk
+    assert "pixel_block(3," not in bk
+
+    test_bk = enc.test_bk_path.read_text()
+    assert "in(3," in test_bk or "empty(3," in test_bk or "block(3," in test_bk
+    assert "in(0," not in test_bk
+    assert "block(0," not in test_bk
+
+    test_pl = enc.test_path.read_text()
+    assert "pos(out(3," in test_pl or "neg(out(3," in test_pl
+    assert "in(3," in test_pl or "empty(3," in test_pl or "block(3," in test_pl
 
     pix = enc.exs_pixel_path.read_text()
     assert "pos(out(" in pix

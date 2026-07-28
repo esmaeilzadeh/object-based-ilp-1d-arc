@@ -70,13 +70,13 @@ def solve(
     def _ok_pixel(prog: str, level: str) -> Optional[SolveResult]:
         if not verify_on_train(prog, encoded):
             return None
-        preds = apply_program(prog, encoded.bk_path, encoded.test)
+        preds = apply_program(prog, encoded.test_bk_path, encoded.test)
         return SolveResult(_remap(preds[test0.ex_id]), prog, level, True, "high")
 
     def _ok_object(prog: str, level: str) -> Optional[SolveResult]:
         if not verify_object_on_train(prog, encoded):
             return None
-        preds = apply_object_program(prog, encoded.bk_path, encoded.test)
+        preds = apply_object_program(prog, encoded.test_bk_path, encoded.test)
         return SolveResult(_remap(preds[test0.ex_id]), prog, level, True, "high")
 
     if force_bias == "pixel":
