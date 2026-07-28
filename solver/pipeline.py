@@ -77,7 +77,10 @@ def solve(
     def _soft_for(prog: str, pred: List[int], *, object_head: bool) -> Tuple[List[int], float]:
         if not encoded.test_path.exists() or test0.out is None:
             return [0, 0, 0, 0], 0.0
-        score_prog = grid_to_out_program(test0.ex_id, pred) if object_head else prog
+        # Always score materialized out/3 from the predicted grid so soft
+        # matches closed-world decode and avoids dirty Janus program state.
+        del prog, object_head
+        score_prog = grid_to_out_program(test0.ex_id, pred)
         return score_program_soft(
             score_prog,
             encoded.test_path,
