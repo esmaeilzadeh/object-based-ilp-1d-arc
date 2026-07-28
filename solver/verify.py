@@ -85,6 +85,7 @@ def verify_object_on_train(program: str, encoded: EncodeResult) -> bool:
             encoded.bk_path,
             encoded.train,
             typed_roles=encoded.typed_roles,
+            block_geometry=encoded.block_geometry,
         )
     except Exception:
         return False

@@ -101,6 +101,7 @@ def solve(
                     encoded.test_bk_path,
                     encoded.test,
                     typed_roles=encoded.typed_roles,
+                    block_geometry=encoded.block_geometry,
                 )
             else:
                 preds = apply_program(prog, encoded.test_bk_path, encoded.test)

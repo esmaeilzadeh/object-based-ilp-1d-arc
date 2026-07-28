@@ -98,8 +98,6 @@ def test_object_bias_head_and_no_paint_priors():
     assert "max_body(8)." in text
     assert "max_clauses(2)." in text
     assert ":- not body_var(_,1)." in text
-    assert "body_pred(block_start,3)." in text
-    assert "body_pred(block_end,3)." in text
     assert "body_pred(block_len,3)." in text
     assert "body_pred(size_add,3)." in text
     assert "body_pred(left_of,3)." in text
@@ -108,10 +106,14 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(block_succ,3)." in text
     assert "body_pred(obj_succ,3)." in text
     assert "body_pred(empty_block,3)." in text
+    assert "body_pred(largest,2)." in text
     assert "constant(s1, size)." in text
+    assert "type(out_block,('ex', 'block_id', 'size', 'value'))." in text
+    # Pixel starts are decode metadata only
+    assert "body_pred(block_start,3)." not in text
+    assert "body_pred(block_end,3)." not in text
     # Lean: length/agg noise not on object bias for this experiment
     assert "body_pred(shorter,3)." not in text
-    assert "body_pred(largest,2)." not in text
     assert "body_pred(offset_pos,3)." not in text
     # No marker/mirror hacks; no pixel-paint bridges
     assert "body_pred(marker_block" not in text
@@ -170,11 +172,11 @@ def test_dual_bias_keeps_position_arith_and_rank():
 def test_encode_instance_writes_pixel_and_object_exs(tmp_path: Path):
     inst = {
         "train": [
-            {"input": [[2, 2, 0, 9]], "output": [[0, 0, 9, 2]]},
-            {"input": [[5, 0, 1]], "output": [[0, 1, 5]]},
-            {"input": [[8, 8, 0, 3]], "output": [[0, 0, 3, 8]]},
+            {"input": [[2, 2, 0, 9]], "output": [[2, 2, 0, 9]]},
+            {"input": [[5, 0, 1]], "output": [[5, 0, 1]]},
+            {"input": [[8, 8, 0, 3]], "output": [[8, 8, 0, 3]]},
         ],
-        "test": [{"input": [[7, 7, 7, 0, 4]], "output": [[0, 0, 0, 4, 7]]}],
+        "test": [{"input": [[7, 7, 7, 0, 4]], "output": [[7, 7, 7, 0, 4]]}],
     }
     enc = encode_instance(inst, tmp_path / "enc")
     bk = enc.bk_path.read_text()
@@ -205,10 +207,12 @@ def test_encode_instance_writes_pixel_and_object_exs(tmp_path: Path):
     assert "out_block(" not in pix
 
     obj = enc.exs_object_path.read_text()
+    # bid0 len2 color2; bid2 len1 color9
+    assert "pos(out_block(0,0,2,2))." in obj
     assert "pos(out_block(0,2,1,9))." in obj
-    assert "pos(out_block(0,3,1,2))." in obj
     assert "pos(out(" not in obj
     assert "block_succ(" not in obj
+    assert 0 in enc.block_geometry and 0 in enc.block_geometry[0]
 
 
 def test_typed_roles_on_block_primary_encode(tmp_path: Path):
@@ -236,7 +240,13 @@ def test_typed_roles_on_block_primary_encode(tmp_path: Path):
     assert "offset_pos(" not in bk
     assert "mirror_index(" not in bk
     assert "from_right(" not in bk
+    # Pixel starts are Python metadata only
+    assert "block_start(" not in bk
+    assert "block_end(" not in bk
+    assert "mid(" not in bk
+    assert "position_atom(" not in bk
     obj = enc.exs_object_path.read_text()
-    assert "pos(out_block(0,p0,s3,v7))." in obj
-    # roles cannot be the same bare int atom
-    assert "pos(out_block(0,0,3,7))." not in obj
+    # Anchor left block b0, merged length 3
+    assert "pos(out_block(0,b0,s3,v7))." in obj
+    assert "pos(out_block(0,p0,s3,v7))." not in obj
+    assert enc.block_geometry[0][0] == (0, 0)

@@ -97,14 +97,12 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
 def render_object_bias(*, max_vars: int = 12, max_body: int = 8) -> str:
     """Object-head bias: block–block merge vocabulary, enough vars for span rules.
 
-    ``max_vars`` must fit merge-across-gap clauses (~10 vars). Body allowlist stays
-    lean so Popper can search; no marker/mirror or pixel-paint bridges.
+    Head is ``out_block(Ex, Bid, Len, Color)`` — pixel starts stay in Python decode
+    metadata, not body preds. ``max_vars`` fits merge-across-gap (~9 vars).
     """
     allow = {
         "block",
         "block_len",
-        "block_start",
-        "block_end",
         "left_of",
         "obj_succ",
         "gap",
@@ -112,6 +110,7 @@ def render_object_bias(*, max_vars: int = 12, max_body: int = 8) -> str:
         "empty_block",
         "adjacent",
         "block_succ",
+        "largest",
     }
     bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
     text = _render(

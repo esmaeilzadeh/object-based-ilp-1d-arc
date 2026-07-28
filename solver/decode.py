@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-from solver.encoder import ExampleGrids
+from solver.encoder import (
+    ExampleGrids,
+    _bid,
+    _col,
+    _sz,
+    block_geometry_for_row,
+)
 
 PathLike = Union[str, Path]
 
@@ -21,25 +27,33 @@ def _strip_program(text: str) -> str:
 
 
 def _collect_out_blocks(
-    ex_id: int, width: int, *, typed_roles: bool = False
+    ex_id: int,
+    width: int,
+    bids: Sequence[int],
+    geometry: Dict[int, Tuple[int, int]],
+    *,
+    typed_roles: bool = False,
 ) -> List[Tuple[int, int, int]]:
-    """Enumerate grounded ``out_block`` atoms for one example (janus-safe)."""
+    """Enumerate grounded ``out_block(Ex, Bid, Len, Color)``; map Bid→pixel start."""
     from janus_swi import query_once
 
+    t = typed_roles
     blocks: List[Tuple[int, int, int]] = []
-    for s in range(width):
-        for L in range(1, width - s + 1):
+    for bid in bids:
+        if bid not in geometry:
+            continue
+        start, _end = geometry[bid]
+        for L in range(1, width + 1):
             for c in range(1, 10):
-                if typed_roles:
-                    atom = f"out_block({ex_id},p{s},s{L},v{c})"
-                else:
-                    atom = f"out_block({ex_id},{s},{L},{c})"
+                atom = (
+                    f"out_block({ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)})"
+                )
                 try:
                     res = query_once(atom)
                 except Exception:
                     continue
                 if res.get("truth"):
-                    blocks.append((s, L, c))
+                    blocks.append((start, L, c))
     return blocks
 
 
@@ -49,8 +63,9 @@ def apply_object_program(
     examples: Sequence[ExampleGrids],
     *,
     typed_roles: bool = False,
+    block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
 ) -> Dict[int, List[int]]:
-    """Paint pixels from derived ``out_block(Ex, Start, Len, Color)`` atoms.
+    """Paint pixels from ``out_block(Ex, Bid, Len, Color)`` via Python Bid→start map.
 
     Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
     """
@@ -63,18 +78,26 @@ def apply_object_program(
     consult(str(bk_path))
     consult(str(tmp))
 
+    geo = block_geometry
     out: Dict[int, List[int]] = {}
     for eg in examples:
         if eg.out is not None:
             w = len(eg.out)
         else:
             w = len(eg.inp)
+        eg_geo = (
+            geo[eg.ex_id]
+            if geo is not None and eg.ex_id in geo
+            else block_geometry_for_row(eg.inp)
+        )
         row = [0] * w
         occupied: Dict[int, int] = {}
-        for s, L, c in _collect_out_blocks(eg.ex_id, w, typed_roles=typed_roles):
+        for s, L, c in _collect_out_blocks(
+            eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
+        ):
             if L <= 0 or s < 0 or s + L > w:
                 raise ValueError(
-                    f"out_block({eg.ex_id},{s},{L},{c}) out of bounds width={w}"
+                    f"out_block({eg.ex_id},bid→{s},{L},{c}) out of bounds width={w}"
                 )
             for p in range(s, s + L):
                 if p in occupied and occupied[p] != c:

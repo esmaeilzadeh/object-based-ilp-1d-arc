@@ -33,8 +33,31 @@ class EncodeResult:
     bias_hint: str = "dual"
     # Hard role isolation for block-primary: atoms b*/p*/s*/v* instead of raw ints.
     typed_roles: bool = False
+    # Python-only Bid → (start, end) for object decode; not written as searchable BK.
+    block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = field(default_factory=dict)
     color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)  # ex -> role->orig (unused unless canonicalize)
     inv_color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)
+
+
+def block_geometry_for_row(row: Sequence[int]) -> Dict[int, Tuple[int, int]]:
+    """Map input run id → inclusive (start, end)."""
+    return {bid: (s, e) for bid, (s, e, _c) in enumerate(segment_all_runs(row))}
+
+
+def anchor_input_block(inp: Sequence[int], out_s: int, out_e: int) -> Optional[int]:
+    """Choose input run id that anchors an output colored span.
+
+    Prefer a colored input run with the same start; else leftmost overlapping
+    colored run. Pixel start is recovered later via ``block_geometry``.
+    """
+    runs = segment_all_runs(inp)
+    for bid, (s, _e, c) in enumerate(runs):
+        if c != 0 and s == out_s:
+            return bid
+    for bid, (s, e, c) in enumerate(runs):
+        if c != 0 and not (e < out_s or s > out_e):
+            return bid
+    return None
 
 
 def _bid(i: int, typed: bool) -> str:
@@ -82,6 +105,7 @@ def _block_and_derived(
     *,
     typed_roles: bool = False,
     include_cell_bridges: bool = True,
+    include_pixel_anchors: bool = True,
 ) -> List[str]:
     """Emit searchable block facts + optional cell/pixel bridges.
 
@@ -93,12 +117,13 @@ def _block_and_derived(
     When ``typed_roles`` is True (block-primary), numeric roles are distinct atoms
     ``b*`` / ``p*`` / ``s*`` / ``v*`` so block_id cannot unify with position/size/value.
 
-    ``include_cell_bridges`` (False on block-primary): omit per-cell / paint bridges
-    ``pixel_block``, ``in_block``, ``*_cell``, ``in_gap``, ``offset_pos``, mirrors, etc.
-    Block/dual bias still needs them; object bias does not.
+    ``include_cell_bridges`` (False on block-primary): omit per-cell / paint bridges.
+    ``include_pixel_anchors`` (False on block-primary): omit ``block_start`` / ``block_end``
+    / ``mid`` — pixel starts live in Python ``block_geometry`` for decode only.
     """
     t = typed_roles
     cell = include_cell_bridges
+    anchors = include_pixel_anchors
     facts: List[str] = []
     runs = segment_all_runs(row)
     w = len(row)
@@ -113,7 +138,7 @@ def _block_and_derived(
 
     facts.append(f"block_count({ex},{_sz(len(colored_ids), t)}).")
     facts.append(f"empty_block_count({ex},{_sz(len(empty_ids), t)}).")
-    if w:
+    if w and anchors:
         facts.append(f"mid({ex},{_pos(w // 2, t)}).")
     if cell:
         for i in range(w):
@@ -136,8 +161,9 @@ def _block_and_derived(
         if e == w - 1:
             facts.append(f"touches_edge({ex},{bb},right).")
 
-        facts.append(f"block_start({ex},{bb},{_pos(s, t)}).")
-        facts.append(f"block_end({ex},{bb},{_pos(e, t)}).")
+        if anchors:
+            facts.append(f"block_start({ex},{bb},{_pos(s, t)}).")
+            facts.append(f"block_end({ex},{bb},{_pos(e, t)}).")
         if cell:
             if e + 1 < w:
                 facts.append(f"after_block({ex},{bb},{_pos(e + 1, t)}).")
@@ -342,14 +368,16 @@ def _bk_lines_for(
         for eg in examples:
             lines.extend(_pixel_facts(eg.ex_id, eg.inp))
     if include_blocks:
-        # Cell/pixel bridges are for block+dual bias only; object/block-primary omits them.
+        # Cell bridges + pixel starts are for block/dual bias; block-primary omits both.
         include_cell_bridges = not typed_roles
+        include_pixel_anchors = not typed_roles
         for eg in examples:
             derived = _block_and_derived(
                 eg.ex_id,
                 eg.inp,
                 typed_roles=typed_roles,
                 include_cell_bridges=include_cell_bridges,
+                include_pixel_anchors=include_pixel_anchors,
             )
             if not include_aggregations:
                 derived = [
@@ -362,9 +390,8 @@ def _bk_lines_for(
     if include_pixels:
         lines.extend(_arith_ground(max_w))
     elif include_blocks and typed_roles:
-        # Minimal role atoms for constants that appear only as typed wrappers.
+        # Role atoms for size/value (and positions only if anchors were emitted).
         for i in range(max(max_w, 1) + 1):
-            lines.append(f"position_atom({_pos(i, True)}).")
             lines.append(f"size_atom({_sz(i, True)}).")
         for i in range(10):
             lines.append(f"value_atom({_col(i, True)}).")
@@ -379,43 +406,48 @@ def _exs_out_blocks(
     *,
     typed_roles: bool = False,
 ) -> List[str]:
-    """Object-head examples: pos/neg ``out_block(Ex, Start, Len, Color)`` only.
+    """Object-head examples: pos/neg ``out_block(Ex, Bid, Len, Color)``.
 
-    Negatives are compact: wrong color at each true (Start,Len), plus every
-    other (Start,Len) paired with each train-output color (not the full
-    Start×Len×Color cube — that stalls Popper on long 1D rows).
+    ``Bid`` is an input run id (anchor); pixel start is decode metadata only.
+    Negatives: wrong color at each true (Bid,Len), plus other (Bid,Len) with
+    train-output colors over input colored/empty run ids that appear in BK.
     """
     t = typed_roles
     pos: List[str] = []
     neg: List[str] = []
     for eg in train:
         assert eg.out is not None
-        w = len(eg.out)
-        true_blocks: List[Tuple[int, int, int]] = []
+        runs = segment_all_runs(eg.inp)
+        n_runs = len(runs)
+        true_blocks: List[Tuple[int, int, int]] = []  # bid, L, c
         true_set: set = set()
         colors_used: set = set()
         for s, e, c in segment_blocks(eg.out):
             L = e - s + 1
-            true_blocks.append((s, L, c))
-            true_set.add((s, L, c))
+            bid = anchor_input_block(eg.inp, s, e)
+            if bid is None:
+                continue
+            true_blocks.append((bid, L, c))
+            true_set.add((bid, L, c))
             colors_used.add(c)
             pos.append(
-                f"pos(out_block({eg.ex_id},{_pos(s, t)},{_sz(L, t)},{_col(c, t)}))."
+                f"pos(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)}))."
             )
-        for s, L, c in true_blocks:
+        for bid, L, c in true_blocks:
             for v in range(1, max_color + 1):
                 if v != c:
                     neg.append(
-                        f"neg(out_block({eg.ex_id},{_pos(s, t)},{_sz(L, t)},{_col(v, t)}))."
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(v, t)}))."
                     )
-        if not colors_used:
+        if not colors_used or n_runs == 0:
             continue
-        for s in range(w):
-            for L in range(1, w - s + 1):
+        w = len(eg.out)
+        for bid in range(n_runs):
+            for L in range(1, w + 1):
                 for c in colors_used:
-                    if (s, L, c) not in true_set:
+                    if (bid, L, c) not in true_set:
                         neg.append(
-                            f"neg(out_block({eg.ex_id},{_pos(s, t)},{_sz(L, t)},{_col(c, t)}))."
+                            f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)}))."
                         )
     return pos + neg
 
@@ -495,11 +527,19 @@ def encode_instance(
         "\n".join(_exs_out_blocks(train, typed_roles=typed_roles)) + "\n"
     )
 
+    block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = {}
+    for eg in train + test:
+        block_geometry[eg.ex_id] = block_geometry_for_row(eg.inp)
+
     # sidecar for harness
     meta = {
         "train": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in train],
         "test": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in test],
         "typed_roles": typed_roles,
+        "block_geometry": {
+            str(eid): {str(b): [s, e] for b, (s, e) in geo.items()}
+            for eid, geo in block_geometry.items()
+        },
     }
     (out_dir / "grids.json").write_text(json.dumps(meta))
 
@@ -514,6 +554,7 @@ def encode_instance(
         exs_pixel_path=exs_pixel_path,
         exs_object_path=exs_object_path,
         typed_roles=typed_roles,
+        block_geometry=block_geometry,
         color_maps=color_maps,
         inv_color_maps=inv_maps,
     )
