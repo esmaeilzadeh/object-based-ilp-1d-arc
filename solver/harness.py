@@ -155,12 +155,30 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     if args.one is not None:
         path = args.one
-        print(f"[1/1] {path}")
-        row = run_one(path, args.mode, args.timeout, out_dir)
+        print(f"[1/1] {path}", flush=True)
+        try:
+            row = run_one(path, args.mode, args.timeout, out_dir)
+        except Exception as e:
+            row = {
+                "file": str(path),
+                "task": path.parent.name,
+                "mode": args.mode,
+                "ok": False,
+                "exact_ok": False,
+                "soft_accuracy": 0.0,
+                "soft_matrix": [0, 1, 0, 0],
+                "level": "error",
+                "confidence": "low",
+                "verified_train": False,
+                "elapsed": 0.0,
+                "predicted": None,
+                "gold": None,
+                "error": str(e),
+            }
         (out_dir / f"{path.parent.name}_{path.stem}.json").write_text(
             json.dumps(row, indent=2)
         )
-        print(json.dumps(row, indent=2))
+        print(json.dumps(row, indent=2), flush=True)
         return
 
     files = filter_files(discover(args.dataset), trials=args.trials, limit=args.limit)
