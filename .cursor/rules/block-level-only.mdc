@@ -1,0 +1,55 @@
+---
+description: Keep solver work strictly block-level (no pixel tricks / false positives)
+alwaysApply: true
+---
+
+# Block-level ILP direction (mandatory)
+
+## Core idea
+
+Lift 1D-ARC from **pixel** to **block** perspective:
+
+1. Represent **input**, **output**, and **relations** at block level.
+2. Induce / solve only in that block perspective (`out_block` / object ILP).
+3. Translate the block solution back to pixels for scoring.
+
+All solver changes must serve measuring whether **that lift** improves results vs pixel Decom.
+
+## Do not add without 100% explicit user confirmation
+
+Treat these as **false-positive / off-direction** unless the user confirms in writing:
+
+- Trivial closed-form solvers (identity, shift, recolor, reverse, …)
+- Hybrid `block_ilp`: pixel head `out/3` with block BK (stage-2 ladder)
+- Pixel ILP / dual bias stages used to “rescue” scores
+- Ladder stages that switch to pixel to inflate accuracy
+- Answer-leaking BK (precomputed correct `out_block` / mirrored_out / etc.)
+- Any other shortcut that solves at pixel level while reporting a “block” win
+
+## Strong refuse: marker / mirror geometry hacks
+
+**Do not add or re-introduce** these (or equivalents) without a **separate, explicit**
+user confirmation dedicated to that predicate family — a vague “fix mirror” ask is
+not enough:
+
+- `marker_block`, `unit_block`
+- `reflect_pos`, `reflect_end`
+- `block_marker_gap`, `between_block_marker`
+- `same_side_marker`, `opp_side_marker`
+- Any new BK that precomputes a task transform (mirror, fill recipe, …) instead of
+  neutral block–block relations
+
+If the user asks for such tools: **warn before planning**, refuse by default, proceed
+only after they confirm that specific hack family.
+
+## If the user asks for other off-direction work
+
+**Warn before planning or coding.** State that it conflicts with block-level-only
+evaluation, wait for confirmation, then proceed only if they still insist.
+
+## Allowed default path
+
+- `block_primary` / object-head induction only
+- Block BK and object–object relations that do not encode the answer
+- Generic arith sugar (`offset_pos`, `size_add`) when needed to bind numbers
+- Decode `out_block` → pixel grid for metrics

@@ -101,18 +101,31 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(block_end,3)." in text
     assert "body_pred(block_len,3)." in text
     assert "body_pred(size_add,3)." in text
-    assert "body_pred(marker_block,2)." in text
-    assert "body_pred(unit_block,2)." in text
-    assert "body_pred(reflect_pos,4)." in text
-    assert "body_pred(reflect_end,4)." in text
     assert "body_pred(offset_pos,3)." in text
-    assert "body_pred(block_marker_gap,4)." in text
+    assert "body_pred(left_of,3)." in text
+    assert "body_pred(adjacent,3)." in text
+    assert "body_pred(block_succ,3)." in text
+    assert "body_pred(shorter,3)." in text
+    assert "body_pred(longer,3)." in text
+    assert "body_pred(same_len,3)." in text
+    assert "body_pred(touches_edge,3)." in text
+    assert "body_pred(empty_block,3)." in text
+    assert "body_pred(obj_index,3)." in text
+    assert "body_pred(largest,2)." in text
+    assert "body_pred(smallest,2)." in text
+    assert "body_pred(non_largest,2)." in text
+    assert "body_pred(unique_color,2)." in text
+    assert "body_pred(empty_block_count,2)." in text
     assert "constant(s1, size)." in text
-    # Lean: noisy preds not on object level
+    assert "constant(left, edge)." in text
+    # No marker/mirror hacks; no pixel-paint bridges
+    assert "body_pred(marker_block" not in text
+    assert "body_pred(unit_block" not in text
+    assert "body_pred(reflect_pos" not in text
+    assert "body_pred(reflect_end" not in text
+    assert "body_pred(block_marker_gap" not in text
     assert "body_pred(after_block,3)." not in text
     assert "body_pred(obj_succ,3)." not in text
-    assert "body_pred(smallest,2)." not in text
-    assert "body_pred(between_block_marker,4)." not in text
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
     assert "constant(c0, position)." not in text
@@ -120,21 +133,21 @@ def test_object_bias_head_and_no_paint_priors():
     assert "mirrored_out_block" not in text
 
 
-def test_marker_geometry_mirror_fixture():
-    # 1d_mirror-style: block left of unique len-1 marker 9
+def test_no_marker_geometry_hacks_in_bk():
+    # Former mirror-style row: must not emit banned marker/reflect facts
     row = [4, 4, 4, 4, 4, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     facts = _facts(row)
-    assert "marker_block(0,2)." in facts  # runs: 4s, empty, 9
-    assert "unit_block(0,2)." in facts
-    assert "reflect_pos(0,6,0,12)." in facts
-    assert "reflect_pos(0,6,4,8)." in facts
-    assert "reflect_end(0,0,2,8)." in facts  # 2*6-4
-    assert "between_block_marker(0,0,2,5)." in facts
-    assert "block_marker_gap(0,0,2,1)." in facts
-    assert "same_side_marker(0,0,2)." in facts
+    assert "left_of(0,0,2)." in facts
+    assert "block_end(0,0,4)." in facts
     assert "offset_pos(0,2,2)." in facts
     assert "size_add(5,1,6)." in facts
-    assert "block_end(0,0,4)." in facts
+    assert not any(f.startswith("marker_block(") for f in facts)
+    assert not any(f.startswith("unit_block(") for f in facts)
+    assert not any(f.startswith("reflect_pos(") for f in facts)
+    assert not any(f.startswith("reflect_end(") for f in facts)
+    assert not any(f.startswith("block_marker_gap(") for f in facts)
+    assert not any(f.startswith("between_block_marker(") for f in facts)
+    assert not any(f.startswith("same_side_marker(") for f in facts)
     assert not any("mirrored_out_block(" in f for f in facts)
     assert not any("extended_out_block(" in f for f in facts)
     assert not any("shifted_out_block(" in f for f in facts)

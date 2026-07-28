@@ -53,6 +53,8 @@ def _constants_for_level(level: int) -> list[str]:
             lines.append(f"constant(r{i}, rank).")
     if level == 4:
         lines.append("constant(s1, size).")
+        lines.append("constant(left, edge).")
+        lines.append("constant(right, edge).")
     if level != 4:
         lines.append("constant(left, edge).")
         lines.append("constant(right, edge).")
