@@ -37,7 +37,7 @@ fi
 
 mkdir -p "${OUT}/${MODE}"
 
-parallel --jobs "$JOBS" --delay "$DELAY" --halt soon,fail=1 \
+parallel --jobs "$JOBS" --delay "$DELAY" --joblog "${OUT}/${MODE}/parallel.joblog" \
   python -m solver.harness --mode "$MODE" --timeout "$TIMEOUT" --out "$OUT" --one {} \
   ::: "${FILES[@]}"
 
