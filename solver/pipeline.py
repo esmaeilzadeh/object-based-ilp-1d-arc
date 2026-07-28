@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from solver.bias_gen import write_bias_files
 from solver.decode import apply_object_program
 from solver.encoder import encode_instance
 from solver.induce import induce
+from solver.paper_score import grid_to_out_program, score_program_soft
 from solver.trivial import try_trivial
 from solver.verify import apply_program, verify_object_on_train, verify_on_train
 
@@ -25,6 +26,8 @@ class SolveResult:
     level: str
     verified_train: bool
     confidence: str  # high | low
+    soft_matrix: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
+    soft_accuracy: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -42,7 +45,11 @@ def solve(
     include_pixels: bool = True,
     force_bias: Optional[str] = None,
 ) -> SolveResult:
-    """Solve one ARC JSON instance. Returns prediction for the first test input."""
+    """Solve one ARC JSON instance. Returns prediction for the first test input.
+
+    Acceptance matches the paper repo: an induced Popper program is scored even
+    if it fails exact train verification. Soft accuracy uses ``test.pl``.
+    """
     write_bias_files()
     work_dir = Path(work_dir or Path("work") / "solve")
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -67,17 +74,58 @@ def solve(
             return [0 if c == 0 else inv.get(c, c) for c in grid]
         return grid
 
-    def _ok_pixel(prog: str, level: str) -> Optional[SolveResult]:
-        if not verify_on_train(prog, encoded):
-            return None
-        preds = apply_program(prog, encoded.test_bk_path, encoded.test)
-        return SolveResult(_remap(preds[test0.ex_id]), prog, level, True, "high")
+    def _soft_for(prog: str, pred: List[int], *, object_head: bool) -> Tuple[List[int], float]:
+        if not encoded.test_path.exists() or test0.out is None:
+            return [0, 0, 0, 0], 0.0
+        score_prog = grid_to_out_program(test0.ex_id, pred) if object_head else prog
+        return score_program_soft(
+            score_prog,
+            encoded.test_path,
+            work_dir=work_dir / "soft_score",
+        )
 
-    def _ok_object(prog: str, level: str) -> Optional[SolveResult]:
-        if not verify_object_on_train(prog, encoded):
-            return None
-        preds = apply_object_program(prog, encoded.test_bk_path, encoded.test)
-        return SolveResult(_remap(preds[test0.ex_id]), prog, level, True, "high")
+    def _finish(
+        prog: str,
+        level: str,
+        *,
+        object_head: bool,
+        verified: bool,
+    ) -> SolveResult:
+        try:
+            if object_head:
+                preds = apply_object_program(prog, encoded.test_bk_path, encoded.test)
+            else:
+                preds = apply_program(prog, encoded.test_bk_path, encoded.test)
+            pred = _remap(preds[test0.ex_id])
+        except Exception:
+            pred = _remap(list(test0.inp))
+        matrix, soft = _soft_for(prog, pred, object_head=object_head)
+        return SolveResult(
+            pred,
+            prog,
+            level,
+            verified,
+            "high" if verified else "low",
+            matrix,
+            soft,
+        )
+
+    # Last induced program (paper acceptance): keep even if train-verify fails.
+    candidate: Optional[Tuple[str, str, bool]] = None  # prog, level, object_head
+
+    def _consider_pixel(prog: str, level: str) -> Optional[SolveResult]:
+        nonlocal candidate
+        candidate = (prog, level, False)
+        if verify_on_train(prog, encoded):
+            return _finish(prog, level, object_head=False, verified=True)
+        return None
+
+    def _consider_object(prog: str, level: str) -> Optional[SolveResult]:
+        nonlocal candidate
+        candidate = (prog, level, True)
+        if verify_object_on_train(prog, encoded):
+            return _finish(prog, level, object_head=True, verified=True)
+        return None
 
     if force_bias == "pixel":
         rem = _remaining()
@@ -90,7 +138,7 @@ def solve(
                 work_dir / "popper",
             )
             if prog:
-                r = _ok_pixel(prog, "pixel_ilp")
+                r = _consider_pixel(prog, "pixel_ilp")
                 if r:
                     return r
     elif force_bias == "object":
@@ -104,7 +152,7 @@ def solve(
                 work_dir / "popper_object",
             )
             if prog:
-                r = _ok_object(prog, "object_ilp")
+                r = _consider_object(prog, "object_ilp")
                 if r:
                     return r
     elif not ladder:
@@ -118,19 +166,17 @@ def solve(
                 work_dir / "popper",
             )
             if prog:
-                r = _ok_pixel(prog, "dual_no_ladder")
+                r = _consider_pixel(prog, "dual_no_ladder")
                 if r:
                     return r
     else:
-        # Level 1 — trivial (constant time)
         triv = try_trivial(encoded)
         if triv:
             prog, name = triv
-            r = _ok_pixel(prog, name)
+            r = _consider_pixel(prog, name)
             if r:
                 return r
 
-        # Level 2 — block-only pixel-head ILP (fill/hollow/paint bridges)
         if include_blocks and _remaining() > 0:
             budget = min(70, max(int(0.35 * timeout), 1), _remaining())
             prog = induce(
@@ -141,11 +187,10 @@ def solve(
                 work_dir / "popper_block",
             )
             if prog:
-                r = _ok_pixel(prog, "block_ilp")
+                r = _consider_pixel(prog, "block_ilp")
                 if r:
                     return r
 
-        # Level 3 — object-head ILP (out_block + decoder; move / object relations)
         if include_blocks and _remaining() > 0:
             budget = min(55, max(int(0.35 * timeout), 1), _remaining())
             prog = induce(
@@ -156,11 +201,10 @@ def solve(
                 work_dir / "popper_object",
             )
             if prog:
-                r = _ok_object(prog, "object_ilp")
+                r = _consider_object(prog, "object_ilp")
                 if r:
                     return r
 
-        # Level 4 — pixel ILP
         if include_pixels and _remaining() > 0:
             prog = induce(
                 encoded.exs_pixel_path,
@@ -170,11 +214,10 @@ def solve(
                 work_dir / "popper_pixel",
             )
             if prog:
-                r = _ok_pixel(prog, "pixel_ilp")
+                r = _consider_pixel(prog, "pixel_ilp")
                 if r:
                     return r
 
-        # Level 5 — dual ILP (if any time left)
         if include_pixels and include_blocks and _remaining() > 0:
             prog = induce(
                 encoded.exs_pixel_path,
@@ -184,14 +227,24 @@ def solve(
                 work_dir / "popper_dual",
             )
             if prog:
-                r = _ok_pixel(prog, "dual_ilp")
+                r = _consider_pixel(prog, "dual_ilp")
                 if r:
                     return r
 
+    if candidate is not None:
+        prog, level, object_head = candidate
+        return _finish(prog, level, object_head=object_head, verified=False)
+
+    # No induced program — identity fallback (same spirit as empty program.pl).
+    prog = "out(E,P,C) :- in(E,P,C).\n"
+    pred = _remap(list(test0.inp))
+    matrix, soft = _soft_for(prog, pred, object_head=False)
     return SolveResult(
-        list(test0.inp),
-        "out(E,P,C) :- in(E,P,C).\n",
+        pred,
+        prog,
         "fallback_identity",
         False,
         "low",
+        matrix,
+        soft,
     )
