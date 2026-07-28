@@ -124,9 +124,11 @@ def solve(
         return None
 
     def _consider_object(prog: str, level: str) -> Optional[SolveResult]:
-        nonlocal candidate
-        candidate = (prog, level, True)
+        # Block-level path: only accept paint-verified out_block programs (no
+        # unverified timeout artifacts counted as object_ilp solutions).
         if verify_object_on_train(prog, encoded):
+            nonlocal candidate
+            candidate = (prog, level, True)
             return _finish(prog, level, object_head=True, verified=True)
         return None
 

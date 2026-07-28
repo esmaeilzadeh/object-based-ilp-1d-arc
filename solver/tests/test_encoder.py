@@ -94,32 +94,25 @@ def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
+    assert "max_vars(12)." in text
     assert "max_body(8)." in text
-    assert "max_clauses(3)." in text
+    assert "max_clauses(2)." in text
     assert ":- not body_var(_,1)." in text
     assert "body_pred(block_start,3)." in text
     assert "body_pred(block_end,3)." in text
     assert "body_pred(block_len,3)." in text
     assert "body_pred(size_add,3)." in text
-    assert "body_pred(offset_pos,3)." in text
     assert "body_pred(left_of,3)." in text
     assert "body_pred(adjacent,3)." in text
     assert "body_pred(gap,4)." in text
     assert "body_pred(block_succ,3)." in text
     assert "body_pred(obj_succ,3)." in text
-    assert "body_pred(shorter,3)." in text
-    assert "body_pred(longer,3)." in text
-    assert "body_pred(same_len,3)." in text
-    assert "body_pred(touches_edge,3)." in text
     assert "body_pred(empty_block,3)." in text
-    assert "body_pred(obj_index,3)." in text
-    assert "body_pred(largest,2)." in text
-    assert "body_pred(smallest,2)." in text
-    assert "body_pred(non_largest,2)." in text
-    assert "body_pred(unique_color,2)." in text
-    assert "body_pred(empty_block_count,2)." in text
     assert "constant(s1, size)." in text
-    assert "constant(left, edge)." in text
+    # Lean: length/agg noise not on object bias for this experiment
+    assert "body_pred(shorter,3)." not in text
+    assert "body_pred(largest,2)." not in text
+    assert "body_pred(offset_pos,3)." not in text
     # No marker/mirror hacks; no pixel-paint bridges
     assert "body_pred(marker_block" not in text
     assert "body_pred(unit_block" not in text

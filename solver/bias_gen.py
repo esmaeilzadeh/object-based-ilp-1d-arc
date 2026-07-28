@@ -94,18 +94,36 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     )
 
 
-def render_object_bias(*, max_vars: int = 8, max_body: int = 8) -> str:
-    """Lean object-head bias: few compositional tools + multi-clause room."""
+def render_object_bias(*, max_vars: int = 12, max_body: int = 8) -> str:
+    """Object-head bias: block–block merge vocabulary, enough vars for span rules.
+
+    ``max_vars`` must fit merge-across-gap clauses (~10 vars). Body allowlist stays
+    lean so Popper can search; no marker/mirror or pixel-paint bridges.
+    """
+    allow = {
+        "block",
+        "block_len",
+        "block_start",
+        "block_end",
+        "left_of",
+        "obj_succ",
+        "gap",
+        "size_add",
+        "empty_block",
+        "adjacent",
+        "block_succ",
+    }
+    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
     text = _render(
         head_pred_object(),
-        body_preds_for_level(4),
+        bodies,
         max_vars=max_vars,
         max_body=max_body,
         level=4,
     )
-    # Multi-clause (marker copy + transform) and force body vars like paper Decom.
+    # Multi-clause room + force body vars like paper Decom.
     extra = (
-        "max_clauses(3).\n"
+        "max_clauses(2).\n"
         ":- not body_var(_,1).\n"
         ":- not body_var(_,2).\n"
     )
