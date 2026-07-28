@@ -75,7 +75,9 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("add", 3, ("position", "position", "position"), "arith", frozenset({3})),
     # Generic size/position sugar for object stage (not task-shaped transforms)
     Predicate("offset_pos", 3, ("position", "size", "position"), "arith", frozenset({2, 3, 4})),
-    Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3, 4})),
+    Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3})),
+    # Ternary size sum for object-head (typed path); not a block-merge prior.
+    Predicate("size_sum3", 4, ("size", "size", "size", "size"), "arith", frozenset({4})),
     # bridges — grounded; hide naked Start/End constants
     Predicate("pixel_block", 3, ("ex", "position", "block_id"), "bridge", frozenset({2, 3})),
     Predicate("in_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),

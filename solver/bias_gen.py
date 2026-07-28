@@ -94,19 +94,18 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     )
 
 
-def render_object_bias(*, max_vars: int = 12, max_body: int = 8) -> str:
+def render_object_bias(*, max_vars: int = 12, max_body: int = 5) -> str:
     """Object-head bias: block–block merge vocabulary, enough vars for span rules.
 
     Head is ``out_block(Ex, Bid, Len, Color)`` — pixel starts stay in Python decode
-    metadata, not body preds. ``max_vars`` fits merge-across-gap (~9 vars).
+    metadata, not body preds. Length composition uses ``size_sum3`` (not ``size_add``).
     """
     allow = {
         "block",
         "block_len",
-        "left_of",
         "obj_succ",
         "gap",
-        "size_add",
+        "size_sum3",
         "empty_block",
         "adjacent",
         "block_succ",

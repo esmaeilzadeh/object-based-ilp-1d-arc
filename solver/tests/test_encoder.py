@@ -95,12 +95,13 @@ def test_object_bias_head_and_no_paint_priors():
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
     assert "max_vars(12)." in text
-    assert "max_body(8)." in text
+    assert "max_body(5)." in text
     assert "max_clauses(2)." in text
     assert ":- not body_var(_,1)." in text
     assert "body_pred(block_len,3)." in text
-    assert "body_pred(size_add,3)." in text
-    assert "body_pred(left_of,3)." in text
+    assert "body_pred(size_sum3,4)." in text
+    assert "body_pred(size_add,3)." not in text
+    assert "body_pred(left_of,3)." not in text
     assert "body_pred(adjacent,3)." in text
     assert "body_pred(gap,4)." in text
     assert "body_pred(block_succ,3)." in text
@@ -229,7 +230,10 @@ def test_typed_roles_on_block_primary_encode(tmp_path: Path):
     bk = enc.bk_path.read_text()
     assert "block(0,b0,s1,v7)." in bk
     assert "gap(0,b0,b2,s1)." in bk
-    assert "size_add(s1,s1,s2)." in bk
+    assert "size_sum3(s1,s1,s1,s3)." in bk
+    assert "size_add(" not in bk
+    assert "left_of(" not in bk
+    assert "size_lt(" not in bk
     assert "block(0,0,1,7)." not in bk
     # No per-cell / paint bridges on block-primary BK
     assert "pixel_block(" not in bk
