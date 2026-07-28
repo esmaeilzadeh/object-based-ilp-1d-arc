@@ -203,6 +203,84 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
         facts.append(f"color_count({ex},{c},{n}).")
         if n == 1:
             facts.append(f"unique_color({ex},{c}).")
+
+    facts.extend(_marker_geometry_facts(ex, runs, w, colored_ids, color_counts))
+    return facts
+
+
+def _marker_geometry_facts(
+    ex: int,
+    runs: Sequence[Tuple[int, int, int]],
+    w: int,
+    colored_ids: Sequence[int],
+    color_counts: Dict[int, int],
+) -> List[str]:
+    """Marker-centered geometry tools (no precomputed output blocks).
+
+    ``reflect_pos(Ex, M, P, P2)`` uses reflection across marker index M:
+    ``P2 = 2*M - P`` when in-bounds (1D-ARC mirror-across-delimiter).
+    """
+    facts: List[str] = []
+    if w <= 0:
+        return facts
+
+    # Small offsets as sugar over add (object bias has no c*/add).
+    for k in (1, 2, 3):
+        for p in range(w):
+            if p + k < w:
+                facts.append(f"offset_pos({p},{k},{p + k}).")
+            if p - k >= 0:
+                facts.append(f"offset_pos({p},{k},{p - k}).")
+
+    if not colored_ids:
+        return facts
+
+    # Marker = length-1 colored run whose color appears once (delimiter style).
+    markers: List[int] = []
+    for bid in colored_ids:
+        s, e, c = runs[bid]
+        if e == s and color_counts.get(c, 0) == 1:
+            markers.append(bid)
+            facts.append(f"marker_block({ex},{bid}).")
+
+    if not markers:
+        return facts
+
+    for mbid in markers:
+        ms, me, _mc = runs[mbid]
+        # Single-cell marker: reflect across that cell index.
+        mpos = ms
+        for p in range(w):
+            p2 = 2 * mpos - p
+            if 0 <= p2 < w:
+                facts.append(f"reflect_pos({ex},{mpos},{p},{p2}).")
+
+        for bid in colored_ids:
+            if bid == mbid:
+                continue
+            s, e, _c = runs[bid]
+            if e < ms:
+                facts.append(f"same_side_marker({ex},{bid},{mbid}).")
+                g = ms - e - 1
+                facts.append(f"block_marker_gap({ex},{bid},{mbid},{g}).")
+                for p in range(e + 1, ms):
+                    facts.append(f"between_block_marker({ex},{bid},{mbid},{p}).")
+            elif s > me:
+                facts.append(f"same_side_marker({ex},{bid},{mbid}).")
+                g = s - me - 1
+                facts.append(f"block_marker_gap({ex},{bid},{mbid},{g}).")
+                for p in range(me + 1, s):
+                    facts.append(f"between_block_marker({ex},{bid},{mbid},{p}).")
+
+            if e < ms:
+                for other in colored_ids:
+                    if other == bid or other == mbid:
+                        continue
+                    os, oe, _ = runs[other]
+                    if os > me:
+                        facts.append(f"opp_side_marker({ex},{bid},{other}).")
+                        facts.append(f"opp_side_marker({ex},{other},{bid}).")
+
     return facts
 
 

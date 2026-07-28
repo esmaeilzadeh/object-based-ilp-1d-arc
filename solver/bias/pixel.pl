@@ -1,6 +1,9 @@
 max_vars(7).
-max_body(16).
+max_body(20).
 non_datalog.
+
+:- not body_var(_,1).
+:- not body_var(_,2).
 
 head_pred(out,3).
 body_pred(in,3).

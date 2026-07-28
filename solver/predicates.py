@@ -86,6 +86,38 @@ PREDICATES: Tuple[Predicate, ...] = (
     # Full paint of non-largest blocks (hollow prior baked in) — pixel-head stages only
     Predicate("solid_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("gap_cell", 5, ("ex", "block_id", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
+    # Marker-centered geometry (compositional tools — not precomputed outputs)
+    Predicate("marker_block", 2, ("ex", "block_id"), "marker", frozenset({2, 3, 4})),
+    Predicate("reflect_pos", 4, ("ex", "position", "position", "position"), "marker", frozenset({2, 3, 4})),
+    Predicate(
+        "between_block_marker",
+        4,
+        ("ex", "block_id", "block_id", "position"),
+        "marker",
+        frozenset({2, 3, 4}),
+    ),
+    Predicate(
+        "block_marker_gap",
+        4,
+        ("ex", "block_id", "block_id", "size"),
+        "marker",
+        frozenset({2, 3, 4}),
+    ),
+    Predicate(
+        "same_side_marker",
+        3,
+        ("ex", "block_id", "block_id"),
+        "marker",
+        frozenset({2, 3, 4}),
+    ),
+    Predicate(
+        "opp_side_marker",
+        3,
+        ("ex", "block_id", "block_id"),
+        "marker",
+        frozenset({2, 3, 4}),
+    ),
+    Predicate("offset_pos", 3, ("position", "size", "position"), "marker", frozenset({2, 3, 4})),
 )
 
 

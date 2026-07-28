@@ -181,7 +181,13 @@ def solve(
                 return r
 
         if include_blocks and _remaining() > 0:
-            budget = min(70, max(int(0.35 * timeout), 1), _remaining())
+            # Cap early stages; reserve ≥50% of timeout for pixel fallback.
+            early_cap = min(30, max(int(0.15 * timeout), 1)) if timeout >= 120 else min(
+                70, max(int(0.35 * timeout), 1)
+            )
+            budget = min(early_cap, _remaining())
+            # Keep at least half the original timeout for later pixel/dual.
+            budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
             prog = induce(
                 encoded.exs_pixel_path,
                 encoded.bk_path,
@@ -195,7 +201,11 @@ def solve(
                     return r
 
         if include_blocks and _remaining() > 0:
-            budget = min(55, max(int(0.35 * timeout), 1), _remaining())
+            early_cap = min(30, max(int(0.15 * timeout), 1)) if timeout >= 120 else min(
+                55, max(int(0.35 * timeout), 1)
+            )
+            budget = min(early_cap, _remaining())
+            budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
             prog = induce(
                 encoded.exs_object_path,
                 encoded.bk_path,

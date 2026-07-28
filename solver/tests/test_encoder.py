@@ -94,15 +94,50 @@ def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
+    assert "max_body(10)." in text
     assert "body_pred(obj_succ,3)." in text
     assert "body_pred(after_block,3)." in text
     assert "body_pred(block_start,3)." in text
     assert "body_pred(smallest,2)." in text
+    assert "body_pred(marker_block,2)." in text
+    assert "body_pred(reflect_pos,4)." in text
+    assert "body_pred(between_block_marker,4)." in text
+    assert "body_pred(offset_pos,3)." in text
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
     assert "body_pred(left_of,3)." not in text
     assert "constant(c0, position)." not in text
     assert "constant(v0, value)." not in text
+    assert "mirrored_out_block" not in text
+    assert "extended_out_block" not in text
+
+
+def test_marker_geometry_mirror_fixture():
+    # 1d_mirror-style: block left of unique len-1 marker 9
+    row = [4, 4, 4, 4, 4, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    facts = _facts(row)
+    assert "marker_block(0,2)." in facts  # runs: 4s, empty, 9
+    assert "reflect_pos(0,6,0,12)." in facts
+    assert "reflect_pos(0,6,4,8)." in facts
+    assert "between_block_marker(0,0,2,5)." in facts
+    assert "block_marker_gap(0,0,2,1)." in facts
+    assert "same_side_marker(0,0,2)." in facts
+    assert "offset_pos(0,2,2)." in facts
+    # No answer-leak output tuples
+    assert not any("mirrored_out_block(" in f for f in facts)
+    assert not any("extended_out_block(" in f for f in facts)
+    assert not any("shifted_out_block(" in f for f in facts)
+
+
+def test_pixel_bias_paper_parity():
+    from solver.bias_gen import _pixel_only_bias
+
+    text = _pixel_only_bias()
+    assert "max_body(20)." in text
+    assert ":- not body_var(_,1)." in text
+    assert ":- not body_var(_,2)." in text
+    assert "body_pred(marker_block" not in text
+    assert "body_pred(reflect_pos" not in text
 
 
 def test_dual_bias_keeps_position_arith_and_rank():

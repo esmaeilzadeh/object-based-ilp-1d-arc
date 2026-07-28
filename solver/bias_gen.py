@@ -89,8 +89,8 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     )
 
 
-def render_object_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
-    """Object-head bias: minimal body set so Popper can find short out_block rules."""
+def render_object_bias(*, max_vars: int = 8, max_body: int = 10) -> str:
+    """Object-head bias: block geometry + marker tools for short out_block rules."""
     return _render(
         head_pred_object(),
         body_preds_for_level(4),
@@ -101,9 +101,13 @@ def render_object_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
 
 
 def _pixel_only_bias() -> str:
+    """Paper-parity pixel bias (Decom relational decomposition)."""
     return """max_vars(7).
-max_body(16).
+max_body(20).
 non_datalog.
+
+:- not body_var(_,1).
+:- not body_var(_,2).
 
 head_pred(out,3).
 body_pred(in,3).
@@ -155,7 +159,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "block.pl").write_text(render_bias(2, max_vars=8, max_body=12))
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
-    (out_dir / "object.pl").write_text(render_object_bias())
+    (out_dir / "object.pl").write_text(render_object_bias(max_body=10))
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 
