@@ -9,6 +9,7 @@ from solver.predicates import (
     OBJECT_BODY_ALLOWLIST,
     OBJECT_DENOISE_ALLOWLIST,
     OBJECT_FILL_ALLOWLIST,
+    OBJECT_RECOLOR_ALLOWLIST,
     Predicate,
     body_preds_for_level,
     head_pred,
@@ -162,6 +163,35 @@ def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
     )
 
 
+def render_object_recolor_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
+    """Recolor-oriented object bias: needs 2 clauses + color constants."""
+    allow = OBJECT_RECOLOR_ALLOWLIST
+    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
+    hp = head_pred_object()
+    all_typed = (hp,) + bodies
+    parts = [
+        f"max_vars({max_vars}).",
+        f"max_body({max_body}).",
+        "max_clauses(2).",
+        "",
+        f"head_pred({hp.name},{hp.arity}).",
+    ]
+    for p in bodies:
+        parts.append(f"body_pred({p.name},{p.arity}).")
+    parts.append("body_pred(C,1):- constant(C,_).")
+    parts.append("")
+    for i in range(10):
+        parts.append(f"constant(v{i}, value).")
+    parts.append("")
+    type_lines = "\n".join(f"type({p.name},{p.types})." for p in all_typed)
+    parts.append(type_lines)
+    parts.append("type(C,(T,)):- constant(C,T).")
+    parts.append("")
+    parts.append(_bad_body_for_ex_preds(bodies))
+    parts.append("")
+    return "\n".join(parts) + "\n"
+
+
 def _pixel_only_bias() -> str:
     """Paper-parity pixel bias (Decom relational decomposition)."""
     return """max_vars(7).
@@ -223,6 +253,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
     (out_dir / "object.pl").write_text(render_object_bias())
     (out_dir / "object_denoise.pl").write_text(render_object_denoise_bias())
+    (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 

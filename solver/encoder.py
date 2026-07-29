@@ -329,6 +329,11 @@ def _block_and_derived(
                 facts.append(f"unique_color({ex},{_col(c, t)}).")
 
     if lean:
+        for sz in sorted(observed_sizes):
+            if sz % 2 == 0:
+                facts.append(f"size_even({_sz(sz, t)}).")
+            else:
+                facts.append(f"size_odd({_sz(sz, t)}).")
         # Belt-and-suspenders: BK emit == bias allowlist (drop stray preds).
         facts = [
             f

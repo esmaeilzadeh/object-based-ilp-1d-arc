@@ -78,6 +78,9 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3})),
     # Ternary size sum for object-head (typed path); not a block-merge prior.
     Predicate("size_sum3", 4, ("size", "size", "size", "size"), "arith", frozenset({4})),
+    # Parity on size values — block-neutral, no answer leak.
+    Predicate("size_even", 1, ("size",), "arith", frozenset({4})),
+    Predicate("size_odd", 1, ("size",), "arith", frozenset({4})),
     # bridges — grounded; hide naked Start/End constants
     Predicate("pixel_block", 3, ("ex", "position", "block_id"), "bridge", frozenset({2, 3})),
     Predicate("in_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
@@ -117,6 +120,9 @@ OBJECT_FILL_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "obj_succ", "gap", "size_sum3"}
 )
 OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset({"block", "largest"})
+OBJECT_RECOLOR_ALLOWLIST: FrozenSet[str] = frozenset(
+    {"block", "largest", "non_largest", "size_even", "size_odd"}
+)
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
-    OBJECT_FILL_ALLOWLIST | OBJECT_DENOISE_ALLOWLIST
+    OBJECT_FILL_ALLOWLIST | OBJECT_DENOISE_ALLOWLIST | OBJECT_RECOLOR_ALLOWLIST
 )

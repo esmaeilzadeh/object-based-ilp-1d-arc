@@ -159,6 +159,7 @@ def solve(
         if include_blocks:
             stages = (
                 ("object_denoise.pl", "popper_object_denoise"),
+                ("object_recolor.pl", "popper_object_recolor"),
                 ("object.pl", "popper_object"),
             )
             for bias_name, work_name in stages:
