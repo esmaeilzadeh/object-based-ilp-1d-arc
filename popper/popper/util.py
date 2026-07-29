@@ -178,7 +178,7 @@ def reduce_prog(prog):
         head, body = rule
         k = head, frozenset(body)
         reduced[k] = rule
-    return reduced.values()
+    return frozenset(reduced.values())
 
 def order_prog(prog):
     return sorted(list(prog), key=lambda rule: (rule_is_recursive(rule), len(rule[1])))

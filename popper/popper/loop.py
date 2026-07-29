@@ -583,9 +583,9 @@ class Popper():
                     if any_and(uncovered, pos_covered):
 
                         if settings.solution:
-                            settings.solution = settings.solution | prog
+                            settings.solution = frozenset(settings.solution) | frozenset(prog)
                         else:
-                            settings.solution = prog
+                            settings.solution = frozenset(prog)
                         BEST_PROG.value = '\n'.join(format_rule(settings.order_rule(rule)) for rule in settings.solution)
                         uncovered = uncovered & ~pos_covered
                         tp = num_pos- uncovered.count(1)
