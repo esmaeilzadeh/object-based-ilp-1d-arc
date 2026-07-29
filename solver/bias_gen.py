@@ -55,7 +55,7 @@ def _constants_for_level(level: int) -> list[str]:
         for i in range(1, 10):
             lines.append(f"constant(r{i}, rank).")
     if level == 4:
-        # Length-1 constant only; colors/sizes bind from block/size_sum facts.
+        # Length-1 constant only; colors/sizes bind from block/size_sum3 facts.
         lines.append("constant(s1, size).")
     if level != 4:
         lines.append("constant(left, edge).")
@@ -148,11 +148,8 @@ def _object_bias_from_allow(
     return "".join(out)
 
 
-def render_object_bias(*, max_vars: int = 12, max_body: int = 6) -> str:
-    """Fill-oriented object bias (no ``largest`` — that clutters merge search).
-
-    ``max_body(6)`` leaves room for two ``size_sum`` steps (La+G, then +Lb).
-    """
+def render_object_bias(*, max_vars: int = 10, max_body: int = 5) -> str:
+    """Fill-oriented object bias (no ``largest`` — that clutters merge search)."""
     return _object_bias_from_allow(
         OBJECT_FILL_ALLOWLIST, max_vars=max_vars, max_body=max_body
     )
