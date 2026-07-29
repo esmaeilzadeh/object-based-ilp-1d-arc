@@ -92,12 +92,14 @@ def test_block_bias_omits_position_and_size_constants():
 
 def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
-    assert "head_pred(out_block,4)." in text
+    assert "head_pred(out_block,5)." in text
     assert "head_pred(out,3)." not in text
     assert "max_vars(10)." in text
-    assert "max_body(5)." in text
+    assert "max_body(6)." in text
     assert "max_clauses(1)." in text
     assert ":- not body_var(_,1)." in text
+    assert ":- not body_var(_,2)." in text
+    assert ":- not body_var(_,3)." in text
     # Datalog-safe: head vars must appear in body (no Len-unbound junk).
     assert "non_datalog." not in text
     assert "body_pred(block,4)." in text
@@ -112,9 +114,10 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(adjacent,3)." not in text
     assert "body_pred(block_succ,3)." not in text
     assert "body_pred(empty_block,3)." not in text
-    assert "constant(s1, 'size')." not in text
-    assert "body_pred(C,1)" not in text
-    assert "type(out_block,('ex', 'block_id', 'size', 'value'))." in text
+    assert "constant(s0, 'size')." in text
+    assert "constant(s1, 'size')." in text
+    assert "body_pred(C,1)" in text
+    assert "type(out_block,('ex', 'block_id', 'size', 'size', 'value'))." in text
     # Pixel starts are decode metadata only
     assert "body_pred(block_start,3)." not in text
     assert "body_pred(block_end,3)." not in text
@@ -131,7 +134,6 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
     assert "constant(c0, 'position')." not in text
-    assert "constant(s0, 'size')." not in text
     assert "mirrored_out_block" not in text
 
 
@@ -139,7 +141,7 @@ def test_object_denoise_bias_is_block_plus_largest():
     from solver.bias_gen import render_object_denoise_bias
 
     text = render_object_denoise_bias()
-    assert "head_pred(out_block,4)." in text
+    assert "head_pred(out_block,5)." in text
     assert "body_pred(block,4)." in text
     assert "body_pred(largest,2)." in text
     assert "body_pred(component_start,2)." in text
@@ -148,7 +150,7 @@ def test_object_denoise_bias_is_block_plus_largest():
     assert "body_pred(gap,4)." not in text
     assert "non_datalog." not in text
     assert "max_clauses(1)." in text
-    assert "max_body(4)." in text
+    assert "constant(s0, 'size')." in text
 
 def test_no_marker_geometry_hacks_in_bk():
     # Former mirror-style row: must not emit banned marker/reflect facts
@@ -228,9 +230,9 @@ def test_encode_instance_writes_pixel_and_object_exs(tmp_path: Path):
     assert "out_block(" not in pix
 
     obj = enc.exs_object_path.read_text()
-    # bid0 len2 color2; bid2 len1 color9
-    assert "pos(out_block(0,0,2,2))." in obj
-    assert "pos(out_block(0,2,1,9))." in obj
+    # bid0 Off0 len2 color2; bid2 Off0 len1 color9
+    assert "pos(out_block(0,0,0,2,2))." in obj
+    assert "pos(out_block(0,2,0,1,9))." in obj
     assert "pos(out(" not in obj
     assert "block_succ(" not in obj
     assert 0 in enc.block_geometry and 0 in enc.block_geometry[0]
@@ -254,7 +256,8 @@ def test_typed_roles_on_block_primary_encode(tmp_path: Path):
     assert "obj_succ(0,b0,b2)." in bk
     assert "largest(0,b0)." in bk
     assert "largest(0,b2)." in bk
-    assert "size_add(" not in bk
+    # Lean size_add sugar: La+G and 1+G only
+    assert "size_add(s1,s1,s2)." in bk
     assert "left_of(" not in bk
     assert "size_lt(" not in bk
     assert "block(0,0,1,7)." not in bk
@@ -283,12 +286,12 @@ def test_typed_roles_on_block_primary_encode(tmp_path: Path):
     assert "mid(" not in bk
     assert "position_atom(" not in bk
     obj = enc.exs_object_path.read_text()
-    # Anchor left block b0, merged length 3
-    assert "pos(out_block(0,b0,s3,v7))." in obj
-    assert "pos(out_block(0,p0,s3,v7))." not in obj
-    # Compact negs: wrong color + identity input + wrong observed lens
-    assert "neg(out_block(0,b0,s3,v1))." in obj
-    assert "neg(out_block(0,b0,s1,v7))." in obj  # identity / wrong len
+    # Anchor left block b0 Off=0, merged length 3
+    assert "pos(out_block(0,b0,s0,s3,v7))." in obj
+    assert "pos(out_block(0,p0,s0,s3,v7))." not in obj
+    # Compact negs: wrong color + identity/prefix Off=0 + wrong lens
+    assert "neg(out_block(0,b0,s0,s3,v1))." in obj
+    assert "neg(out_block(0,b0,s0,s1,v7))." in obj  # identity prefix
     assert enc.block_geometry[0][0] == (0, 0)
 
 

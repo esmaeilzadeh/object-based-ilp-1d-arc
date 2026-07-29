@@ -34,7 +34,10 @@ def _collect_out_blocks(
     *,
     typed_roles: bool = False,
 ) -> List[Tuple[int, int, int]]:
-    """Enumerate grounded ``out_block(Ex, Bid, Len, Color)``; map Bid→pixel start."""
+    """Enumerate grounded ``out_block(Ex, Bid, Off, Len, Color)``.
+
+    Returns ``(paint_start, Len, Color)`` with ``paint_start = start(Bid)+Off``.
+    """
     from janus_swi import query_once
 
     t = typed_roles
@@ -43,17 +46,21 @@ def _collect_out_blocks(
         if bid not in geometry:
             continue
         start, _end = geometry[bid]
-        for L in range(1, width + 1):
-            for c in range(1, 10):
-                atom = (
-                    f"out_block({ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)})"
-                )
-                try:
-                    res = query_once(atom)
-                except Exception:
-                    continue
-                if res.get("truth"):
-                    blocks.append((start, L, c))
+        for off in range(0, width + 1):
+            for L in range(1, width + 1):
+                if start + off + L > width + 1:
+                    break
+                for c in range(1, 10):
+                    atom = (
+                        f"out_block({ex_id},{_bid(bid, t)},"
+                        f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)})"
+                    )
+                    try:
+                        res = query_once(atom)
+                    except Exception:
+                        continue
+                    if res.get("truth"):
+                        blocks.append((start + off, L, c))
     return blocks
 
 
@@ -65,7 +72,7 @@ def apply_object_program(
     typed_roles: bool = False,
     block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
 ) -> Dict[int, List[int]]:
-    """Paint pixels from ``out_block(Ex, Bid, Len, Color)`` via Python Bid→start map.
+    """Paint pixels from ``out_block(Ex, Bid, Off, Len, Color)``.
 
     Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
     """
@@ -97,7 +104,7 @@ def apply_object_program(
         ):
             if L <= 0 or s < 0 or s + L > w:
                 raise ValueError(
-                    f"out_block({eg.ex_id},bid→{s},{L},{c}) out of bounds width={w}"
+                    f"out_block({eg.ex_id},paint→{s},{L},{c}) out of bounds width={w}"
                 )
             for p in range(s, s + L):
                 if p in occupied and occupied[p] != c:

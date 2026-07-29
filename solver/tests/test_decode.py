@@ -15,8 +15,8 @@ def test_object_decoder_paints_blocks(tmp_path: Path):
         "test": [{"input": [[2, 2, 0, 9]]}],
     }
     enc = encode_instance(inst, tmp_path / "enc")
-    # bids: 0=[2,2], 1=empty, 2=[9]
-    prog = "out_block(0,0,2,2).\nout_block(0,2,1,9).\n"
+    # bids: 0=[2,2], 1=empty, 2=[9]; Off=0 for identity anchors
+    prog = "out_block(0,0,0,2,2).\nout_block(0,2,0,1,9).\n"
     preds = apply_object_program(
         prog, enc.bk_path, enc.train, block_geometry=enc.block_geometry
     )
@@ -35,7 +35,7 @@ def test_object_decoder_typed_roles(tmp_path: Path):
     assert enc.typed_roles
     # Anchor left colored block b1 (runs: empty b0, color b1, empty? wait [7,0,7]
     # b0=7@0, b1=0@1, b2=7@2 → out merge anchors b0, len 3
-    prog = "out_block(0,b0,s3,v7).\n"
+    prog = "out_block(0,b0,s0,s3,v7).\n"
     preds = apply_object_program(
         prog,
         enc.bk_path,
@@ -54,8 +54,8 @@ def test_object_decoder_rejects_overlap(tmp_path: Path):
         },
         tmp_path / "enc",
     )
-    # bid0 start0 len3 covers all; bid2 paints cell 2 with other color
-    prog = "out_block(0,0,3,1).\nout_block(0,2,1,2).\n"
+    # bid0 Off0 len3 covers all; bid2 Off0 paints cell 2 with other color
+    prog = "out_block(0,0,0,3,1).\nout_block(0,2,0,1,2).\n"
     try:
         apply_object_program(
             prog, enc.bk_path, enc.train, block_geometry=enc.block_geometry

@@ -34,7 +34,8 @@ PREDICATES: Tuple[Predicate, ...] = (
     # heads
     Predicate("out", 3, ("ex", "position", "value"), "head", frozenset()),
     # Object head: anchor input block id + output length/color (pixel start is decode-only).
-    Predicate("out_block", 4, ("ex", "block_id", "size", "value"), "head_object", frozenset()),
+    Predicate("out_block", 5, ("ex", "block_id", "size", "size", "value"), "head_object", frozenset()),
+    # out_block(E, Bid, Off, Len, Color): paint at start(Bid)+Off.
     # pixel
     Predicate("in", 3, ("ex", "position", "value"), "pixel", frozenset({3})),
     Predicate("empty", 2, ("ex", "position"), "pixel", frozenset({3})),

@@ -1,9 +1,9 @@
-max_vars(6).
+max_vars(7).
 max_body(5).
 max_clauses(2).
 enable_multi_clause.
 
-head_pred(out_block,4).
+head_pred(out_block,5).
 body_pred(block,4).
 body_pred(largest,2).
 body_pred(non_largest,2).
@@ -11,6 +11,7 @@ body_pred(size_even,1).
 body_pred(size_odd,1).
 body_pred(C,1):- constant(C,_).
 
+constant(s0, 'size').
 constant(v0, 'value').
 constant(v1, 'value').
 constant(v2, 'value').
@@ -31,7 +32,7 @@ constant(s7, 'size').
 constant(s8, 'size').
 constant(s9, 'size').
 
-type(out_block,('ex', 'block_id', 'size', 'value')).
+type(out_block,('ex', 'block_id', 'size', 'size', 'value')).
 type(block,('ex', 'block_id', 'size', 'value')).
 type(largest,('ex', 'block_id')).
 type(non_largest,('ex', 'block_id')).
