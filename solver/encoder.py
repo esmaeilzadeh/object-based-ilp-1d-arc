@@ -286,7 +286,7 @@ def _block_and_derived(
             bb = _bid(bid, t)
             if L == max_L:
                 facts.append(f"largest({ex},{bb}).")
-            elif not lean:
+            else:
                 facts.append(f"non_largest({ex},{bb}).")
                 if cell:
                     s, e, c = runs[bid]

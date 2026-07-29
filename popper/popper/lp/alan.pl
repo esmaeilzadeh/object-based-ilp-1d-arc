@@ -5,6 +5,7 @@
 #defined direction_/3.
 #defined type/2.
 #defined non_datalog/0.
+#defined enable_multi_clause/0.
 
 #show body_literal/4.
 
@@ -39,6 +40,21 @@ head_literal(0,P,A,Vars):-
     vars(A,Vars),
     not bad_body(P,Vars),
     not type_mismatch(P,Vars).
+
+%% Non-recursive multi-clause: Rule 1+ reuses same head pred.
+0 {head_literal(Rule,P,A,Vars): head_vars(A,Vars), head_pred(P,A)} 1:-
+    Rule = 1..N-1,
+    max_clauses(N),
+    enable_multi_clause.
+
+{body_literal(Rule,P,A,Vars)}:-
+    clause(Rule),
+    Rule > 0,
+    body_pred(P,A),
+    vars(A,Vars),
+    not bad_body(P,Vars),
+    not type_mismatch(P,Vars),
+    enable_multi_clause.
 
 type_mismatch(P,Vars):-
     var_pos(Var,Vars,Pos),

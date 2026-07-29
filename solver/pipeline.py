@@ -157,20 +157,23 @@ def solve(
         # Denoise vocab first (fails fast when inapplicable, <1s when applicable),
         # then fill/merge vocab with the remaining budget (needs ~120s+).
         if include_blocks:
+            # (bias_file, work_dir_name, max_seconds_cap_or_None)
             stages = (
-                ("object_denoise.pl", "popper_object_denoise"),
-                ("object_recolor.pl", "popper_object_recolor"),
-                ("object.pl", "popper_object"),
+                ("object_denoise.pl", "popper_object_denoise", 10),
+                ("object_recolor.pl", "popper_object_recolor", 15),
+                ("object_recolor_sz.pl", "popper_object_recolor_sz", 30),
+                ("object.pl", "popper_object", None),
             )
-            for bias_name, work_name in stages:
+            for bias_name, work_name, cap in stages:
                 rem = _remaining()
                 if rem <= 0:
                     break
+                budget = min(rem, cap) if cap else rem
                 prog = induce(
                     encoded.exs_object_path,
                     encoded.bk_path,
                     _BIAS / bias_name,
-                    rem,
+                    budget,
                     work_dir / work_name,
                 )
                 if prog:

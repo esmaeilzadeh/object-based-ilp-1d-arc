@@ -471,7 +471,10 @@ class Settings:
         self.logger.debug(f'Max vars: {self.max_vars}')
         self.logger.debug(f'Max body: {self.max_body}')
 
-        self.single_solve = not (self.recursion_enabled or self.pi_enabled)
+        self.multi_clause = any(
+            True for _ in solver.symbolic_atoms.by_signature('enable_multi_clause', arity=0)
+        )
+        self.single_solve = not (self.recursion_enabled or self.pi_enabled or self.multi_clause)
 
     def print_incomplete_solution2(self, prog, tp, fn, tn, fp, size):
         self.logger.info('*'*20)

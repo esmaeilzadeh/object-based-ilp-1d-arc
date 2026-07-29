@@ -12,6 +12,7 @@
 #defined non_datalog/0.
 #defined custom_max_size/1.
 #defined enable_multi_clause/0.
+#defined bad_body/2.
 
 #show body_literal/4.
 
