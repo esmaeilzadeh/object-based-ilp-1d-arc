@@ -75,7 +75,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("add", 3, ("position", "position", "position"), "arith", frozenset({3})),
     # Generic size/position sugar for object stage (not task-shaped transforms)
     Predicate("offset_pos", 3, ("position", "size", "position"), "arith", frozenset({2, 3, 4})),
-    Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3})),
+    Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3, 4})),
     # Ternary size sum for object-head (typed path); not a block-merge prior.
     Predicate("size_sum3", 4, ("size", "size", "size", "size"), "arith", frozenset({4})),
     # Parity on size values — block-neutral, no answer leak.
@@ -127,6 +127,9 @@ OBJECT_FILL_ALLOWLIST: FrozenSet[str] = frozenset(
 OBJECT_PADDED_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "gap", "obj_pair", "size_sum3"}
 )
+OBJECT_SCALE_ALLOWLIST: FrozenSet[str] = frozenset(
+    {"block", "largest", "non_largest", "obj_succ", "gap", "size_add"}
+)
 OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "largest", "component_start", "component_len"}
 )
@@ -136,6 +139,7 @@ OBJECT_RECOLOR_ALLOWLIST: FrozenSet[str] = frozenset(
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     OBJECT_FILL_ALLOWLIST
     | OBJECT_PADDED_ALLOWLIST
+    | OBJECT_SCALE_ALLOWLIST
     | OBJECT_DENOISE_ALLOWLIST
     | OBJECT_RECOLOR_ALLOWLIST
 )

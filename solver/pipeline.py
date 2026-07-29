@@ -164,6 +164,7 @@ def solve(
                 ("object_recolor_cnt.pl", "popper_object_recolor_cnt", 30),
                 ("object_recolor_sz.pl", "popper_object_recolor_sz", 30),
                 ("object_padded.pl", "popper_object_padded", 90),
+                ("object_scale.pl", "popper_object_scale", 90),
                 ("object.pl", "popper_object", None),
             )
             for bias_name, work_name, cap in stages:

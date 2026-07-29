@@ -278,6 +278,12 @@ def _block_and_derived(
                 facts.append(
                     f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
                 )
+            # Binary size_add for grow-to-next (scale): La+G and G+Lb.
+            for x, y in ((La, g), (g, Lb), (La, Lb)):
+                s = x + y
+                if s <= w:
+                    facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
+                    observed_sizes.add(s)
     else:
         for i in range(n_runs):
             for j in range(i + 1, n_runs):

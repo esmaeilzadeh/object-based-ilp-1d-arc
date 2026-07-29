@@ -11,6 +11,7 @@ from solver.predicates import (
     OBJECT_FILL_ALLOWLIST,
     OBJECT_PADDED_ALLOWLIST,
     OBJECT_RECOLOR_ALLOWLIST,
+    OBJECT_SCALE_ALLOWLIST,
     Predicate,
     body_preds_for_level,
     head_pred,
@@ -168,6 +169,30 @@ def render_object_padded_bias(*, max_vars: int = 9, max_body: int = 5) -> str:
     )
 
 
+def render_object_scale_bias(*, max_vars: int = 8, max_body: int = 5) -> str:
+    """Scale-to-next: grow largest by gap via size_add; keep marker (2 clauses)."""
+    allow = OBJECT_SCALE_ALLOWLIST
+    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
+    hp = head_pred_object()
+    all_typed = (hp,) + bodies
+    parts = [
+        "max_vars(%d)." % max_vars,
+        "max_body(%d)." % max_body,
+        "max_clauses(2).",
+        "enable_multi_clause.",
+        "",
+        f"head_pred({hp.name},{hp.arity}).",
+    ]
+    for p in bodies:
+        parts.append(f"body_pred({p.name},{p.arity}).")
+    parts.append("")
+    parts.append("\n".join(f"type({p.name},{p.types})." for p in all_typed))
+    parts.append("")
+    parts.append(_bad_body_for_ex_preds(bodies))
+    parts.append("")
+    return "\n".join(parts) + "\n"
+
+
 def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 4) -> str:
     """Denoise-oriented object bias: ``block`` + ``largest`` + component span."""
     return _object_bias_from_allow(
@@ -282,6 +307,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "object.pl").write_text(render_object_bias())
     (out_dir / "object_denoise.pl").write_text(render_object_denoise_bias())
     (out_dir / "object_padded.pl").write_text(render_object_padded_bias())
+    (out_dir / "object_scale.pl").write_text(render_object_scale_bias())
     (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
     (out_dir / "object_recolor_sz.pl").write_text(
         render_object_recolor_bias(include_size_constants=True, max_vars=6, max_body=5)
