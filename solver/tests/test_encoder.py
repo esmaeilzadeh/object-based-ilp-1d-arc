@@ -76,9 +76,9 @@ def test_in_gap_and_gap_cell():
 
 def test_block_bias_omits_position_and_size_constants():
     text = render_bias(2, max_vars=8, max_body=12)
-    assert "constant(v0, value)." in text
-    assert "constant(c0, position)." not in text
-    assert "constant(s0, size)." not in text
+    assert "constant(v0, 'value')." in text
+    assert "constant(c0, 'position')." not in text
+    assert "constant(s0, 'size')." not in text
     assert "body_pred(pixel_block,3)." in text
     assert "body_pred(non_largest,2)." in text
     assert "body_pred(interior_cell,4)." in text
@@ -112,7 +112,7 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(adjacent,3)." not in text
     assert "body_pred(block_succ,3)." not in text
     assert "body_pred(empty_block,3)." not in text
-    assert "constant(s1, size)." not in text
+    assert "constant(s1, 'size')." not in text
     assert "body_pred(C,1)" not in text
     assert "type(out_block,('ex', 'block_id', 'size', 'value'))." in text
     # Pixel starts are decode metadata only
@@ -130,8 +130,8 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(after_block,3)." not in text
     assert "body_pred(gap_cell,5)." not in text
     assert "body_pred(solid_cell,4)." not in text
-    assert "constant(c0, position)." not in text
-    assert "constant(s0, size)." not in text
+    assert "constant(c0, 'position')." not in text
+    assert "constant(s0, 'size')." not in text
     assert "mirrored_out_block" not in text
 
 
@@ -142,12 +142,13 @@ def test_object_denoise_bias_is_block_plus_largest():
     assert "head_pred(out_block,4)." in text
     assert "body_pred(block,4)." in text
     assert "body_pred(largest,2)." in text
+    assert "body_pred(component_start,2)." in text
+    assert "body_pred(component_len,3)." in text
     assert "body_pred(size_sum3,4)." not in text
     assert "body_pred(gap,4)." not in text
     assert "non_datalog." not in text
     assert "max_clauses(1)." in text
-    assert "max_body(3)." in text
-
+    assert "max_body(4)." in text
 
 def test_no_marker_geometry_hacks_in_bk():
     # Former mirror-style row: must not emit banned marker/reflect facts
@@ -182,8 +183,8 @@ def test_pixel_bias_paper_parity():
 
 def test_dual_bias_keeps_position_arith_and_rank():
     text = render_bias(3, max_vars=9, max_body=16)
-    assert "constant(c0, position)." in text
-    assert "constant(r1, rank)." in text
+    assert "constant(c0, 'position')." in text
+    assert "constant(r1, 'rank')." in text
     assert "body_pred(size_lt,2)." in text
     assert "type(len_rank,('ex', 'block_id', 'rank'))." in text
     assert "type(obj_index,('ex', 'block_id', 'rank'))." in text
