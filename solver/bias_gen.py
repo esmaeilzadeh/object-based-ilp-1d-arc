@@ -43,24 +43,28 @@ def _constants_for_level(level: int) -> list[str]:
 
     Object bias (level 4) omits value/position constants — colors bind from
     ``block/4``. Expose ``s1`` only so ILP can write a dedicated length-1 clause.
+
+    Type names are single-quoted so they match ``Predicate.types`` atoms emitted
+    by ``_types_block`` (Clingo strings). Unquoted atoms would type-mismatch
+    against quoted head types and silently ban constant body literals.
     """
     lines = []
     if level != 4:
         for i in range(10):
-            lines.append(f"constant(v{i}, value).")
+            lines.append(f"constant(v{i}, 'value').")
     if level >= 3 and level != 4:
         for i in range(10):
-            lines.append(f"constant(c{i}, position).")
+            lines.append(f"constant(c{i}, 'position').")
         for i in range(10):
-            lines.append(f"constant(s{i}, size).")
+            lines.append(f"constant(s{i}, 'size').")
         for i in range(1, 10):
-            lines.append(f"constant(r{i}, rank).")
+            lines.append(f"constant(r{i}, 'rank').")
     if level == 4:
         # Length-1 constant only; colors/sizes bind from block/size_sum3 facts.
-        lines.append("constant(s1, size).")
+        lines.append("constant(s1, 'size').")
     if level != 4:
-        lines.append("constant(left, edge).")
-        lines.append("constant(right, edge).")
+        lines.append("constant(left, 'edge').")
+        lines.append("constant(right, 'edge').")
     return lines
 
 
@@ -163,8 +167,13 @@ def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
     )
 
 
-def render_object_recolor_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
-    """Recolor-oriented object bias: needs 2 clauses + color constants."""
+def render_object_recolor_bias(
+    *,
+    max_vars: int = 6,
+    max_body: int = 3,
+    include_size_constants: bool = False,
+) -> str:
+    """Recolor-oriented object bias: multi-clause + color constants."""
     allow = OBJECT_RECOLOR_ALLOWLIST
     bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
     hp = head_pred_object()
@@ -173,6 +182,7 @@ def render_object_recolor_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
         f"max_vars({max_vars}).",
         f"max_body({max_body}).",
         "max_clauses(2).",
+        "enable_multi_clause.",
         "",
         f"head_pred({hp.name},{hp.arity}).",
     ]
@@ -180,8 +190,12 @@ def render_object_recolor_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
         parts.append(f"body_pred({p.name},{p.arity}).")
     parts.append("body_pred(C,1):- constant(C,_).")
     parts.append("")
+    # Quote type names to match Predicate.types / _types_block (Clingo strings).
     for i in range(10):
-        parts.append(f"constant(v{i}, value).")
+        parts.append(f"constant(v{i}, 'value').")
+    if include_size_constants:
+        for i in range(1, 10):
+            parts.append(f"constant(s{i}, 'size').")
     parts.append("")
     type_lines = "\n".join(f"type({p.name},{p.types})." for p in all_typed)
     parts.append(type_lines)
@@ -254,6 +268,9 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "object.pl").write_text(render_object_bias())
     (out_dir / "object_denoise.pl").write_text(render_object_denoise_bias())
     (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
+    (out_dir / "object_recolor_sz.pl").write_text(
+        render_object_recolor_bias(include_size_constants=True, max_vars=6, max_body=5)
+    )
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 

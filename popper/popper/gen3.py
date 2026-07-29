@@ -120,8 +120,8 @@ class Generator:
 
         encoding = '\n'.join(encoding)
 
-        # with open('ENCODING-GEN.pl', 'w') as f:
-            # f.write(encoding)
+        with open('/workspace/work/ENCODING-GEN.pl', 'w') as f:
+            f.write(encoding)
 
         if self.settings.single_solve:
             solver = clingo.Control(['--heuristic=Domain','-Wnone'])
@@ -396,15 +396,29 @@ class Generator:
                 bases.append(frozenset(body))
 
         recs = []
-        rec = [rule for rule in prog if rule_is_recursive(rule)][0]
-        handle = self.make_rule_handle(rec)
-        if handle in self.seen_handles:
-            recs.append(frozenset([(True, 'seen_rule', (handle, 1))]))
+        rec_rules = [rule for rule in prog if rule_is_recursive(rule)]
+        if rec_rules:
+            rec = rec_rules[0]
+            handle = self.make_rule_handle(rec)
+            if handle in self.seen_handles:
+                recs.append(frozenset([(True, 'seen_rule', (handle, 1))]))
+            else:
+                self.new_seen_rules.update(self.build_seen_rule2(rec, True))
+                for body in self.find_variants3(rec, ruleid=1):
+                    body = list(body)
+                    recs.append(frozenset(body))
         else:
-            self.new_seen_rules.update(self.build_seen_rule2(rec, True))
-            for body in self.find_variants3(rec, ruleid=1):
-                body = list(body)
-                recs.append(frozenset(body))
+            non_base = [rule for rule in prog if rule != base]
+            if non_base:
+                rule2 = non_base[0]
+                handle = self.make_rule_handle(rule2)
+                if handle in self.seen_handles:
+                    recs.append(frozenset([(True, 'seen_rule', (handle, 1))]))
+                else:
+                    self.new_seen_rules.update(self.build_seen_rule2(rule2, False))
+                    for body in self.find_variants3(rule2, ruleid=1):
+                        body = list(body)
+                        recs.append(frozenset(body))
 
         for r1 in bases:
             for r2 in recs:
@@ -458,22 +472,43 @@ class Generator:
                 con.append((True, 'body_size', (0, len(base_body))))
                 bases.append(frozenset(con))
 
-        rec = [rule for rule in prog if rule_is_recursive(rule)][0]
-        rec_head, rec_body = rec
         recs = []
-        handle = self.make_rule_handle(rec)
-        if handle in self.seen_handles:
-            con = []
-            con.append((True, 'seen_rule', (handle, 1)))
-            con.append((True, 'body_size', (1, len(rec_body))))
-            bases.append(frozenset(con))
-        else:
-            self.new_seen_rules.update(self.build_seen_rule2(rec, True))
-            for variant in self.find_variants3(rec, ruleid=1, max_rule_vars=True):
+        rec_rules = [rule for rule in prog if rule_is_recursive(rule)]
+        if rec_rules:
+            rec = rec_rules[0]
+            rec_head, rec_body = rec
+            handle = self.make_rule_handle(rec)
+            if handle in self.seen_handles:
                 con = []
-                con.extend(variant)
+                con.append((True, 'seen_rule', (handle, 1)))
                 con.append((True, 'body_size', (1, len(rec_body))))
                 recs.append(frozenset(con))
+            else:
+                self.new_seen_rules.update(self.build_seen_rule2(rec, True))
+                for variant in self.find_variants3(rec, ruleid=1, max_rule_vars=True):
+                    con = []
+                    con.extend(variant)
+                    con.append((True, 'body_size', (1, len(rec_body))))
+                    recs.append(frozenset(con))
+        else:
+            # Non-recursive multi-clause (enable_multi_clause).
+            non_base = [rule for rule in prog if rule != base]
+            if non_base:
+                rule2 = non_base[0]
+                _h2, body2 = rule2
+                handle = self.make_rule_handle(rule2)
+                if handle in self.seen_handles:
+                    con = []
+                    con.append((True, 'seen_rule', (handle, 1)))
+                    con.append((True, 'body_size', (1, len(body2))))
+                    recs.append(frozenset(con))
+                else:
+                    self.new_seen_rules.update(self.build_seen_rule2(rule2, False))
+                    for variant in self.find_variants3(rule2, ruleid=1, max_rule_vars=True):
+                        con = []
+                        con.extend(variant)
+                        con.append((True, 'body_size', (1, len(body2))))
+                        recs.append(frozenset(con))
 
         for r1 in bases:
             for r2 in recs:
@@ -527,22 +562,42 @@ class Generator:
                 con.append((True, 'body_size', (0, len(base_body))))
                 bases.append(frozenset(con))
 
-        rec = [rule for rule in prog if rule_is_recursive(rule)][0]
-        rec_head, rec_body = rec
         recs = []
-        handle = self.make_rule_handle(rec)
-        if handle in self.seen_handles:
-            con = []
-            con.append((True, 'seen_rule', (handle, 1)))
-            con.append((True, 'body_size', (1, len(rec_body))))
-            bases.append(frozenset(con))
-        else:
-            self.new_seen_rules.update(self.build_seen_rule2(rec, True))
-            for variant in self.find_variants3(rec, ruleid=1, max_rule_vars=True):
+        rec_rules = [rule for rule in prog if rule_is_recursive(rule)]
+        if rec_rules:
+            rec = rec_rules[0]
+            rec_head, rec_body = rec
+            handle = self.make_rule_handle(rec)
+            if handle in self.seen_handles:
                 con = []
-                con.extend(variant)
+                con.append((True, 'seen_rule', (handle, 1)))
                 con.append((True, 'body_size', (1, len(rec_body))))
                 recs.append(frozenset(con))
+            else:
+                self.new_seen_rules.update(self.build_seen_rule2(rec, True))
+                for variant in self.find_variants3(rec, ruleid=1, max_rule_vars=True):
+                    con = []
+                    con.extend(variant)
+                    con.append((True, 'body_size', (1, len(rec_body))))
+                    recs.append(frozenset(con))
+        else:
+            non_base = [rule for rule in prog if rule != base]
+            if non_base:
+                rule2 = non_base[0]
+                _h2, body2 = rule2
+                handle = self.make_rule_handle(rule2)
+                if handle in self.seen_handles:
+                    con = []
+                    con.append((True, 'seen_rule', (handle, 1)))
+                    con.append((True, 'body_size', (1, len(body2))))
+                    recs.append(frozenset(con))
+                else:
+                    self.new_seen_rules.update(self.build_seen_rule2(rule2, False))
+                    for variant in self.find_variants3(rule2, ruleid=1, max_rule_vars=True):
+                        con = []
+                        con.extend(variant)
+                        con.append((True, 'body_size', (1, len(body2))))
+                        recs.append(frozenset(con))
 
         for r1 in bases:
             for r2 in recs:

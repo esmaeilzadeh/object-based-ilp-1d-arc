@@ -11,6 +11,7 @@
 #defined enable_recursion/0.
 #defined non_datalog/0.
 #defined custom_max_size/1.
+#defined enable_multi_clause/0.
 
 #show body_literal/4.
 
@@ -36,11 +37,11 @@ pi_or_rec_enabled:-
 pi_or_rec_enabled:-
     enable_recursion.
 
-%% Allow multi-clause programs for non-recursive multi-head learning.
-%% Original constraint disabled to support recolor-style tasks.
-%% :-
-%%     clause(1),
-%%     not pi_or_rec.
+%% Allow multi-clause when enable_multi_clause is set; otherwise prohibit.
+:-
+    clause(1),
+    not pi_or_rec,
+    not enable_multi_clause.
 
 %% AC: @DC, this constraint might mess up the work on negation
 :-
@@ -87,7 +88,8 @@ head_literal(0,P,A,Vars):-
 0 {head_literal(Rule,P,A,Vars): head_vars(A,Vars), head_pred(P,A)} 1:-
     Rule = 1..N-1,
     max_clauses(N),
-    not pi_or_rec_enabled.
+    not pi_or_rec_enabled,
+    enable_multi_clause.
 
 1 {body_literal(Rule,P,A,Vars): body_aux(P,A), vars(A,Vars), not bad_body(P,A,Vars), not type_mismatch(P,Vars)} M :-
     clause(Rule),
@@ -102,7 +104,8 @@ head_literal(0,P,A,Vars):-
     Rule > 0,
     max_body(M),
     not enable_recursion,
-    not enable_pi.
+    not enable_pi,
+    enable_multi_clause.
 
 
 %% 0 {body_literal(Rule,P,A,Vars): body_aux(P,A), vars(A,Vars), not bad_body(P,A,Vars), not type_mismatch(P,Vars)} M :-
@@ -146,6 +149,11 @@ bad_body(P,A,Vars2):-
     var_pos(Var,Vars2,Pos2),
     direction_(P,Pos1,in),
     direction_(P,Pos2,in).
+%% Bridge bias-file bad_body/2 into alan-old's bad_body/3.
+bad_body(P,A,Vars):-
+    bad_body(P,Vars),
+    body_pred(P,A),
+    vars(A,Vars).
 
 type_mismatch(P,Vars):-
     var_pos(Var,Vars,Pos),

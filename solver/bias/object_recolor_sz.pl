@@ -1,5 +1,5 @@
 max_vars(6).
-max_body(3).
+max_body(5).
 max_clauses(2).
 enable_multi_clause.
 
@@ -21,6 +21,15 @@ constant(v6, 'value').
 constant(v7, 'value').
 constant(v8, 'value').
 constant(v9, 'value').
+constant(s1, 'size').
+constant(s2, 'size').
+constant(s3, 'size').
+constant(s4, 'size').
+constant(s5, 'size').
+constant(s6, 'size').
+constant(s7, 'size').
+constant(s8, 'size').
+constant(s9, 'size').
 
 type(out_block,('ex', 'block_id', 'size', 'value')).
 type(block,('ex', 'block_id', 'size', 'value')).

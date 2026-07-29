@@ -31,18 +31,18 @@ body_pred(solid_cell,4).
 body_pred(gap_cell,5).
 body_pred(C,1):- constant(C,_).
 
-constant(v0, value).
-constant(v1, value).
-constant(v2, value).
-constant(v3, value).
-constant(v4, value).
-constant(v5, value).
-constant(v6, value).
-constant(v7, value).
-constant(v8, value).
-constant(v9, value).
-constant(left, edge).
-constant(right, edge).
+constant(v0, 'value').
+constant(v1, 'value').
+constant(v2, 'value').
+constant(v3, 'value').
+constant(v4, 'value').
+constant(v5, 'value').
+constant(v6, 'value').
+constant(v7, 'value').
+constant(v8, 'value').
+constant(v9, 'value').
+constant(left, 'edge').
+constant(right, 'edge').
 
 type(out,('ex', 'position', 'value')).
 type(block,('ex', 'block_id', 'size', 'value')).
