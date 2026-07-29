@@ -171,17 +171,23 @@ def render_object_recolor_bias(
     *,
     max_vars: int = 6,
     max_body: int = 3,
+    max_clauses: int = 2,
     include_size_constants: bool = False,
+    lean_block_only: bool = False,
 ) -> str:
-    """Recolor-oriented object bias: multi-clause + color constants."""
-    allow = OBJECT_RECOLOR_ALLOWLIST
+    """Recolor-oriented object bias: multi-clause + color constants.
+
+    ``lean_block_only`` drops largest/parity preds (for count→color with
+    size constants and ``max_clauses`` ≥ 3).
+    """
+    allow = frozenset({"block"}) if lean_block_only else OBJECT_RECOLOR_ALLOWLIST
     bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
     hp = head_pred_object()
     all_typed = (hp,) + bodies
     parts = [
         f"max_vars({max_vars}).",
         f"max_body({max_body}).",
-        "max_clauses(2).",
+        f"max_clauses({max_clauses}).",
         "enable_multi_clause.",
         "",
         f"head_pred({hp.name},{hp.arity}).",
@@ -270,6 +276,16 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
     (out_dir / "object_recolor_sz.pl").write_text(
         render_object_recolor_bias(include_size_constants=True, max_vars=6, max_body=5)
+    )
+    # Count→color: three size→color clauses; lean vocab keeps search tiny.
+    (out_dir / "object_recolor_cnt.pl").write_text(
+        render_object_recolor_bias(
+            include_size_constants=True,
+            lean_block_only=True,
+            max_vars=5,
+            max_body=3,
+            max_clauses=3,
+        )
     )
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 

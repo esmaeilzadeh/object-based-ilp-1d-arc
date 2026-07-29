@@ -590,7 +590,10 @@ class Settings:
 
     def tmp_score_(self, seen_vars, literal):
         pred, args = literal
-        return self.recall[pred, tuple(1 if x in seen_vars else 0 for x in args)]
+        key = (pred, tuple(1 if x in seen_vars else 0 for x in args))
+        # Missing recall (no directions / bkcons) — treat as large so grounded
+        # literals are preferred when any exist; otherwise pick arbitrarily.
+        return self.recall.get(key, 10**9)
 
 # def non_empty_powerset(iterable):
 #     s = tuple(iterable)

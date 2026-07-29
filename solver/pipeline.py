@@ -161,6 +161,7 @@ def solve(
             stages = (
                 ("object_denoise.pl", "popper_object_denoise", 10),
                 ("object_recolor.pl", "popper_object_recolor", 15),
+                ("object_recolor_cnt.pl", "popper_object_recolor_cnt", 30),
                 ("object_recolor_sz.pl", "popper_object_recolor_sz", 30),
                 ("object.pl", "popper_object", None),
             )
