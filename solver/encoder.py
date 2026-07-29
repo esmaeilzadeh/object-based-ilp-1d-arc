@@ -14,6 +14,22 @@ PathLike = Union[str, Path]
 
 # Predicates lean BK may emit (bias allowlist + no side tables).
 _LEAN_EMIT_ALLOW = OBJECT_BODY_ALLOWLIST
+# Ground arith with no ex arg — safe to dedupe across examples.
+_EX_FREE_BK = frozenset({"size_sum"})
+
+
+def _dedupe_sorted_bk(lines: Sequence[str]) -> List[str]:
+    """Sort by predicate; drop duplicate ex-free arith facts."""
+    seen_free: set = set()
+    out: List[str] = []
+    for f in sorted(lines, key=lambda x: x.split("(", 1)[0]):
+        pred = f.split("(", 1)[0]
+        if pred in _EX_FREE_BK:
+            if f in seen_free:
+                continue
+            seen_free.add(f)
+        out.append(f)
+    return out
 
 
 @dataclass
@@ -126,7 +142,7 @@ def _block_and_derived(
     / ``mid`` — pixel starts live in Python ``block_geometry`` for decode only.
 
     On ``typed_roles`` (block-primary): lean geometry only — ``obj_succ``-only
-    ``gap``, ``size_sum3`` for obj_succ triples (no width² ``size_add``), and
+    ``gap``, binary ``size_sum`` over observed sizes (no width² ``size_add``), and
     bias-allowlisted preds only (``OBJECT_BODY_ALLOWLIST``).
     """
     t = typed_roles
@@ -236,17 +252,25 @@ def _block_and_derived(
             g = s2 - e1 - 1
             facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
             observed_sizes.add(g)
-        # Ternary length sum for each colored succession (arithmetic only).
+        # Binary size_sum (A+B=S): pair-local steps for each obj_succ so
+        # La+G and (La+G)+Lb compose without a full width² table.
         for a, b in zip(colored_ids, colored_ids[1:]):
             La, Lb = lengths[a], lengths[b]
             _s1, e1, _ = runs[a]
             s2, _e2, _ = runs[b]
             g = s2 - e1 - 1
-            total = La + g + Lb
+            mid = La + g
+            total = mid + Lb
+            if mid <= w:
+                facts.append(
+                    f"size_sum({_sz(La, t)},{_sz(g, t)},{_sz(mid, t)})."
+                )
+                observed_sizes.add(mid)
             if total <= w:
                 facts.append(
-                    f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
+                    f"size_sum({_sz(mid, t)},{_sz(Lb, t)},{_sz(total, t)})."
                 )
+                observed_sizes.add(total)
     else:
         for i in range(n_runs):
             for j in range(i + 1, n_runs):
@@ -599,8 +623,9 @@ def encode_instance(
     test_bk = _bk_lines_for(test, **bk_kw)
     if typed_roles:
         # Group by predicate so SWI does not warn on interleaved examples.
-        train_bk = sorted(train_bk, key=lambda f: f.split("(", 1)[0])
-        test_bk = sorted(test_bk, key=lambda f: f.split("(", 1)[0])
+        # Dedupe ex-free arith (size_sum) repeated across examples.
+        train_bk = _dedupe_sorted_bk(train_bk)
+        test_bk = _dedupe_sorted_bk(test_bk)
 
     bk_path = out_dir / "bk.pl"
     test_bk_path = out_dir / "test_bk.pl"

@@ -94,14 +94,15 @@ def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
-    assert "max_vars(10)." in text
-    assert "max_body(5)." in text
+    assert "max_vars(12)." in text
+    assert "max_body(6)." in text
     assert "max_clauses(1)." in text
     assert ":- not body_var(_,1)." in text
     # Datalog-safe: head vars must appear in body (no Len-unbound junk).
     assert "non_datalog." not in text
     assert "body_pred(block,4)." in text
-    assert "body_pred(size_sum3,4)." in text
+    assert "body_pred(size_sum,3)." in text
+    assert "body_pred(size_sum3,4)." not in text
     assert "body_pred(size_add,3)." not in text
     assert "body_pred(left_of,3)." not in text
     assert "body_pred(gap,4)." in text
@@ -142,7 +143,7 @@ def test_object_denoise_bias_is_block_plus_largest():
     assert "head_pred(out_block,4)." in text
     assert "body_pred(block,4)." in text
     assert "body_pred(largest,2)." in text
-    assert "body_pred(size_sum3,4)." not in text
+    assert "body_pred(size_sum,3)." not in text
     assert "body_pred(gap,4)." not in text
     assert "non_datalog." not in text
     assert "max_clauses(1)." in text
@@ -249,11 +250,15 @@ def test_typed_roles_on_block_primary_encode(tmp_path: Path):
     bk = enc.bk_path.read_text()
     assert "block(0,b0,s1,v7)." in bk
     assert "gap(0,b0,b2,s1)." in bk
-    assert "size_sum3(s1,s1,s1,s3)." in bk
+    assert "size_sum(s1,s1,s2)." in bk
+    assert "size_sum(s2,s1,s3)." in bk
+    assert "size_sum3(" not in bk
     assert "obj_succ(0,b0,b2)." in bk
     assert "largest(0,b0)." in bk
     assert "largest(0,b2)." in bk
     assert "size_add(" not in bk
+    # Pair-local only — not a full 0..w table
+    assert bk.count("size_sum(") <= 4
     assert "left_of(" not in bk
     assert "size_lt(" not in bk
     assert "block(0,0,1,7)." not in bk
@@ -295,7 +300,9 @@ def test_lean_block_facts_obj_succ_only_gaps():
     facts = _facts([2, 2, 0, 0, 5, 5], typed_roles=True)
     assert "obj_succ(0,b0,b2)." in facts
     assert "gap(0,b0,b2,s2)." in facts
-    assert "size_sum3(s2,s2,s2,s6)." in facts
+    assert "size_sum(s2,s2,s4)." in facts
+    assert "size_sum(s4,s2,s6)." in facts
+    assert "size_sum3(" not in "\n".join(facts)
     joined = "\n".join(facts)
     assert "block_succ(" not in joined
     assert "empty_block(" not in joined
