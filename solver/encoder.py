@@ -8,8 +8,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from solver.grid import flatten, segment_all_runs, segment_blocks
+from solver.predicates import OBJECT_BODY_ALLOWLIST
 
 PathLike = Union[str, Path]
+
+# Predicates lean BK may emit (bias allowlist + no side tables).
+_LEAN_EMIT_ALLOW = OBJECT_BODY_ALLOWLIST
 
 
 @dataclass
@@ -121,9 +125,9 @@ def _block_and_derived(
     ``include_pixel_anchors`` (False on block-primary): omit ``block_start`` / ``block_end``
     / ``mid`` — pixel starts live in Python ``block_geometry`` for decode only.
 
-    On ``typed_roles`` (block-primary): lean geometry only — succ-pair ``gap``,
-    ``size_sum3`` for obj_succ triples (no width² ``size_add``), and bias-allowlisted
-    preds only.
+    On ``typed_roles`` (block-primary): lean geometry only — ``obj_succ``-only
+    ``gap``, ``size_sum3`` for obj_succ triples (no width² ``size_add``), and
+    bias-allowlisted preds only (``OBJECT_BODY_ALLOWLIST``).
     """
     t = typed_roles
     cell = include_cell_bridges
@@ -178,15 +182,16 @@ def _block_and_derived(
                 facts.append(f"before_block({ex},{bb},{_pos(s - 1, t)}).")
 
         if c == 0:
-            facts.append(f"empty_block({ex},{bb},{_sz(L, t)}).")
+            if not lean:
+                facts.append(f"empty_block({ex},{bb},{_sz(L, t)}).")
             if cell:
                 for p in range(s, e + 1):
                     facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
             continue
 
         facts.append(f"block({ex},{bb},{_sz(L, t)},{_col(c, t)}).")
-        facts.append(f"block_len({ex},{bb},{_sz(L, t)}).")
         if not lean:
+            facts.append(f"block_len({ex},{bb},{_sz(L, t)}).")
             facts.append(f"obj_index({ex},{bb},{_rank(obj_k, t)}).")
         obj_k += 1
         colored_lengths.append((L, bid))
@@ -202,8 +207,9 @@ def _block_and_derived(
                 else:
                     facts.append(f"interior_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
 
-    for i in range(n_runs - 1):
-        facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
+    if not lean:
+        for i in range(n_runs - 1):
+            facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
         facts.append(f"obj_succ({ex},{_bid(a, t)},{_bid(b, t)}).")
 
@@ -222,19 +228,14 @@ def _block_and_derived(
                     facts.append(f"same_len({ex},{bi},{bj}).")
 
     if lean:
-        # Succ-only gaps (run neighbors + consecutive colored objects).
-        gap_pairs = {(i, i + 1) for i in range(n_runs - 1)}
-        gap_pairs.update(zip(colored_ids, colored_ids[1:]))
-        for i, j in sorted(gap_pairs):
-            s1, e1, _c1 = runs[i]
-            s2, e2, _c2 = runs[j]
-            bi, bj = _bid(i, t), _bid(j, t)
+        # Obj_succ-only gaps (drop neighbor-only empty/run gaps — search clutter).
+        for a, b in zip(colored_ids, colored_ids[1:]):
+            _s1, e1, _c1 = runs[a]
+            s2, _e2, _c2 = runs[b]
+            bi, bj = _bid(a, t), _bid(b, t)
             g = s2 - e1 - 1
             facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
             observed_sizes.add(g)
-            if g == 0:
-                facts.append(f"adjacent({ex},{bi},{bj}).")
-                facts.append(f"adjacent({ex},{bj},{bi}).")
         # Ternary length sum for each colored succession (arithmetic only).
         for a, b in zip(colored_ids, colored_ids[1:]):
             La, Lb = lengths[a], lengths[b]
@@ -327,6 +328,13 @@ def _block_and_derived(
             if n == 1:
                 facts.append(f"unique_color({ex},{_col(c, t)}).")
 
+    if lean:
+        # Belt-and-suspenders: BK emit == bias allowlist (drop stray preds).
+        facts = [
+            f
+            for f in facts
+            if any(f.startswith(n + "(") for n in _LEAN_EMIT_ALLOW)
+        ]
     return facts
 
 
@@ -430,11 +438,8 @@ def _bk_lines_for(
     if include_pixels:
         lines.extend(_arith_ground(max_w))
     elif include_blocks and typed_roles:
-        # Role atoms for size/value (and positions only if anchors were emitted).
-        for i in range(max(max_w, 1) + 1):
-            lines.append(f"size_atom({_sz(i, True)}).")
-        for i in range(10):
-            lines.append(f"value_atom({_col(i, True)}).")
+        # Lean block-primary: no size_atom/value_atom tables (not searchable BK).
+        pass
     else:
         lines.extend(_arith_ground(max_w))
     return lines
@@ -449,8 +454,11 @@ def _exs_out_blocks(
     """Object-head examples: pos/neg ``out_block(Ex, Bid, Len, Color)``.
 
     ``Bid`` is an input run id (anchor); pixel start is decode metadata only.
-    Negatives: wrong color at each true (Bid,Len), plus other (Bid,Len) over
-    **colored** input bids only (empty runs omitted) with train-output colors.
+
+    Typed (block-primary) negatives stay compact but sufficient:
+    wrong color at each true (Bid,Len), wrong lengths at true Bid over
+    observed sizes (input lens + merge totals), and identity input blocks.
+    Non-typed path keeps denser cartesian negs for dual/ladder experiments.
     """
     t = typed_roles
     pos: List[str] = []
@@ -462,6 +470,18 @@ def _exs_out_blocks(
         true_blocks: List[Tuple[int, int, int]] = []  # bid, L, c
         true_set: set = set()
         colors_used: set = set()
+        observed_sizes: set = set()
+        for bid, (s, e, c) in enumerate(runs):
+            if c == 0:
+                continue
+            L = e - s + 1
+            observed_sizes.add(L)
+        for a, b in zip(colored_bids, colored_bids[1:]):
+            La = runs[a][1] - runs[a][0] + 1
+            Lb = runs[b][1] - runs[b][0] + 1
+            g = runs[b][0] - runs[a][1] - 1
+            observed_sizes.add(g)
+            observed_sizes.add(La + g + Lb)
         for s, e, c in segment_blocks(eg.out):
             L = e - s + 1
             bid = anchor_input_block(eg.inp, s, e)
@@ -470,6 +490,7 @@ def _exs_out_blocks(
             true_blocks.append((bid, L, c))
             true_set.add((bid, L, c))
             colors_used.add(c)
+            observed_sizes.add(L)
             pos.append(
                 f"pos(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)}))."
             )
@@ -481,15 +502,44 @@ def _exs_out_blocks(
                     )
         if not colors_used or not colored_bids:
             continue
-        w = len(eg.out)
-        for bid in colored_bids:
-            for L in range(1, w + 1):
-                for c in colors_used:
-                    if (bid, L, c) not in true_set:
-                        neg.append(
-                            f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)}))."
-                        )
-    return pos + neg
+        if typed_roles:
+            # Wrong lengths at true Bid with true color (observed sizes only).
+            for bid, L, c in true_blocks:
+                for L2 in sorted(observed_sizes):
+                    if L2 < 1 or L2 == L:
+                        continue
+                    if (bid, L2, c) in true_set:
+                        continue
+                    neg.append(
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L2, t)},{_col(c, t)}))."
+                    )
+            # Identity: each input colored block that is not a true out_block.
+            for bid, (s, e, c) in enumerate(runs):
+                if c == 0:
+                    continue
+                Lin = e - s + 1
+                if (bid, Lin, c) not in true_set:
+                    neg.append(
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(Lin, t)},{_col(c, t)}))."
+                    )
+        else:
+            w = len(eg.out)
+            for bid in colored_bids:
+                for L in range(1, w + 1):
+                    for c in colors_used:
+                        if (bid, L, c) not in true_set:
+                            neg.append(
+                                f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)}))."
+                            )
+    # Dedupe while preserving order (identity may overlap wrong-len).
+    seen: set = set()
+    out: List[str] = []
+    for line in pos + neg:
+        if line in seen:
+            continue
+        seen.add(line)
+        out.append(line)
+    return out
 
 
 def encode_instance(
@@ -547,6 +597,10 @@ def encode_instance(
     )
     train_bk = _bk_lines_for(train, **bk_kw)
     test_bk = _bk_lines_for(test, **bk_kw)
+    if typed_roles:
+        # Group by predicate so SWI does not warn on interleaved examples.
+        train_bk = sorted(train_bk, key=lambda f: f.split("(", 1)[0])
+        test_bk = sorted(test_bk, key=lambda f: f.split("(", 1)[0])
 
     bk_path = out_dir / "bk.pl"
     test_bk_path = out_dir / "test_bk.pl"

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from solver.predicates import (
+    OBJECT_BODY_ALLOWLIST,
     Predicate,
     body_preds_for_level,
     head_pred,
@@ -52,24 +53,38 @@ def _constants_for_level(level: int) -> list[str]:
         for i in range(1, 10):
             lines.append(f"constant(r{i}, rank).")
     if level == 4:
+        # Length-1 constant only; colors/sizes bind from block/size_sum3 facts.
         lines.append("constant(s1, size).")
-        lines.append("constant(left, edge).")
-        lines.append("constant(right, edge).")
     if level != 4:
         lines.append("constant(left, edge).")
         lines.append("constant(right, edge).")
     return lines
 
 
-def _render(head: Predicate, bodies: Sequence[Predicate], *, max_vars: int, max_body: int, level: int) -> str:
+def _render(
+    head: Predicate,
+    bodies: Sequence[Predicate],
+    *,
+    max_vars: int,
+    max_body: int,
+    level: int,
+    non_datalog: bool = True,
+) -> str:
     all_typed = (head,) + tuple(bodies)
     parts = [
         f"max_vars({max_vars}).",
         f"max_body({max_body}).",
-        "non_datalog.",
-        "",
-        f"head_pred({head.name},{head.arity}).",
     ]
+    # Object-head: keep datalog (head vars must appear in body). non_datalog
+    # enabled unsafe Len-unbound clauses like out_block(_,Len,_,_):-block(_,_,Len,_).
+    if non_datalog:
+        parts.append("non_datalog.")
+    parts.extend(
+        [
+            "",
+            f"head_pred({head.name},{head.arity}).",
+        ]
+    )
     for p in bodies:
         parts.append(f"body_pred({p.name},{p.arity}).")
     parts.append("body_pred(C,1):- constant(C,_).")
@@ -95,33 +110,27 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
 
 
 def render_object_bias(*, max_vars: int = 12, max_body: int = 5) -> str:
-    """Object-head bias: block–block merge vocabulary, enough vars for span rules.
+    """Object-head bias: lean fill/denoise vocabulary, datalog-safe.
 
     Head is ``out_block(Ex, Bid, Len, Color)`` — pixel starts stay in Python decode
     metadata, not body preds. Length composition uses ``size_sum3`` (not ``size_add``).
+
+    Allowlist matches block-primary BK emit (see ``OBJECT_BODY_ALLOWLIST``).
     """
-    allow = {
-        "block",
-        "block_len",
-        "obj_succ",
-        "gap",
-        "size_sum3",
-        "empty_block",
-        "adjacent",
-        "block_succ",
-        "largest",
-    }
-    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
+    bodies = tuple(
+        p for p in body_preds_for_level(4) if p.name in OBJECT_BODY_ALLOWLIST
+    )
     text = _render(
         head_pred_object(),
         bodies,
         max_vars=max_vars,
         max_body=max_body,
         level=4,
+        non_datalog=False,
     )
-    # Multi-clause room + force body vars like paper Decom.
+    # Single-clause target rules; force body vars like paper Decom.
     extra = (
-        "max_clauses(2).\n"
+        "max_clauses(1).\n"
         ":- not body_var(_,1).\n"
         ":- not body_var(_,2).\n"
     )
