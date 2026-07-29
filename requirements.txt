@@ -9,3 +9,4 @@ scipy
 
 # Local vendored Popper (optional editable install)
 # pip install -e ./popper
+setuptools<81
