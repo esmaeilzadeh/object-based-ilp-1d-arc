@@ -154,27 +154,22 @@ def solve(
                     return r
     elif force_bias == "object" or (include_blocks and not include_pixels):
         # Pure block-level: object ILP only (no pixel / trivial).
-        # Two lean biases share the same BK allowlist — fill vocab first
-        # (largest clutters merge search), then denoise vocab.
+        # Denoise vocab first (fails fast when inapplicable, <1s when applicable),
+        # then fill/merge vocab with the remaining budget (needs ~120s+).
         if include_blocks:
             stages = (
-                ("object.pl", "popper_object"),
                 ("object_denoise.pl", "popper_object_denoise"),
+                ("object.pl", "popper_object"),
             )
             for bias_name, work_name in stages:
                 rem = _remaining()
                 if rem <= 0:
                     break
-                # Leave a few seconds for a possible denoise follow-up.
-                if bias_name == "object.pl" and rem > 15:
-                    budget = rem - 10
-                else:
-                    budget = rem
                 prog = induce(
                     encoded.exs_object_path,
                     encoded.bk_path,
                     _BIAS / bias_name,
-                    budget,
+                    rem,
                     work_dir / work_name,
                 )
                 if prog:
