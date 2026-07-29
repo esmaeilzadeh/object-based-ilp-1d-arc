@@ -153,20 +153,34 @@ def solve(
                 if r:
                     return r
     elif force_bias == "object" or (include_blocks and not include_pixels):
-        # Pure block-level: single object ILP, no ladder / trivial / pixel.
-        rem = _remaining()
-        if rem > 0 and include_blocks:
-            prog = induce(
-                encoded.exs_object_path,
-                encoded.bk_path,
-                _BIAS / "object.pl",
-                rem,
-                work_dir / "popper_object",
+        # Pure block-level: object ILP only (no pixel / trivial).
+        # Two lean biases share the same BK allowlist — fill vocab first
+        # (largest clutters merge search), then denoise vocab.
+        if include_blocks:
+            stages = (
+                ("object.pl", "popper_object"),
+                ("object_denoise.pl", "popper_object_denoise"),
             )
-            if prog:
-                r = _consider_object(prog, "object_ilp")
-                if r:
-                    return r
+            for bias_name, work_name in stages:
+                rem = _remaining()
+                if rem <= 0:
+                    break
+                # Leave a few seconds for a possible denoise follow-up.
+                if bias_name == "object.pl" and rem > 15:
+                    budget = rem - 10
+                else:
+                    budget = rem
+                prog = induce(
+                    encoded.exs_object_path,
+                    encoded.bk_path,
+                    _BIAS / bias_name,
+                    budget,
+                    work_dir / work_name,
+                )
+                if prog:
+                    r = _consider_object(prog, "object_ilp")
+                    if r:
+                        return r
     elif not ladder:
         rem = _remaining()
         if rem > 0:

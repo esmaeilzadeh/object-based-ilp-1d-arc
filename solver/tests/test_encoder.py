@@ -94,7 +94,7 @@ def test_object_bias_head_and_no_paint_priors():
     text = render_object_bias()
     assert "head_pred(out_block,4)." in text
     assert "head_pred(out,3)." not in text
-    assert "max_vars(12)." in text
+    assert "max_vars(10)." in text
     assert "max_body(5)." in text
     assert "max_clauses(1)." in text
     assert ":- not body_var(_,1)." in text
@@ -106,14 +106,14 @@ def test_object_bias_head_and_no_paint_priors():
     assert "body_pred(left_of,3)." not in text
     assert "body_pred(gap,4)." in text
     assert "body_pred(obj_succ,3)." in text
-    assert "body_pred(largest,2)." in text
-    # Dropped from lean fill/denoise vocab (BK allowlist == bias).
+    # Fill bias omits largest (denoise stage uses object_denoise.pl).
+    assert "body_pred(largest,2)." not in text
     assert "body_pred(block_len,3)." not in text
     assert "body_pred(adjacent,3)." not in text
     assert "body_pred(block_succ,3)." not in text
     assert "body_pred(empty_block,3)." not in text
-    assert "constant(s1, size)." in text
-    assert "constant(left, edge)." not in text
+    assert "constant(s1, size)." not in text
+    assert "body_pred(C,1)" not in text
     assert "type(out_block,('ex', 'block_id', 'size', 'value'))." in text
     # Pixel starts are decode metadata only
     assert "body_pred(block_start,3)." not in text
@@ -133,6 +133,20 @@ def test_object_bias_head_and_no_paint_priors():
     assert "constant(c0, position)." not in text
     assert "constant(s0, size)." not in text
     assert "mirrored_out_block" not in text
+
+
+def test_object_denoise_bias_is_block_plus_largest():
+    from solver.bias_gen import render_object_denoise_bias
+
+    text = render_object_denoise_bias()
+    assert "head_pred(out_block,4)." in text
+    assert "body_pred(block,4)." in text
+    assert "body_pred(largest,2)." in text
+    assert "body_pred(size_sum3,4)." not in text
+    assert "body_pred(gap,4)." not in text
+    assert "non_datalog." not in text
+    assert "max_clauses(1)." in text
+    assert "max_body(3)." in text
 
 
 def test_no_marker_geometry_hacks_in_bk():

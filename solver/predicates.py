@@ -112,14 +112,11 @@ def head_pred_object() -> Predicate:
     return next(p for p in PREDICATES if p.layer == "head_object")
 
 
-# Block-primary / object-head: BK emit and bias share this lean vocabulary.
-# Enough for fill (block+obj_succ+gap+size_sum3) and denoise (block+largest).
+# Block-primary / object-head: BK emit is the union; search uses fill then denoise.
+OBJECT_FILL_ALLOWLIST: FrozenSet[str] = frozenset(
+    {"block", "obj_succ", "gap", "size_sum3"}
+)
+OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset({"block", "largest"})
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
-    {
-        "block",
-        "obj_succ",
-        "gap",
-        "size_sum3",
-        "largest",
-    }
+    OBJECT_FILL_ALLOWLIST | OBJECT_DENOISE_ALLOWLIST
 )

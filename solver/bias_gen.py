@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import FrozenSet, Optional, Sequence
 
 from solver.predicates import (
     OBJECT_BODY_ALLOWLIST,
+    OBJECT_DENOISE_ALLOWLIST,
+    OBJECT_FILL_ALLOWLIST,
     Predicate,
     body_preds_for_level,
     head_pred,
@@ -69,6 +71,7 @@ def _render(
     max_body: int,
     level: int,
     non_datalog: bool = True,
+    include_constants: bool = True,
 ) -> str:
     all_typed = (head,) + tuple(bodies)
     parts = [
@@ -87,12 +90,15 @@ def _render(
     )
     for p in bodies:
         parts.append(f"body_pred({p.name},{p.arity}).")
-    parts.append("body_pred(C,1):- constant(C,_).")
+    if include_constants:
+        parts.append("body_pred(C,1):- constant(C,_).")
     parts.append("")
-    parts.extend(_constants_for_level(level))
-    parts.append("")
+    if include_constants:
+        parts.extend(_constants_for_level(level))
+        parts.append("")
     parts.append(_types_block(all_typed))
-    parts.append("type(C,(T,)):- constant(C,T).")
+    if include_constants:
+        parts.append("type(C,(T,)):- constant(C,T).")
     parts.append("")
     parts.append(_bad_body_for_ex_preds(bodies))
     parts.append("")
@@ -109,17 +115,14 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     )
 
 
-def render_object_bias(*, max_vars: int = 12, max_body: int = 5) -> str:
-    """Object-head bias: lean fill/denoise vocabulary, datalog-safe.
-
-    Head is ``out_block(Ex, Bid, Len, Color)`` — pixel starts stay in Python decode
-    metadata, not body preds. Length composition uses ``size_sum3`` (not ``size_add``).
-
-    Allowlist matches block-primary BK emit (see ``OBJECT_BODY_ALLOWLIST``).
-    """
-    bodies = tuple(
-        p for p in body_preds_for_level(4) if p.name in OBJECT_BODY_ALLOWLIST
-    )
+def _object_bias_from_allow(
+    allow: FrozenSet[str],
+    *,
+    max_vars: int,
+    max_body: int,
+) -> str:
+    """Shared object-head bias shape: datalog, single clause, no constants."""
+    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
     text = _render(
         head_pred_object(),
         bodies,
@@ -127,14 +130,13 @@ def render_object_bias(*, max_vars: int = 12, max_body: int = 5) -> str:
         max_body=max_body,
         level=4,
         non_datalog=False,
+        include_constants=False,
     )
-    # Single-clause target rules; force body vars like paper Decom.
     extra = (
         "max_clauses(1).\n"
         ":- not body_var(_,1).\n"
         ":- not body_var(_,2).\n"
     )
-    # Insert after max_body line
     lines = text.splitlines(keepends=True)
     out = []
     inserted = False
@@ -144,6 +146,20 @@ def render_object_bias(*, max_vars: int = 12, max_body: int = 5) -> str:
             out.append(extra)
             inserted = True
     return "".join(out)
+
+
+def render_object_bias(*, max_vars: int = 10, max_body: int = 5) -> str:
+    """Fill-oriented object bias (no ``largest`` — that clutters merge search)."""
+    return _object_bias_from_allow(
+        OBJECT_FILL_ALLOWLIST, max_vars=max_vars, max_body=max_body
+    )
+
+
+def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
+    """Denoise-oriented object bias: ``block`` + ``largest`` only."""
+    return _object_bias_from_allow(
+        OBJECT_DENOISE_ALLOWLIST, max_vars=max_vars, max_body=max_body
+    )
 
 
 def _pixel_only_bias() -> str:
@@ -206,6 +222,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "block.pl").write_text(render_bias(2, max_vars=8, max_body=12))
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
     (out_dir / "object.pl").write_text(render_object_bias())
+    (out_dir / "object_denoise.pl").write_text(render_object_denoise_bias())
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 
