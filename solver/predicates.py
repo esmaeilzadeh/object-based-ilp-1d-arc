@@ -81,6 +81,11 @@ PREDICATES: Tuple[Predicate, ...] = (
     # Parity on size values — block-neutral, no answer leak.
     Predicate("size_even", 1, ("size",), "arith", frozenset({4})),
     Predicate("size_odd", 1, ("size",), "arith", frozenset({4})),
+    # Every-other colored succession (padded-fill pairing); input geometry only.
+    Predicate("obj_pair", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({4})),
+    # Maximal contiguous non-zero component: leftmost block + pixel span length.
+    Predicate("component_start", 2, ("ex", "block_id"), "geometry", frozenset({4})),
+    Predicate("component_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({4})),
     # bridges — grounded; hide naked Start/End constants
     Predicate("pixel_block", 3, ("ex", "position", "block_id"), "bridge", frozenset({2, 3})),
     Predicate("in_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
@@ -117,9 +122,11 @@ def head_pred_object() -> Predicate:
 
 # Block-primary / object-head: BK emit is the union; search uses fill then denoise.
 OBJECT_FILL_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "obj_succ", "gap", "size_sum3"}
+    {"block", "obj_succ", "gap", "size_sum3", "obj_pair"}
 )
-OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset({"block", "largest"})
+OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset(
+    {"block", "largest", "component_start", "component_len"}
+)
 OBJECT_RECOLOR_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "largest", "non_largest", "size_even", "size_odd"}
 )

@@ -160,8 +160,8 @@ def render_object_bias(*, max_vars: int = 10, max_body: int = 5) -> str:
     )
 
 
-def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
-    """Denoise-oriented object bias: ``block`` + ``largest`` only."""
+def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 4) -> str:
+    """Denoise-oriented object bias: ``block`` + ``largest`` + component span."""
     return _object_bias_from_allow(
         OBJECT_DENOISE_ALLOWLIST, max_vars=max_vars, max_body=max_body
     )

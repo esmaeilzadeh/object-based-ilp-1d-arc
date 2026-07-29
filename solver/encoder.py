@@ -212,6 +212,37 @@ def _block_and_derived(
             facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
         facts.append(f"obj_succ({ex},{_bid(a, t)},{_bid(b, t)}).")
+    # Every-other colored pair (o0-o1, o2-o3, ...): neutral pairing geometry.
+    for i in range(0, len(colored_ids) - 1, 2):
+        a, b = colored_ids[i], colored_ids[i + 1]
+        facts.append(f"obj_pair({ex},{_bid(a, t)},{_bid(b, t)}).")
+
+    # Maximal contiguous non-zero components → start block + span length.
+    # A component is a maximal sequence of consecutive colored runs with no
+    # empty run between them (pixel-adjacent colored blocks).
+    if colored_ids:
+        comp_start = colored_ids[0]
+        prev = colored_ids[0]
+        for cid in colored_ids[1:]:
+            # empty run between prev and cid?
+            if cid != prev + 1:
+                # close previous component
+                s0, _, _ = runs[comp_start]
+                _, e1, _ = runs[prev]
+                span = e1 - s0 + 1
+                facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
+                facts.append(
+                    f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)})."
+                )
+                observed_sizes.add(span)
+                comp_start = cid
+            prev = cid
+        s0, _, _ = runs[comp_start]
+        _, e1, _ = runs[prev]
+        span = e1 - s0 + 1
+        facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
+        facts.append(f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)}).")
+        observed_sizes.add(span)
 
     if not lean:
         for i in range(n_runs):
