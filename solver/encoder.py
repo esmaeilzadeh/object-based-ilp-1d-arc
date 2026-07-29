@@ -563,6 +563,15 @@ def _exs_out_blocks(
                     neg.append(
                         f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(Lin, t)},{_col(c, t)}))."
                     )
+            # Wrong Bid for a true (Len,Color): blocks other programs that
+            # rebind length from another object (e.g. component_len on V5).
+            for bid in colored_bids:
+                for _tb, L, c in true_blocks:
+                    if (bid, L, c) in true_set:
+                        continue
+                    neg.append(
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)}))."
+                    )
         else:
             w = len(eg.out)
             for bid in colored_bids:

@@ -159,10 +159,11 @@ def solve(
         if include_blocks:
             # (bias_file, work_dir_name, max_seconds_cap_or_None)
             stages = (
-                ("object_denoise.pl", "popper_object_denoise", 10),
+                ("object_denoise.pl", "popper_object_denoise", 30),
                 ("object_recolor.pl", "popper_object_recolor", 15),
                 ("object_recolor_cnt.pl", "popper_object_recolor_cnt", 30),
                 ("object_recolor_sz.pl", "popper_object_recolor_sz", 30),
+                ("object_padded.pl", "popper_object_padded", 90),
                 ("object.pl", "popper_object", None),
             )
             for bias_name, work_name, cap in stages:

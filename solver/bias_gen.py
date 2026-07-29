@@ -9,6 +9,7 @@ from solver.predicates import (
     OBJECT_BODY_ALLOWLIST,
     OBJECT_DENOISE_ALLOWLIST,
     OBJECT_FILL_ALLOWLIST,
+    OBJECT_PADDED_ALLOWLIST,
     OBJECT_RECOLOR_ALLOWLIST,
     Predicate,
     body_preds_for_level,
@@ -160,6 +161,13 @@ def render_object_bias(*, max_vars: int = 10, max_body: int = 5) -> str:
     )
 
 
+def render_object_padded_bias(*, max_vars: int = 9, max_body: int = 5) -> str:
+    """Pair-fill bias: ``obj_pair`` instead of ``obj_succ``."""
+    return _object_bias_from_allow(
+        OBJECT_PADDED_ALLOWLIST, max_vars=max_vars, max_body=max_body
+    )
+
+
 def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 4) -> str:
     """Denoise-oriented object bias: ``block`` + ``largest`` + component span."""
     return _object_bias_from_allow(
@@ -273,6 +281,7 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
     (out_dir / "object.pl").write_text(render_object_bias())
     (out_dir / "object_denoise.pl").write_text(render_object_denoise_bias())
+    (out_dir / "object_padded.pl").write_text(render_object_padded_bias())
     (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
     (out_dir / "object_recolor_sz.pl").write_text(
         render_object_recolor_bias(include_size_constants=True, max_vars=6, max_body=5)

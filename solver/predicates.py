@@ -122,7 +122,10 @@ def head_pred_object() -> Predicate:
 
 # Block-primary / object-head: BK emit is the union; search uses fill then denoise.
 OBJECT_FILL_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "obj_succ", "gap", "size_sum3", "obj_pair"}
+    {"block", "obj_succ", "gap", "size_sum3"}
+)
+OBJECT_PADDED_ALLOWLIST: FrozenSet[str] = frozenset(
+    {"block", "gap", "obj_pair", "size_sum3"}
 )
 OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "largest", "component_start", "component_len"}
@@ -131,5 +134,8 @@ OBJECT_RECOLOR_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "largest", "non_largest", "size_even", "size_odd"}
 )
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
-    OBJECT_FILL_ALLOWLIST | OBJECT_DENOISE_ALLOWLIST | OBJECT_RECOLOR_ALLOWLIST
+    OBJECT_FILL_ALLOWLIST
+    | OBJECT_PADDED_ALLOWLIST
+    | OBJECT_DENOISE_ALLOWLIST
+    | OBJECT_RECOLOR_ALLOWLIST
 )
