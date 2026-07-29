@@ -121,30 +121,20 @@ def head_pred_object() -> Predicate:
     return next(p for p in PREDICATES if p.layer == "head_object")
 
 
-# Block-primary / object-head: BK emit is the union; search uses fill then denoise.
-OBJECT_FILL_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "obj_succ", "gap", "size_sum3"}
-)
-OBJECT_PADDED_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "gap", "obj_pair", "size_sum3"}
-)
-OBJECT_SCALE_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "largest", "non_largest", "obj_succ", "gap", "size_add"}
-)
-OBJECT_MOVE_ALLOWLIST: FrozenSet[str] = frozenset({"block"})
-OBJECT_HOLLOW_ALLOWLIST: FrozenSet[str] = frozenset({"block", "size_add"})
-OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "largest", "component_start", "component_len"}
-)
-OBJECT_RECOLOR_ALLOWLIST: FrozenSet[str] = frozenset(
-    {"block", "largest", "non_largest", "size_even", "size_odd"}
-)
+# Block-primary / object-head: single lean BK emit vocabulary (no per-category sets).
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
-    OBJECT_FILL_ALLOWLIST
-    | OBJECT_PADDED_ALLOWLIST
-    | OBJECT_SCALE_ALLOWLIST
-    | OBJECT_MOVE_ALLOWLIST
-    | OBJECT_HOLLOW_ALLOWLIST
-    | OBJECT_DENOISE_ALLOWLIST
-    | OBJECT_RECOLOR_ALLOWLIST
+    {
+        "block",
+        "obj_succ",
+        "obj_pair",
+        "gap",
+        "size_sum3",
+        "size_add",
+        "largest",
+        "non_largest",
+        "component_start",
+        "component_len",
+        "size_even",
+        "size_odd",
+    }
 )

@@ -15,6 +15,29 @@ Lift 1D-ARC from **pixel** to **block** perspective:
 
 All solver changes must serve measuring whether **that lift** improves results vs pixel Decom.
 
+## Uniform mechanical exs / BK / bias (mandatory)
+
+`exs`, `bk`, and `bias` must each be produced by a **single uniform algorithm**
+applied to the instance grids (and facts derived from those grids).
+
+Allowed:
+
+- The same codegen path for every instance
+- Inputs = that instance’s train/test grids (and mechanically derived block geometry)
+- Bias body preds / constants taken from what actually appears in that instance’s BK/exs
+
+Forbidden without 100% explicit user confirmation:
+
+- Switching bias, BK, or exs shape on **category / task name** (`1d_mirror`, …)
+- Hand-authored per-family bias files or pipeline stages (`object_mirror`,
+  `object_hollow`, `object_move`, …) chosen by transform knowledge
+- Any “intelligence” that inspects the name (or a human label of the transform)
+  and changes the hypothesis language
+
+Family-shaped search ladders are false positives for measuring the block lift:
+ILP must select structure inside one shared mechanical language, not via a
+human-routed vocabulary switch.
+
 ## Do not add without 100% explicit user confirmation
 
 Treat these as **false-positive / off-direction** unless the user confirms in writing:
@@ -50,6 +73,8 @@ evaluation, wait for confirmation, then proceed only if they still insist.
 ## Allowed default path
 
 - `block_primary` / object-head induction only
+- One mechanical object bias per instance (from that instance’s BK/exs)
 - Block BK and object–object relations that do not encode the answer
-- Generic arith sugar (`offset_pos`, `size_add`) when needed to bind numbers
+- Generic arith sugar (`offset_pos`, `size_add`) when emitted uniformly from
+  observed sizes/gaps (not gated by category name)
 - Decode `out_block` → pixel grid for metrics

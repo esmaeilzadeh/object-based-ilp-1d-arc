@@ -1,19 +1,18 @@
-"""Generate Popper bias files from the predicate inventory."""
+"""Generate Popper bias files.
+
+Object bias is a uniform mechanical transform of an instance's BK/exs:
+body preds and constants are taken from facts that appear there — never from
+category / task name.
+"""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import FrozenSet, Optional, Sequence
+from typing import FrozenSet, Optional, Sequence, Set
 
 from solver.predicates import (
     OBJECT_BODY_ALLOWLIST,
-    OBJECT_DENOISE_ALLOWLIST,
-    OBJECT_FILL_ALLOWLIST,
-    OBJECT_HOLLOW_ALLOWLIST,
-    OBJECT_MOVE_ALLOWLIST,
-    OBJECT_PADDED_ALLOWLIST,
-    OBJECT_RECOLOR_ALLOWLIST,
-    OBJECT_SCALE_ALLOWLIST,
     Predicate,
     body_preds_for_level,
     head_pred,
@@ -21,6 +20,10 @@ from solver.predicates import (
 )
 
 _BIAS_DIR = Path(__file__).resolve().parent / "bias"
+
+_FACT_PRED_RE = re.compile(r"^([a-z][a-z0-9_]*)\(")
+_SIZE_CONST_RE = re.compile(r"\bs(\d+)\b")
+_VALUE_CONST_RE = re.compile(r"\bv(\d+)\b")
 
 
 def _types_block(preds: Sequence[Predicate]) -> str:
@@ -43,15 +46,7 @@ def _bad_body_for_ex_preds(preds: Sequence[Predicate]) -> str:
 
 
 def _constants_for_level(level: int) -> list[str]:
-    """Typed constants. Block/object bias omit most position/size constants.
-
-    Object bias (level 4) omits value/position constants — colors bind from
-    ``block/4``. Expose ``s1`` only so ILP can write a dedicated length-1 clause.
-
-    Type names are single-quoted so they match ``Predicate.types`` atoms emitted
-    by ``_types_block`` (Clingo strings). Unquoted atoms would type-mismatch
-    against quoted head types and silently ban constant body literals.
-    """
+    """Typed constants for pixel/dual biases (not object)."""
     lines = []
     if level != 4:
         for i in range(10):
@@ -63,10 +58,6 @@ def _constants_for_level(level: int) -> list[str]:
             lines.append(f"constant(s{i}, 'size').")
         for i in range(1, 10):
             lines.append(f"constant(r{i}, 'rank').")
-    if level == 4:
-        # Off=0 for identity-anchored paints; colors/sizes also bind from block.
-        lines.append("constant(s0, 'size').")
-        lines.append("constant(s1, 'size').")
     if level != 4:
         lines.append("constant(left, 'edge').")
         lines.append("constant(right, 'edge').")
@@ -88,8 +79,6 @@ def _render(
         f"max_vars({max_vars}).",
         f"max_body({max_body}).",
     ]
-    # Object-head: keep datalog (head vars must appear in body). non_datalog
-    # enabled unsafe Len-unbound clauses like out_block(_,Len,_,_):-block(_,_,Len,_).
     if non_datalog:
         parts.append("non_datalog.")
     parts.extend(
@@ -125,106 +114,65 @@ def render_bias(level: int, *, max_vars: int, max_body: int) -> str:
     )
 
 
-def _object_bias_from_allow(
-    allow: FrozenSet[str],
+def _preds_present_in_bk(bk_text: str, allow: FrozenSet[str]) -> Set[str]:
+    present: Set[str] = set()
+    for line in bk_text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("%"):
+            continue
+        m = _FACT_PRED_RE.match(s)
+        if m and m.group(1) in allow:
+            present.add(m.group(1))
+    return present
+
+
+def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int]]:
+    """Return (size_ids, value_ids) mentioned as sN / vN in BK or exs."""
+    sizes: Set[int] = set()
+    values: Set[int] = set()
+    for text in texts:
+        for m in _SIZE_CONST_RE.finditer(text):
+            sizes.add(int(m.group(1)))
+        for m in _VALUE_CONST_RE.finditer(text):
+            values.add(int(m.group(1)))
+    return sizes, values
+
+
+def render_object_bias_from_bk(
+    bk_text: str,
     *,
-    max_vars: int,
-    max_body: int,
+    exs_text: str = "",
+    max_vars: int = 10,
+    max_body: int = 6,
+    max_clauses: int = 3,
 ) -> str:
-    """Shared object-head bias shape: datalog, single clause, s0/s1 constants."""
-    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
-    text = _render(
-        head_pred_object(),
-        bodies,
-        max_vars=max_vars,
-        max_body=max_body,
-        level=4,
-        non_datalog=False,
-        include_constants=True,
-    )
-    # Force Bid (1), Off (2), Len (3) to appear in the body.
-    extra = (
-        "max_clauses(1).\n"
-        ":- not body_var(_,1).\n"
-        ":- not body_var(_,2).\n"
-        ":- not body_var(_,3).\n"
-    )
-    lines = text.splitlines(keepends=True)
-    out = []
-    inserted = False
-    for ln in lines:
-        out.append(ln)
-        if not inserted and ln.startswith("max_body("):
-            out.append(extra)
-            inserted = True
-    return "".join(out)
+    """Mechanical object bias from one instance's BK (+ optional exs).
 
-
-def render_object_bias(*, max_vars: int = 10, max_body: int = 6) -> str:
-    """Fill-oriented object bias (no ``largest`` — that clutters merge search)."""
-    return _object_bias_from_allow(
-        OBJECT_FILL_ALLOWLIST, max_vars=max_vars, max_body=max_body
-    )
-
-
-def render_object_padded_bias(*, max_vars: int = 9, max_body: int = 6) -> str:
-    """Pair-fill bias: ``obj_pair`` instead of ``obj_succ``."""
-    return _object_bias_from_allow(
-        OBJECT_PADDED_ALLOWLIST, max_vars=max_vars, max_body=max_body
-    )
-
-
-def render_object_scale_bias(*, max_vars: int = 9, max_body: int = 6) -> str:
-    """Scale-to-next: grow largest by gap via size_add; keep marker (2 clauses)."""
-    allow = OBJECT_SCALE_ALLOWLIST
-    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
-    hp = head_pred_object()
-    all_typed = (hp,) + bodies
-    parts = [
-        "max_vars(%d)." % max_vars,
-        "max_body(%d)." % max_body,
-        "max_clauses(2).",
-        "enable_multi_clause.",
-        "",
-        f"head_pred({hp.name},{hp.arity}).",
-    ]
-    for p in bodies:
-        parts.append(f"body_pred({p.name},{p.arity}).")
-    parts.append("body_pred(C,1):- constant(C,_).")
-    parts.append("")
-    parts.append("constant(s0, 'size').")
-    parts.append("constant(s1, 'size').")
-    parts.append("")
-    parts.append("\n".join(f"type({p.name},{p.types})." for p in all_typed))
-    parts.append("type(C,(T,)):- constant(C,T).")
-    parts.append("")
-    parts.append(_bad_body_for_ex_preds(bodies))
-    parts.append("")
-    return "\n".join(parts) + "\n"
-
-
-def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 5) -> str:
-    """Denoise-oriented object bias: ``block`` + ``largest`` + component span."""
-    return _object_bias_from_allow(
-        OBJECT_DENOISE_ALLOWLIST, max_vars=max_vars, max_body=max_body
-    )
-
-
-def render_object_recolor_bias(
-    *,
-    max_vars: int = 7,
-    max_body: int = 4,
-    max_clauses: int = 2,
-    include_size_constants: bool = False,
-    lean_block_only: bool = False,
-) -> str:
-    """Recolor-oriented object bias: multi-clause + color constants.
-
-    ``lean_block_only`` drops largest/parity preds (for count→color with
-    size constants and ``max_clauses`` ≥ 3).
+    Same algorithm for every task: expose only body preds that appear as BK
+    facts (within the lean object allowlist), and only size/value constants
+    that appear in BK/exs. No category-name branching.
     """
-    allow = frozenset({"block"}) if lean_block_only else OBJECT_RECOLOR_ALLOWLIST
-    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
+    present = _preds_present_in_bk(bk_text, OBJECT_BODY_ALLOWLIST)
+    # Always allow ``block`` if typed object BK is non-empty — head binds from it.
+    if "block(" in bk_text or any(
+        ln.strip().startswith("block(") for ln in bk_text.splitlines()
+    ):
+        present.add("block")
+    bodies = tuple(
+        p for p in body_preds_for_level(4) if p.name in present
+    )
+    # Prefer stable order by inventory order (already), fall back empty-safe.
+    if not bodies:
+        bodies = tuple(
+            p for p in body_preds_for_level(4) if p.name == "block"
+        )
+
+    sizes, values = _constants_present_in_texts(bk_text, exs_text)
+    # Off=0 / unit length are ubiquitous bindings; include if any size consts exist
+    # or always include s0/s1 when typed sizes are used (mechanical defaults).
+    sizes.add(0)
+    sizes.add(1)
+
     hp = head_pred_object()
     all_typed = (hp,) + bodies
     parts = [
@@ -232,6 +180,9 @@ def render_object_recolor_bias(
         f"max_body({max_body}).",
         f"max_clauses({max_clauses}).",
         "enable_multi_clause.",
+        ":- not body_var(_,1).",
+        ":- not body_var(_,2).",
+        ":- not body_var(_,3).",
         "",
         f"head_pred({hp.name},{hp.arity}).",
     ]
@@ -239,18 +190,12 @@ def render_object_recolor_bias(
         parts.append(f"body_pred({p.name},{p.arity}).")
     parts.append("body_pred(C,1):- constant(C,_).")
     parts.append("")
-    # Quote type names to match Predicate.types / _types_block (Clingo strings).
-    parts.append("constant(s0, 'size').")
-    for i in range(10):
+    for i in sorted(sizes):
+        parts.append(f"constant(s{i}, 'size').")
+    for i in sorted(values):
         parts.append(f"constant(v{i}, 'value').")
-    if include_size_constants:
-        for i in range(1, 10):
-            parts.append(f"constant(s{i}, 'size').")
-    else:
-        parts.append("constant(s1, 'size').")
     parts.append("")
-    type_lines = "\n".join(f"type({p.name},{p.types})." for p in all_typed)
-    parts.append(type_lines)
+    parts.append(_types_block(all_typed))
     parts.append("type(C,(T,)):- constant(C,T).")
     parts.append("")
     parts.append(_bad_body_for_ex_preds(bodies))
@@ -258,84 +203,15 @@ def render_object_recolor_bias(
     return "\n".join(parts) + "\n"
 
 
-def render_object_mirror_bias(*, max_vars: int = 9, max_body: int = 6) -> str:
-    """Mirror across unit pivot: ILP detects unit via s1, offset via size_add.
-
-    Force Bid/Off/Len in the body so Off cannot float via unbound size_add args
-    alone, and Len cannot be a free constant while ignoring block length.
-    """
-    allow = frozenset({"block", "obj_succ", "gap", "size_add"})
-    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
-    hp = head_pred_object()
-    all_typed = (hp,) + bodies
-    parts = [
-        f"max_vars({max_vars}).",
-        f"max_body({max_body}).",
-        "max_clauses(2).",
-        "enable_multi_clause.",
-        # Bid (1), Off (2), Len (3) must appear in the body.
-        ":- not body_var(_,1).",
-        ":- not body_var(_,2).",
-        ":- not body_var(_,3).",
-        "",
-        f"head_pred({hp.name},{hp.arity}).",
-    ]
-    for p in bodies:
-        parts.append(f"body_pred({p.name},{p.arity}).")
-    parts.append("body_pred(C,1):- constant(C,_).")
-    parts.append("")
-    parts.append("constant(s0, 'size').")
-    parts.append("constant(s1, 'size').")
-    parts.append("")
-    parts.append("\n".join(f"type({p.name},{p.types})." for p in all_typed))
-    parts.append("type(C,(T,)):- constant(C,T).")
-    parts.append("")
-    parts.append(_bad_body_for_ex_preds(bodies))
-    parts.append("")
-    return "\n".join(parts) + "\n"
-
-
-def render_object_move_bias(*, max_vars: int = 6, max_body: int = 3) -> str:
-    """Shift a block by a small constant Off (s1/s2/s3); keep Len/Color."""
-    return _object_bias_from_allow(
-        OBJECT_MOVE_ALLOWLIST, max_vars=max_vars, max_body=max_body
-    ).replace(
-        "constant(s1, 'size').",
-        "constant(s1, 'size').\nconstant(s2, 'size').\nconstant(s3, 'size').",
-        1,
+def render_object_bias(*, max_vars: int = 10, max_body: int = 6) -> str:
+    """Static fallback: full lean allowlist (tests / non-instance paths only)."""
+    bk_lines = [f"{name}(dummy)." for name in sorted(OBJECT_BODY_ALLOWLIST)]
+    return render_object_bias_from_bk(
+        "\n".join(bk_lines),
+        exs_text="",
+        max_vars=max_vars,
+        max_body=max_body,
     )
-
-
-def render_object_hollow_bias(*, max_vars: int = 7, max_body: int = 4) -> str:
-    """Keep endpoints: Off=0 and Off=Lin-1 via size_add(s1, Off, Lin)."""
-    allow = OBJECT_HOLLOW_ALLOWLIST
-    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
-    hp = head_pred_object()
-    all_typed = (hp,) + bodies
-    parts = [
-        f"max_vars({max_vars}).",
-        f"max_body({max_body}).",
-        "max_clauses(2).",
-        "enable_multi_clause.",
-        ":- not body_var(_,1).",
-        ":- not body_var(_,2).",
-        ":- not body_var(_,3).",
-        "",
-        f"head_pred({hp.name},{hp.arity}).",
-    ]
-    for p in bodies:
-        parts.append(f"body_pred({p.name},{p.arity}).")
-    parts.append("body_pred(C,1):- constant(C,_).")
-    parts.append("")
-    parts.append("constant(s0, 'size').")
-    parts.append("constant(s1, 'size').")
-    parts.append("")
-    parts.append("\n".join(f"type({p.name},{p.types})." for p in all_typed))
-    parts.append("type(C,(T,)):- constant(C,T).")
-    parts.append("")
-    parts.append(_bad_body_for_ex_preds(bodies))
-    parts.append("")
-    return "\n".join(parts) + "\n"
 
 
 def _pixel_only_bias() -> str:
@@ -393,34 +269,15 @@ bad_body(width, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
 
 
 def write_bias_files(out_dir: Optional[Path] = None) -> None:
+    """Write static pixel/dual biases; object bias is instance-generated at encode."""
     out_dir = out_dir or _BIAS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "block.pl").write_text(render_bias(2, max_vars=8, max_body=12))
     (out_dir / "dual.pl").write_text(render_bias(3, max_vars=9, max_body=16))
     (out_dir / "object.pl").write_text(render_object_bias())
-    (out_dir / "object_denoise.pl").write_text(render_object_denoise_bias())
-    (out_dir / "object_padded.pl").write_text(render_object_padded_bias())
-    (out_dir / "object_scale.pl").write_text(render_object_scale_bias())
-    (out_dir / "object_mirror.pl").write_text(render_object_mirror_bias())
-    (out_dir / "object_move.pl").write_text(render_object_move_bias())
-    (out_dir / "object_hollow.pl").write_text(render_object_hollow_bias())
-    (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
-    (out_dir / "object_recolor_sz.pl").write_text(
-        render_object_recolor_bias(include_size_constants=True, max_vars=7, max_body=5)
-    )
-    # Count→color: three size→color clauses; lean vocab keeps search tiny.
-    (out_dir / "object_recolor_cnt.pl").write_text(
-        render_object_recolor_bias(
-            include_size_constants=True,
-            lean_block_only=True,
-            max_vars=6,
-            max_body=4,
-            max_clauses=3,
-        )
-    )
     (out_dir / "pixel.pl").write_text(_pixel_only_bias())
 
 
 if __name__ == "__main__":
     write_bias_files()
-    print("wrote", _BIAS_DIR)
+    print(f"wrote {_BIAS_DIR}")

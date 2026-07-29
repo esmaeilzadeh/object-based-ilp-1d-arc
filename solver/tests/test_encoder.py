@@ -96,20 +96,19 @@ def test_object_bias_head_and_no_paint_priors():
     assert "head_pred(out,3)." not in text
     assert "max_vars(10)." in text
     assert "max_body(6)." in text
-    assert "max_clauses(1)." in text
+    assert "max_clauses(3)." in text
+    assert "enable_multi_clause." in text
     assert ":- not body_var(_,1)." in text
     assert ":- not body_var(_,2)." in text
     assert ":- not body_var(_,3)." in text
-    # Datalog-safe: head vars must appear in body (no Len-unbound junk).
     assert "non_datalog." not in text
     assert "body_pred(block,4)." in text
     assert "body_pred(size_sum3,4)." in text
-    assert "body_pred(size_add,3)." not in text
+    assert "body_pred(size_add,3)." in text
     assert "body_pred(left_of,3)." not in text
     assert "body_pred(gap,4)." in text
     assert "body_pred(obj_succ,3)." in text
-    # Fill bias omits largest (denoise stage uses object_denoise.pl).
-    assert "body_pred(largest,2)." not in text
+    assert "body_pred(largest,2)." in text
     assert "body_pred(block_len,3)." not in text
     assert "body_pred(adjacent,3)." not in text
     assert "body_pred(block_succ,3)." not in text
@@ -118,13 +117,10 @@ def test_object_bias_head_and_no_paint_priors():
     assert "constant(s1, 'size')." in text
     assert "body_pred(C,1)" in text
     assert "type(out_block,('ex', 'block_id', 'size', 'size', 'value'))." in text
-    # Pixel starts are decode metadata only
     assert "body_pred(block_start,3)." not in text
     assert "body_pred(block_end,3)." not in text
-    # Lean: length/agg noise not on object bias for this experiment
     assert "body_pred(shorter,3)." not in text
     assert "body_pred(offset_pos,3)." not in text
-    # No marker/mirror hacks; no pixel-paint bridges
     assert "body_pred(marker_block" not in text
     assert "body_pred(unit_block" not in text
     assert "body_pred(reflect_pos" not in text
@@ -137,20 +133,36 @@ def test_object_bias_head_and_no_paint_priors():
     assert "mirrored_out_block" not in text
 
 
-def test_object_denoise_bias_is_block_plus_largest():
-    from solver.bias_gen import render_object_denoise_bias
+def test_object_bias_is_mechanical_from_bk_facts(tmp_path: Path):
+    from solver.bias_gen import render_object_bias_from_bk
 
-    text = render_object_denoise_bias()
-    assert "head_pred(out_block,5)." in text
+    # Only block + largest present → bias must not expose gap/size_add.
+    lean = "block(0,b0,s3,v2).\nlargest(0,b0).\ns0(s0).\ns1(s1).\ns3(s3).\nv2(v2).\n"
+    text = render_object_bias_from_bk(lean)
     assert "body_pred(block,4)." in text
     assert "body_pred(largest,2)." in text
-    assert "body_pred(component_start,2)." in text
-    assert "body_pred(component_len,3)." in text
-    assert "body_pred(size_sum3,4)." not in text
     assert "body_pred(gap,4)." not in text
-    assert "non_datalog." not in text
-    assert "max_clauses(1)." in text
-    assert "constant(s0, 'size')." in text
+    assert "body_pred(size_add,3)." not in text
+    assert "constant(s3, 'size')." in text
+    assert "constant(v2, 'value')." in text
+
+    enc = encode_instance(
+        {
+            "train": [{"input": [[7, 0, 7]], "output": [[7, 7, 7]]}],
+            "test": [{"input": [[4, 0, 4]], "output": [[4, 4, 4]]}],
+        },
+        tmp_path / "enc",
+        include_pixels=False,
+        include_blocks=True,
+    )
+    assert enc.bias_object_path is not None
+    bias = enc.bias_object_path.read_text()
+    assert "head_pred(out_block,5)." in bias
+    assert "body_pred(block,4)." in bias
+    # Same algorithm, no category name involved.
+    assert "mirror" not in bias.lower()
+    assert "hollow" not in bias.lower()
+
 
 def test_no_marker_geometry_hacks_in_bk():
     # Former mirror-style row: must not emit banned marker/reflect facts

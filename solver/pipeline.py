@@ -153,34 +153,27 @@ def solve(
                 if r:
                     return r
     elif force_bias == "object" or (include_blocks and not include_pixels):
-        # Pure block-level: object ILP only (no pixel / trivial).
-        # Denoise vocab first (fails fast when inapplicable, <1s when applicable),
-        # then fill/merge vocab with the remaining budget (needs ~120s+).
+        # Pure block-level: one mechanical object bias from this instance's BK/exs.
         if include_blocks:
-            # (bias_file, work_dir_name, max_seconds_cap_or_None)
-            stages = (
-                ("object_denoise.pl", "popper_object_denoise", 30),
-                ("object_recolor.pl", "popper_object_recolor", 20),
-                ("object_recolor_cnt.pl", "popper_object_recolor_cnt", 30),
-                ("object_recolor_sz.pl", "popper_object_recolor_sz", 30),
-                ("object_move.pl", "popper_object_move", 60),
-                ("object_hollow.pl", "popper_object_hollow", 90),
-                ("object_padded.pl", "popper_object_padded", 90),
-                ("object_scale.pl", "popper_object_scale", 90),
-                ("object_mirror.pl", "popper_object_mirror", 240),
-                ("object.pl", "popper_object", None),
-            )
-            for bias_name, work_name, cap in stages:
-                rem = _remaining()
-                if rem <= 0:
-                    break
-                budget = min(rem, cap) if cap else rem
+            bias_path = encoded.bias_object_path
+            if bias_path is None or not bias_path.exists():
+                from solver.bias_gen import render_object_bias_from_bk
+
+                bias_path = work_dir / "bias_object.pl"
+                bias_path.write_text(
+                    render_object_bias_from_bk(
+                        encoded.bk_path.read_text(),
+                        exs_text=encoded.exs_object_path.read_text(),
+                    )
+                )
+            rem = _remaining()
+            if rem > 0:
                 prog = induce(
                     encoded.exs_object_path,
                     encoded.bk_path,
-                    _BIAS / bias_name,
-                    budget,
-                    work_dir / work_name,
+                    bias_path,
+                    rem,
+                    work_dir / "popper_object",
                 )
                 if prog:
                     r = _consider_object(prog, "object_ilp")
@@ -237,10 +230,21 @@ def solve(
             )
             budget = min(early_cap, _remaining())
             budget = min(budget, max(_remaining() - max(timeout // 2, 1), 1))
+            bias_path = encoded.bias_object_path
+            if bias_path is None or not Path(bias_path).exists():
+                from solver.bias_gen import render_object_bias_from_bk
+
+                bias_path = work_dir / "bias_object.pl"
+                bias_path.write_text(
+                    render_object_bias_from_bk(
+                        encoded.bk_path.read_text(),
+                        exs_text=encoded.exs_object_path.read_text(),
+                    )
+                )
             prog = induce(
                 encoded.exs_object_path,
                 encoded.bk_path,
-                _BIAS / "object.pl",
+                bias_path,
                 budget,
                 work_dir / "popper_object",
             )

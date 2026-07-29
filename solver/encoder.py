@@ -34,6 +34,7 @@ class EncodeResult:
     exs_path: Path  # pixel-head examples (alias of exs_pixel_path)
     exs_pixel_path: Path
     exs_object_path: Path
+    bias_object_path: Optional[Path] = None  # mechanical object bias from this BK/exs
     bias_hint: str = "dual"
     # Hard role isolation for block-primary: atoms b*/p*/s*/v* instead of raw ints.
     typed_roles: bool = False
@@ -293,13 +294,13 @@ def _block_and_derived(
                 facts.append(
                     f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
                 )
-            # Binary size_add sugar: La+G (scale), 1+G (mirror Off).
+            # Binary size_add over observed succession lengths/gaps (uniform).
             for x, y in ((La, g), (1, g)):
                 s = x + y
                 if s <= w and x >= 0 and y >= 0:
                     facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
                     observed_sizes.add(s)
-        # Hollow end sugar: 1+(L-1)=L for each colored length (even singleton blocks).
+        # size_add(1, L-1, L) for each colored length (uniform arith closure).
         for bid in colored_ids:
             L = lengths[bid]
             if L >= 2 and L <= w:
@@ -717,6 +718,18 @@ def encode_instance(
         "\n".join(_exs_out_blocks(train, typed_roles=typed_roles)) + "\n"
     )
 
+    bias_object_path: Optional[Path] = None
+    if typed_roles:
+        from solver.bias_gen import render_object_bias_from_bk
+
+        bias_object_path = out_dir / "bias_object.pl"
+        bias_object_path.write_text(
+            render_object_bias_from_bk(
+                bk_path.read_text(),
+                exs_text=exs_object_path.read_text(),
+            )
+        )
+
     block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = {}
     for eg in train + test:
         block_geometry[eg.ex_id] = block_geometry_for_row(eg.inp)
@@ -743,6 +756,7 @@ def encode_instance(
         exs_path=exs_pixel_path,
         exs_pixel_path=exs_pixel_path,
         exs_object_path=exs_object_path,
+        bias_object_path=bias_object_path,
         typed_roles=typed_roles,
         block_geometry=block_geometry,
         color_maps=color_maps,
