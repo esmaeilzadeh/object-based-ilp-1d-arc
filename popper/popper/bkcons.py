@@ -790,7 +790,7 @@ def deduce_recalls(settings):
         d1 = counts[pred]
         all_recalls[(pred, (0,)*arity)] = counts_all[pred]
         for args, d2 in d1.items():
-            recall = max(len(xs) for xs in d2.values())
+            recall = max((len(xs) for xs in d2.values()), default=0)
             # print(pred, args, recall)
             all_recalls[(pred, args)] = recall
 
