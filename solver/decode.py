@@ -76,43 +76,54 @@ def apply_object_program(
 
     Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
     """
-    from janus_swi import consult
+    from janus_swi import consult, query_once
 
     prog = _strip_program(program)
     tmp = Path(bk_path).parent / "_apply_object_prog.pl"
-    tmp.write_text(prog)
+    # Dynamic so later Popper tester retractall(out_block(...)) can clean up.
+    tmp.write_text(":- dynamic out_block/5.\n" + prog)
 
     consult(str(bk_path))
     consult(str(tmp))
 
     geo = block_geometry
     out: Dict[int, List[int]] = {}
-    for eg in examples:
-        if eg.out is not None:
-            w = len(eg.out)
-        else:
-            w = len(eg.inp)
-        eg_geo = (
-            geo[eg.ex_id]
-            if geo is not None and eg.ex_id in geo
-            else block_geometry_for_row(eg.inp)
-        )
-        row = [0] * w
-        occupied: Dict[int, int] = {}
-        for s, L, c in _collect_out_blocks(
-            eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
-        ):
-            if L <= 0 or s < 0 or s + L > w:
-                raise ValueError(
-                    f"out_block({eg.ex_id},paint→{s},{L},{c}) out of bounds width={w}"
-                )
-            for p in range(s, s + L):
-                if p in occupied and occupied[p] != c:
+    try:
+        for eg in examples:
+            if eg.out is not None:
+                w = len(eg.out)
+            else:
+                w = len(eg.inp)
+            eg_geo = (
+                geo[eg.ex_id]
+                if geo is not None and eg.ex_id in geo
+                else block_geometry_for_row(eg.inp)
+            )
+            row = [0] * w
+            occupied: Dict[int, int] = {}
+            for s, L, c in _collect_out_blocks(
+                eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
+            ):
+                if L <= 0 or s < 0 or s + L > w:
                     raise ValueError(
-                        f"ambiguous/overlap at {eg.ex_id}:{p} "
-                        f"{occupied[p]} vs {c}"
+                        f"out_block({eg.ex_id},paint→{s},{L},{c}) out of bounds width={w}"
                     )
-                occupied[p] = c
-                row[p] = c
-        out[eg.ex_id] = row
-    return out
+                for p in range(s, s + L):
+                    if p in occupied and occupied[p] != c:
+                        raise ValueError(
+                            f"ambiguous/overlap at {eg.ex_id}:{p} "
+                            f"{occupied[p]} vs {c}"
+                        )
+                    occupied[p] = c
+                    row[p] = c
+            out[eg.ex_id] = row
+        return out
+    finally:
+        try:
+            query_once("retractall(out_block(_,_,_,_,_))")
+        except Exception:
+            pass
+        try:
+            query_once("abolish(out_block/5)")
+        except Exception:
+            pass
