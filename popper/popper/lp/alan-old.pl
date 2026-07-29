@@ -36,10 +36,11 @@ pi_or_rec_enabled:-
 pi_or_rec_enabled:-
     enable_recursion.
 
-%% prohibit multi-clause programs when no recursion or PI
-:-
-    clause(1),
-    not pi_or_rec.
+%% Allow multi-clause programs for non-recursive multi-head learning.
+%% Original constraint disabled to support recolor-style tasks.
+%% :-
+%%     clause(1),
+%%     not pi_or_rec.
 
 %% AC: @DC, this constraint might mess up the work on negation
 :-
@@ -82,11 +83,25 @@ head_literal(0,P,A,Vars):-
     max_clauses(N),
     pi_or_rec_enabled.
 
+%% Non-recursive multi-clause: Rule 1+ uses the same head pred as Rule 0.
+0 {head_literal(Rule,P,A,Vars): head_vars(A,Vars), head_pred(P,A)} 1:-
+    Rule = 1..N-1,
+    max_clauses(N),
+    not pi_or_rec_enabled.
+
 1 {body_literal(Rule,P,A,Vars): body_aux(P,A), vars(A,Vars), not bad_body(P,A,Vars), not type_mismatch(P,Vars)} M :-
     clause(Rule),
     Rule > 0,
     max_body(M),
     enable_recursion,
+    not enable_pi.
+
+%% Non-recursive multi-clause body generation.
+1 {body_literal(Rule,P,A,Vars): body_aux(P,A), vars(A,Vars), not head_pred(P,A), not type_mismatch(P,Vars), not bad_body(P,A,Vars)} M :-
+    clause(Rule),
+    Rule > 0,
+    max_body(M),
+    not enable_recursion,
     not enable_pi.
 
 

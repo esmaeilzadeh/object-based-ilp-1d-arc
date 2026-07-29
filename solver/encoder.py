@@ -340,6 +340,11 @@ def _block_and_derived(
             for f in facts
             if any(f.startswith(n + "(") for n in _LEAN_EMIT_ALLOW)
         ]
+        # Typed constant unary facts so Popper can resolve body_pred(C,1).
+        for i in range(10):
+            facts.append(f"v{i}(v{i}).")
+        for i in range(w + 1):
+            facts.append(f"s{i}(s{i}).")
     return facts
 
 

@@ -163,7 +163,7 @@ def render_object_denoise_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
     )
 
 
-def render_object_recolor_bias(*, max_vars: int = 8, max_body: int = 3) -> str:
+def render_object_recolor_bias(*, max_vars: int = 8, max_body: int = 6) -> str:
     """Recolor-oriented object bias: needs 2 clauses + color constants."""
     allow = OBJECT_RECOLOR_ALLOWLIST
     bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
