@@ -163,6 +163,8 @@ def solve(
                 ("object_recolor.pl", "popper_object_recolor", 20),
                 ("object_recolor_cnt.pl", "popper_object_recolor_cnt", 30),
                 ("object_recolor_sz.pl", "popper_object_recolor_sz", 30),
+                ("object_move.pl", "popper_object_move", 60),
+                ("object_hollow.pl", "popper_object_hollow", 90),
                 ("object_padded.pl", "popper_object_padded", 90),
                 ("object_scale.pl", "popper_object_scale", 90),
                 ("object_mirror.pl", "popper_object_mirror", 240),

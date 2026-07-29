@@ -9,6 +9,8 @@ from solver.predicates import (
     OBJECT_BODY_ALLOWLIST,
     OBJECT_DENOISE_ALLOWLIST,
     OBJECT_FILL_ALLOWLIST,
+    OBJECT_HOLLOW_ALLOWLIST,
+    OBJECT_MOVE_ALLOWLIST,
     OBJECT_PADDED_ALLOWLIST,
     OBJECT_RECOLOR_ALLOWLIST,
     OBJECT_SCALE_ALLOWLIST,
@@ -293,6 +295,49 @@ def render_object_mirror_bias(*, max_vars: int = 9, max_body: int = 6) -> str:
     return "\n".join(parts) + "\n"
 
 
+def render_object_move_bias(*, max_vars: int = 6, max_body: int = 3) -> str:
+    """Shift a block by a small constant Off (s1/s2/s3); keep Len/Color."""
+    return _object_bias_from_allow(
+        OBJECT_MOVE_ALLOWLIST, max_vars=max_vars, max_body=max_body
+    ).replace(
+        "constant(s1, 'size').",
+        "constant(s1, 'size').\nconstant(s2, 'size').\nconstant(s3, 'size').",
+        1,
+    )
+
+
+def render_object_hollow_bias(*, max_vars: int = 7, max_body: int = 4) -> str:
+    """Keep endpoints: Off=0 and Off=Lin-1 via size_add(s1, Off, Lin)."""
+    allow = OBJECT_HOLLOW_ALLOWLIST
+    bodies = tuple(p for p in body_preds_for_level(4) if p.name in allow)
+    hp = head_pred_object()
+    all_typed = (hp,) + bodies
+    parts = [
+        f"max_vars({max_vars}).",
+        f"max_body({max_body}).",
+        "max_clauses(2).",
+        "enable_multi_clause.",
+        ":- not body_var(_,1).",
+        ":- not body_var(_,2).",
+        ":- not body_var(_,3).",
+        "",
+        f"head_pred({hp.name},{hp.arity}).",
+    ]
+    for p in bodies:
+        parts.append(f"body_pred({p.name},{p.arity}).")
+    parts.append("body_pred(C,1):- constant(C,_).")
+    parts.append("")
+    parts.append("constant(s0, 'size').")
+    parts.append("constant(s1, 'size').")
+    parts.append("")
+    parts.append("\n".join(f"type({p.name},{p.types})." for p in all_typed))
+    parts.append("type(C,(T,)):- constant(C,T).")
+    parts.append("")
+    parts.append(_bad_body_for_ex_preds(bodies))
+    parts.append("")
+    return "\n".join(parts) + "\n"
+
+
 def _pixel_only_bias() -> str:
     """Paper-parity pixel bias (Decom relational decomposition)."""
     return """max_vars(7).
@@ -357,6 +402,8 @@ def write_bias_files(out_dir: Optional[Path] = None) -> None:
     (out_dir / "object_padded.pl").write_text(render_object_padded_bias())
     (out_dir / "object_scale.pl").write_text(render_object_scale_bias())
     (out_dir / "object_mirror.pl").write_text(render_object_mirror_bias())
+    (out_dir / "object_move.pl").write_text(render_object_move_bias())
+    (out_dir / "object_hollow.pl").write_text(render_object_hollow_bias())
     (out_dir / "object_recolor.pl").write_text(render_object_recolor_bias())
     (out_dir / "object_recolor_sz.pl").write_text(
         render_object_recolor_bias(include_size_constants=True, max_vars=7, max_body=5)

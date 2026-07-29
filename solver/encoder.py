@@ -293,13 +293,20 @@ def _block_and_derived(
                 facts.append(
                     f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
                 )
-            # Binary size_add sugar only: grow La+G (scale) and unit+gap (mirror Off).
-            # Omit G+Lb / La+Lb / G+1 to limit cross-example Off pollution.
+            # Binary size_add sugar: La+G (scale), 1+G (mirror Off).
             for x, y in ((La, g), (1, g)):
                 s = x + y
                 if s <= w and x >= 0 and y >= 0:
                     facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
                     observed_sizes.add(s)
+        # Hollow end sugar: 1+(L-1)=L for each colored length (even singleton blocks).
+        for bid in colored_ids:
+            L = lengths[bid]
+            if L >= 2 and L <= w:
+                facts.append(
+                    f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
+                )
+                observed_sizes.add(L - 1)
     else:
         for i in range(n_runs):
             for j in range(i + 1, n_runs):

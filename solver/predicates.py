@@ -131,6 +131,8 @@ OBJECT_PADDED_ALLOWLIST: FrozenSet[str] = frozenset(
 OBJECT_SCALE_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "largest", "non_largest", "obj_succ", "gap", "size_add"}
 )
+OBJECT_MOVE_ALLOWLIST: FrozenSet[str] = frozenset({"block"})
+OBJECT_HOLLOW_ALLOWLIST: FrozenSet[str] = frozenset({"block", "size_add"})
 OBJECT_DENOISE_ALLOWLIST: FrozenSet[str] = frozenset(
     {"block", "largest", "component_start", "component_len"}
 )
@@ -141,6 +143,8 @@ OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     OBJECT_FILL_ALLOWLIST
     | OBJECT_PADDED_ALLOWLIST
     | OBJECT_SCALE_ALLOWLIST
+    | OBJECT_MOVE_ALLOWLIST
+    | OBJECT_HOLLOW_ALLOWLIST
     | OBJECT_DENOISE_ALLOWLIST
     | OBJECT_RECOLOR_ALLOWLIST
 )
