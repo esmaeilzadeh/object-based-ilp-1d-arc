@@ -6,22 +6,22 @@ isProject: true
 todos:
   - id: git-bootstrap
     content: "Clean-tree gate; branch feature/object-only-solver from develop (or main if develop stale)"
-    status: pending
+    status: completed
   - id: tdd-contracts
     content: "Write/rewrite failing object-only contract tests BEFORE production deletes"
-    status: pending
+    status: completed
   - id: pipeline-object-only
     content: "Green: thin pipeline.solve object-head only; drop ladder/pixel/trivial"
-    status: pending
+    status: completed
   - id: encode-bias-delete
     content: "Green: lean encode + object bias only; delete dual/pixel modules and static biases"
-    status: pending
+    status: completed
   - id: harness-cli-scripts
     content: "Green: harness/CLI/scripts block_primary-only"
-    status: pending
+    status: completed
   - id: docs-archive
     content: "docs: living docs object-only; SOLVER_PLAN obsolete banner"
-    status: pending
+    status: in_progress
   - id: local-verify
     content: "pytest + harness one-shot + smoke_solver locally"
     status: pending
