@@ -30,18 +30,13 @@ class EncodeResult:
     out_dir: Path
     bk_path: Path  # train-input BK only (learning)
     test_bk_path: Path  # test-input BK only (apply / decode)
-    test_path: Path  # test.pl: pos/neg + test BK (paper-style soft score)
-    exs_path: Path  # pixel-head examples (alias of exs_pixel_path)
-    exs_pixel_path: Path
+    test_path: Path  # test.pl: pos/neg out/3 + test BK (soft score only)
     exs_object_path: Path
     bias_object_path: Optional[Path] = None  # mechanical object bias from this BK/exs
-    bias_hint: str = "dual"
-    # Hard role isolation for block-primary: atoms b*/p*/s*/v* instead of raw ints.
-    typed_roles: bool = False
+    # Hard role isolation: atoms b*/p*/s*/v* instead of raw ints.
+    typed_roles: bool = True
     # Python-only Bid → (start, end) for object decode; not written as searchable BK.
     block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = field(default_factory=dict)
-    color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)  # ex -> role->orig (unused unless canonicalize)
-    inv_color_maps: Dict[int, Dict[int, int]] = field(default_factory=dict)
 
 
 def block_geometry_for_row(row: Sequence[int]) -> Dict[int, Tuple[int, int]]:
@@ -472,47 +467,20 @@ _AGG_NAMES = (
 )
 
 
-def _bk_lines_for(
-    examples: Sequence[ExampleGrids],
-    *,
-    include_pixels: bool,
-    include_blocks: bool,
-    include_aggregations: bool,
-    max_w: int,
-    typed_roles: bool = False,
-) -> List[str]:
-    """Ground pixel/block facts for ``examples`` plus shared arithmetic tables."""
+def _bk_lines_for(examples: Sequence[ExampleGrids], *, max_w: int) -> List[str]:
+    """Lean typed-role block facts for ``examples`` (object path only)."""
     lines: List[str] = []
-    if include_pixels:
-        for eg in examples:
-            lines.extend(_pixel_facts(eg.ex_id, eg.inp))
-    if include_blocks:
-        # Cell bridges + pixel starts are for block/dual bias; block-primary omits both.
-        include_cell_bridges = not typed_roles
-        include_pixel_anchors = not typed_roles
-        for eg in examples:
-            derived = _block_and_derived(
+    for eg in examples:
+        lines.extend(
+            _block_and_derived(
                 eg.ex_id,
                 eg.inp,
-                typed_roles=typed_roles,
-                include_cell_bridges=include_cell_bridges,
-                include_pixel_anchors=include_pixel_anchors,
+                typed_roles=True,
+                include_cell_bridges=False,
+                include_pixel_anchors=False,
             )
-            if not include_aggregations:
-                derived = [
-                    f
-                    for f in derived
-                    if not any(f.startswith(n + "(") for n in _AGG_NAMES)
-                ]
-            lines.extend(derived)
-    # Pixel/dual arith tables stay raw ints; object path does not expose them.
-    if include_pixels:
-        lines.extend(_arith_ground(max_w))
-    elif include_blocks and typed_roles:
-        # Lean block-primary: no size_atom/value_atom tables (not searchable BK).
-        pass
-    else:
-        lines.extend(_arith_ground(max_w))
+        )
+    del max_w  # width used inside lean emit via row length
     return lines
 
 
@@ -669,17 +637,8 @@ def _exs_out_blocks(
 def encode_instance(
     src: Union[PathLike, dict],
     out_dir: PathLike,
-    *,
-    canonicalize_colors: bool = False,
-    include_aggregations: bool = True,
-    include_blocks: bool = True,
-    include_pixels: bool = True,
 ) -> EncodeResult:
-    """Write train ``bk.pl``, test BK / ``test.pl``, and train exs under ``out_dir``.
-
-    Matches the paper repo layout: learning BK is train-input only; test input
-    facts live in ``test.pl`` (and ``test_bk.pl`` for apply).
-    """
+    """Write lean object BK, ``exs_object.pl``, bias, and soft-score ``test.pl``."""
     obj = _load_json(src)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -697,39 +656,18 @@ def encode_instance(
         out = flatten(pair["output"]) if "output" in pair and pair["output"] is not None else None
         test.append(ExampleGrids(base + j, inp, out))
 
-    if canonicalize_colors:
-        from solver.colors import canonicalize_examples
-
-        train, test, color_maps, inv_maps = canonicalize_examples(train, test)
-    else:
-        color_maps, inv_maps = {}, {}
-
     max_w = 1
     for eg in train + test:
         max_w = max(max_w, len(eg.inp))
         if eg.out is not None:
             max_w = max(max_w, len(eg.out))
 
-    typed_roles = bool(include_blocks and not include_pixels)
-
-    bk_kw = dict(
-        include_pixels=include_pixels,
-        include_blocks=include_blocks,
-        include_aggregations=include_aggregations,
-        max_w=max_w,
-        typed_roles=typed_roles,
-    )
-    train_bk = _bk_lines_for(train, **bk_kw)
-    test_bk = _bk_lines_for(test, **bk_kw)
-    if typed_roles:
-        # Group by predicate so SWI does not warn on interleaved examples.
-        train_bk = sorted(train_bk, key=lambda f: f.split("(", 1)[0])
-        test_bk = sorted(test_bk, key=lambda f: f.split("(", 1)[0])
+    train_bk = sorted(_bk_lines_for(train, max_w=max_w), key=lambda f: f.split("(", 1)[0])
+    test_bk = sorted(_bk_lines_for(test, max_w=max_w), key=lambda f: f.split("(", 1)[0])
 
     bk_path = out_dir / "bk.pl"
     test_bk_path = out_dir / "test_bk.pl"
     test_path = out_dir / "test.pl"
-    exs_pixel_path = out_dir / "exs.pl"
     exs_object_path = out_dir / "exs_object.pl"
 
     bk_path.write_text("\n".join(train_bk) + "\n")
@@ -737,35 +675,30 @@ def encode_instance(
 
     labeled_test = [eg for eg in test if eg.out is not None]
     test_exs = _exs_pos_neg(labeled_test) if labeled_test else []
-    # Original layout: pos/neg first, then test BK facts.
     test_path.write_text("\n".join(test_exs + test_bk) + "\n")
 
-    exs_pixel_path.write_text("\n".join(_exs_pos_neg(train)) + "\n")
     exs_object_path.write_text(
-        "\n".join(_exs_out_blocks(train, typed_roles=typed_roles)) + "\n"
+        "\n".join(_exs_out_blocks(train, typed_roles=True)) + "\n"
     )
 
-    bias_object_path: Optional[Path] = None
-    if typed_roles:
-        from solver.bias_gen import render_object_bias_from_bk
+    from solver.bias_gen import render_object_bias_from_bk
 
-        bias_object_path = out_dir / "bias_object.pl"
-        bias_object_path.write_text(
-            render_object_bias_from_bk(
-                bk_path.read_text(),
-                exs_text=exs_object_path.read_text(),
-            )
+    bias_object_path = out_dir / "bias_object.pl"
+    bias_object_path.write_text(
+        render_object_bias_from_bk(
+            bk_path.read_text(),
+            exs_text=exs_object_path.read_text(),
         )
+    )
 
     block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = {}
     for eg in train + test:
         block_geometry[eg.ex_id] = block_geometry_for_row(eg.inp)
 
-    # sidecar for harness
     meta = {
         "train": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in train],
         "test": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in test],
-        "typed_roles": typed_roles,
+        "typed_roles": True,
         "block_geometry": {
             str(eid): {str(b): [s, e] for b, (s, e) in geo.items()}
             for eid, geo in block_geometry.items()
@@ -780,12 +713,8 @@ def encode_instance(
         bk_path=bk_path,
         test_bk_path=test_bk_path,
         test_path=test_path,
-        exs_path=exs_pixel_path,
-        exs_pixel_path=exs_pixel_path,
         exs_object_path=exs_object_path,
         bias_object_path=bias_object_path,
-        typed_roles=typed_roles,
+        typed_roles=True,
         block_geometry=block_geometry,
-        color_maps=color_maps,
-        inv_color_maps=inv_maps,
     )
