@@ -31,8 +31,9 @@ CLI: `python -m solver.cli path.json --timeout 60` (same object path).
 
 ## Non-goals (see block-level-only rule)
 
-- Pixel / dual / trivial ladder
+- Pixel / dual / trivial induction stages
 - Category-named bias stages
 - Marker / reflect answer hacks
 
-Historical dual-ladder design → [SOLVER_PLAN.md](SOLVER_PLAN.md).
+Method plan → [SOLVER_PLAN.md](SOLVER_PLAN.md).  
+ILP landscape → [ILP-1D-Method.md](ILP-1D-Method.md).

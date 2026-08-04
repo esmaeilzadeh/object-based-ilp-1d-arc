@@ -1,211 +1,136 @@
-# Method Plan: A Generic 1D-ARC Solver
+# Method Plan: Object-only 1D-ARC Solver
 
-> **Archive / historical.** Research default is now **object-only**
-> `block_primary` (`out_block/5`). See [CURRENT_METHOD.md](CURRENT_METHOD.md) and
-> [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
-> Dual ladder, trivials, and pixel stages described below are **not** in the
-> current solver path.
+Living method plan for the **object-only** path. As-built snapshot:
+[CURRENT_METHOD.md](CURRENT_METHOD.md). Direction:
+[`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
 
-Target: a single program that takes one problem instance in the standard ARC JSON
-format (3 train input/output pairs + 1 test input) and returns the predicted test
-output grid. No per-task configuration, no task-type labels.
+Target: a single program that takes one ARC JSON instance (3 train I/O + 1 test
+input) and returns the predicted test grid. No per-task configuration, no
+task-type labels, no pixel-head / dual / trivial induction stages.
 
-Core thesis (from prior discussion): 1D-ARC difficulty is *relational*, not
-combinatorial. The highest-leverage design choice is the **representation** —
-describe grids as **color blocks (objects)** in addition to pixels, and let a
-general ILP system (Popper) learn the input→output relation over that
-representation. Do NOT hand the solver pretrained geometric transformation rules
-(mirror, fill, denoise operators); those are learnable. DO hand it everything ILP
-provably cannot invent in reasonable time: segmentation, counting, aggregation,
-and arithmetic.
+Core thesis: 1D-ARC difficulty is *relational*. Lift grids to **color blocks
+(objects)**, induce `out_block/5` with Popper, decode to pixels for scoring.
+Do **not** hand pretrained geometric transform operators. Do hand what ILP
+cannot invent cheaply: segmentation, counting, aggregation, and typed arithmetic
+sugar emitted uniformly from the instance.
 
 ---
 
 ## Stage 0 — Problem framing
 
-The solver is a fixed pipeline, run fresh per instance:
+Fixed pipeline, fresh per instance:
 
-1. **Encode** the 3 train pairs relationally (facts).
-2. **Induce** a logic program that maps input facts to output facts, consistent
-   with all 3 train pairs.
-3. **Verify** the program reproduces all 3 train outputs exactly. Reject otherwise.
-4. **Apply** the program to the test input facts.
-5. **Decode** the derived output facts back into a grid.
+1. **Encode** train/test grids as lean typed-role block BK + mechanical
+   `out_block` exs + per-instance object bias.
+2. **Induce** one Popper program with head `out_block/5`.
+3. **Paint-verify** on all train outputs; reject otherwise.
+4. **Apply** to the test input; **decode** `out_block` → pixel grid.
+5. Soft-score from the predicted grid (`out/3` in `test.pl` is scoring only).
 
-"Generic" means the pipeline, background knowledge (BK), and language bias are
-identical for every instance. Learning happens at solve time (per instance);
-nothing is trained offline.
+"Generic" means one mechanical codegen for `exs` / `bk` / `bias` from that
+instance’s grids. Learning is per-instance; nothing is trained offline.
 
 ---
 
-## Stage 1 — Dual-granularity representation (the heart of the method)
+## Stage 1 — Block representation
 
-Encode every grid at TWO levels simultaneously. The ILP search chooses which
-level (or mix) expresses the transformation most compactly.
-
-### Pixel layer (keep from the paper)
-- `in(Ex, Pos, Color)` for non-background cells; `empty(Ex, Pos)` for background.
-- `width(Ex, W)`.
-- Needed because some tasks are genuinely sub-object: single-pixel noise,
-  odd/even position recoloring, pattern stamping.
-
-### Block layer (the new core)
 Deterministic segmentation: **maximal runs of the same color**, including
 background `0`. All runs share one left→right `block_id` space.
 
-- Colored run (`C ≠ 0`): `block(Ex, Id, Len, Color)` + paint bridges
-- Empty run (`C = 0`): `empty_block(Ex, Id, Len)` — **not** `block(..., 0)`
-  (keeps `0` out of `value` / `largest` / `block_cell`)
-- Dense nonempty ordinal: `obj_index(Ex, Bid, K)` with `K = 0,1,2,…` over
-  colored runs only (so rules can say “first/second object” without skipping
-  empty ids)
+- Colored run (`C ≠ 0`): `block(Ex, Id, Len, Color)`
+- Empty run (`C = 0`): `empty_block(Ex, Id, Len)` — not `block(..., 0)`
+- Dense nonempty ordinal: `obj_index(Ex, Bid, K)` over colored runs only
 
-`block_len(Ex, Id, Len)` remains a thin alias for colored lengths.
-`block_count` = colored count; `empty_block_count` = empty-run count.
+Absolute coordinates are not free search constants. They appear only as
+**grounded binders** tied to a run id (`block_start` / `block_end`, …).
 
-Absolute coordinates are not free search constants (`c*` omitted in block/object
-bias). They appear only as **grounded binders** tied to a run id:
-`block_start` / `block_end` / `after_block` / `before_block`.
+**Typed number roles** (no cross-role arithmetic):
 
-**Typed number roles** (Popper types — no cross-role arithmetic):
-- `value` — color symbols (`v0..v9`)
-- `position` — grid ordinals (`c*`, `my_succ`/`lt`/`add`; dual/pixel bias only)
-- `size` — cardinals (lengths); compare via `shorter`/`longer`/`size_lt`
-- `block_id` — run ordinals over all runs (variables only in block/object bias)
-- `rank` — ordinals for `len_rank` and dense `obj_index` (dual may expose `r*`)
+- `value` — color symbols
+- `size` — cardinals (lengths); compare via grounded size preds
+- `block_id` — run ordinals
+- `rank` — ordinals for `len_rank` / `obj_index`
+- `position` — used only where object bias needs grounded binders / sugar
 
-**Grounding policy:** all object/geometry/paint priors are finite facts for the
-instance. No recursive object BK. Block/object bias omits `c*`/`s*` constants.
+**Grounding policy:** object/geometry/agg facts are finite for the instance.
+No recursive object BK. Bias constants come from what appears in that instance’s
+BK/exs.
 
-Derived relations (computed during encoding, NOT learned):
-- geometry: `left_of`, `adjacent`, `gap`, `touches_edge`, `block_succ`,
-  `obj_succ` over run / nonempty ids
-- length compare: `shorter`, `longer`, `same_len`, `size_lt` (all runs)
-- ranking: `largest`, `smallest`, `non_largest`, `block_count`,
-  `empty_block_count`, `color_count`, `unique_color`, `len_rank` —
-  **colored runs only**
-- position anchors: `mid`, `mirror_index`, `from_right` (dual bias)
-
-### Arithmetic / order primitives
-Position tables only: `my_succ/2`, `lt/2`, `add/3` (dual/pixel). Cardinal
-compares use grounded `size_lt`, not position `lt`. Block-layer successors are
-`block_succ` / `obj_succ` (grounded), not `my_succ` on `block_id`.
+Derived relations (encoding-time, not learned): geometry (`left_of`,
+`adjacent`, `gap`, `block_succ`, `obj_succ`, …), length compare, ranking
+(`largest`, `smallest`, …), and generic arith sugar (`offset_pos`, `size_add`,
+…) when emitted uniformly from observed sizes/gaps.
 
 ---
 
-## Stage 2 — Dual induction targets and decode
+## Stage 2 — Object induction target and decode
 
-Two separate example files (never mixed in one Popper run):
-
-- **Pixel head** (`exs.pl`): `pos/neg out(Ex, Pos, Color)` — denoise / sub-object
-- **Object head** (`exs_object.pl`): `pos/neg out_block(Ex, Start, Len, Color)` —
-  only the minimal colored-run description of each train **output**. No out
-  geometry (succ/left_of/…) in exs or BK — that would leak or add noise.
-
-BK is always **input-only** reframe.
-
-**Object decoder:** query all `out_block(E,S,L,C)`, paint `[S,S+L)` on a zero
-canvas; fail verify on overlap / OOB.
-
-**Pixel decode:** closed-world `out/3` as before (background default 0).
-
-Pixel-head block stage may still use paint bridges:
-- `pixel_block` / `in_block` / `block_edge` / `in_gap`
-- `block_cell` / `edge_cell` / `interior_cell` / `solid_cell` / `gap_cell`
-  (`gap_cell` = shorter-endpoint fill when both endpoints colored)
-
-Object-head bias **omits** those paint priors; it uses geometry +
-`after_block` / `block_start` binders so ILP learns I/O object relations.
+- **Head:** `out_block(Ex, Bid, Off, Len, Color)` — mechanical pos/neg from
+  train **output** colored runs (input-anchored).
+- **BK:** input-only reframe of the grids.
+- **Bias:** one mechanical object bias per instance
+  (`render_object_bias_from_bk`); static `solver/bias/object.pl` is
+  fallback/tests only.
+- **Decode:** paint each `out_block` span on a zero canvas; verify rejects
+  overlap / OOB.
+- **Scoring:** predicted pixels may be reflected as `out/3` soft facts — not a
+  second solver.
 
 ---
 
-## Stage 3 — Induction with a staged portfolio (anytime, cheap-first)
+## Stage 3 — Single induction path
 
-Do not throw every instance straight into full ILP. Run a fixed escalation
-ladder; stop at the first level whose program passes exact verification on all 3
-train pairs:
+One Popper call (`block_primary` / `object_ilp`). Accept only paint-verified
+train programs. On failure: copy test input (`fallback_identity`), empty
+program, low confidence — not a trivial closed-form “win.”
 
-1. **Trivial checks** (constant-time): identity, global recolor (bijective color
-   map), uniform shift by k, reversal. These are closed-form testable — no search.
-2. **Block pixel-head ILP**: pixel `exs` + `block.pl` — fill / hollow via paint
-   bridges (cheap when priors fit).
-3. **Object-head ILP**: `exs_object` + `object.pl` + out_block decoder — move /
-   object-relation tasks.
-4. **Pixel ILP** / **dual ILP**: sub-object and mixed tasks.
-5. **Fallback**: identity prediction, low confidence.
-
-Rationale: the ladder preserves generality (every level is domain-generic) while
-spending the timeout where the representation insight says it pays off.
+No ladder, dual bias stages, pixel-head ILP, or category-named bias switches.
 
 ---
 
 ## Stage 4 — Generalization safeguards
 
-Two normalizations make learned programs transfer from train pairs to the test
-input even when surface features differ:
-
-- **Color canonicalization (optional, applied symmetrically):** map colors to
-  roles per example (background, majority color, minority/noise color, unique
-  color) and learn over roles; invert the mapping at decode. Handles instances
-  where the test grid uses different colors than the trains.
-- **Width independence:** never rely on absolute positions alone; BK's
-  `from_right`, `mid`, `mirror_index` express positions relative to the grid, so
-  programs survive width changes between train and test.
-
-Both are representation-level, not learned — consistent with the thesis.
+- **Width / position:** prefer relative / binder facts over naked absolute
+  indices so programs can survive width changes.
+- **Colors:** learn over values present in the instance; no optional
+  color-canonicalization stage in the current path.
+- **Uniform language:** bias body preds / constants from that instance’s BK/exs
+  only (see block-level-only rule).
 
 ---
 
 ## Stage 5 — Verification-driven acceptance
 
-A candidate program is accepted only if it reproduces **every cell of every
-train output exactly** (no FP, no FN under the closed-world decode). This is the
-solver's only quality gate and is what makes the pipeline trustworthy without
-confidence models. Popper's own coverage testing already provides this; the plan
-just makes it the hard acceptance criterion at every ladder level.
+Accept only if the program reproduces **every cell of every train output**
+under object paint-decode. That is the sole quality gate.
 
 ---
 
 ## Stage 6 — Evaluation protocol
 
-- Dataset: 1D-ARC, 18 task types × 50 instances (standard JSON).
-- Metric: top-1 exact match on the test output grid (same as the paper and ARGA).
-- Baselines to beat/report: paper's pixel-only relational decomposition
-  (59/63/69% at 1/10/60 min) and ARGA (94%).
-- Required ablations (these validate the thesis):
-  1. pixel-only BK (paper reproduction),
-  2. block-only BK,
-  3. dual BK (full method),
-  4. dual BK minus derived aggregations (shows counting must be precomputed),
-  5. ladder off (straight to full ILP) — shows the portfolio's time value.
-- Report per-task-type solve rates, not just the aggregate, to see which
-  representational level each concept needs.
+- Dataset: 1D-ARC JSON under `raw_data/onedarcraw/`.
+- Metric: top-1 exact match on the test output grid.
+- Baseline: external pixel Decom (not an in-solver mode).
+- Report per-category solve rates for `block_primary`.
+- Ablations that switch to pixel/dual induction are **off-direction** for the
+  block-lift claim unless explicitly confirmed.
 
 ---
 
-## Stage 7 — Extension path (after the above works)
+## Stage 7 — Extension path (optional, not required for the claim)
 
-- **Library learning:** promote recurring learned clauses (e.g. "fill between
-  markers") to named BK predicates for later instances — turns the per-instance
-  solver into an improving one. Keep this OFF for benchmark comparability runs.
-- **Multiple test inputs** per instance (some ARC JSONs have >1): apply the same
-  accepted program to each.
-- **2D lift:** the whole design carries over by replacing runs with connected
-  components and adding row/column anchors; segmentation ambiguity becomes the
-  new hard problem (out of scope for 1D).
+- Cross-task library learning (OFF for comparable single-instance runs).
+- Multiple test inputs per JSON.
+- 2D lift (connected components) — out of scope for 1D.
 
 ---
 
-## What a detailed implementation plan must specify (checklist for the next model)
+## Implementation checklist (current code)
 
-1. JSON → facts encoder (both layers + derived relations), and the exact
-   predicate/type inventory.
-2. Bias files per ladder level (which predicates are exposed at level 2 vs 3),
-   clause/variable budgets, example-id threading constraints.
-3. Bridge predicate definitions (`span`, shifted spans) as Prolog/ASP BK.
-4. The trivial-check implementations (level 1) and their verification.
-5. Popper invocation per level with per-level timeouts summing to the global
-   budget (suggest 10–20% / 40% / 40–50%).
-6. Decoder + exact-match verifier shared by all levels.
-7. Color canonicalization mapping and its inverse.
-8. Harness: run over the 900 instances, produce the ablation table.
+1. JSON → lean block facts + mechanical object exs/bias — `solver/encoder.py`,
+   `solver/bias_gen.py`
+2. Object predicate inventory — `solver/predicates.py` (object path only)
+3. Induce / verify / decode — `solver/induce.py`, `verify.py`, `decode.py`
+4. Thin orchestration — `solver/pipeline.py` (`solve(instance, timeout, …)`)
+5. Harness mode `block_primary` only — `solver/harness.py`
+6. Eval scripts default to `block_primary`

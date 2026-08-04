@@ -1,4 +1,4 @@
-"""Encode ARC JSON into dual pixel/block Popper facts."""
+"""Encode ARC JSON into lean block Popper facts (object-head)."""
 
 from __future__ import annotations
 

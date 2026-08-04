@@ -4,12 +4,13 @@ Per-instance solver for 1D-ARC JSON: encode grids as **color blocks (objects)**,
 induce `out_block/5` with [Popper](https://github.com/logic-and-learning-lab/popper),
 decode to pixels for scoring.
 
-**Sole path:** object-head / `block_primary` only. No pixel-head ILP, dual ladder,
-or trivial closed-form stages.
+**Sole path:** object-head / `block_primary` only. No pixel-head ILP, dual
+induction, or trivial closed-form stages.
 
 As-built: [docs/CURRENT_METHOD.md](docs/CURRENT_METHOD.md).  
+Method plan: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md).  
+ILP landscape: [docs/ILP-1D-Method.md](docs/ILP-1D-Method.md).  
 Direction: [`.cursor/rules/block-level-only.mdc`](.cursor/rules/block-level-only.mdc).  
-Historical dual-ladder design: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md) (archive).  
 Package notes: [solver/README.md](solver/README.md).
 
 ## Setup
