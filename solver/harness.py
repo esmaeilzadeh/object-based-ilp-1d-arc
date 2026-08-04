@@ -12,52 +12,7 @@ from typing import Dict, List, Optional
 from solver.pipeline import solve
 
 MODES = {
-    "pixel_only": dict(
-        include_blocks=False,
-        include_pixels=True,
-        include_aggregations=False,
-        ladder=False,
-        force_bias="pixel",
-    ),
-    "block_only": dict(
-        include_blocks=True,
-        include_pixels=False,
-        include_aggregations=True,
-        ladder=False,
-    ),
-    "block_primary": dict(
-        include_blocks=True,
-        include_pixels=False,
-        include_aggregations=True,
-        ladder=False,
-        canonicalize_colors=False,
-    ),
-    "dual": dict(
-        include_blocks=True,
-        include_pixels=True,
-        include_aggregations=True,
-        ladder=True,
-        canonicalize_colors=False,
-    ),
-    "dual_no_agg": dict(
-        include_blocks=True,
-        include_pixels=True,
-        include_aggregations=False,
-        ladder=True,
-    ),
-    "dual_no_ladder": dict(
-        include_blocks=True,
-        include_pixels=True,
-        include_aggregations=True,
-        ladder=False,
-    ),
-    "dual_full": dict(
-        include_blocks=True,
-        include_pixels=True,
-        include_aggregations=True,
-        ladder=True,
-        canonicalize_colors=True,
-    ),
+    "block_primary": {},
 }
 
 
@@ -66,13 +21,13 @@ def discover(dataset_root: Path) -> List[Path]:
 
 
 def run_one(path: Path, mode: str, timeout: int, out_dir: Path) -> dict:
-    kwargs = dict(MODES[mode])
+    if mode not in MODES:
+        raise ValueError(f"unknown mode {mode!r}; only block_primary is supported")
     t0 = time.time()
     result = solve(
         path,
         timeout=timeout,
         work_dir=out_dir / path.stem,
-        **kwargs,
     )
     elapsed = time.time() - t0
     gold = None
@@ -96,6 +51,9 @@ def run_one(path: Path, mode: str, timeout: int, out_dir: Path) -> dict:
         "elapsed": elapsed,
         "predicted": result.predicted_grid,
         "gold": gold,
+        "failure_reason": result.failure_reason,
+        "failure_detail": result.failure_detail,
+        "program": result.program,
     }
 
 
@@ -134,7 +92,7 @@ def summarize(rows: List[dict]) -> dict:
         "exact_accuracy": exact_acc,
         "soft_accuracy": soft_acc,
         "soft_sem": soft_sem,
-        "accuracy": soft_acc,  # paper-comparable primary
+        "accuracy": soft_acc,
         "per_task_exact": {t: sum(v) / len(v) for t, v in by_task_exact.items()},
         "per_task_soft": {t: sum(v) / len(v) for t, v in by_task_soft.items()},
         "per_task": {t: sum(v) / len(v) for t, v in by_task_soft.items()},
@@ -144,7 +102,7 @@ def summarize(rows: List[dict]) -> dict:
 def main(argv: Optional[List[str]] = None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", type=Path, default=Path("raw_data/onedarcraw/dataset"))
-    ap.add_argument("--mode", default="dual", choices=list(MODES))
+    ap.add_argument("--mode", default="block_primary", choices=list(MODES))
     ap.add_argument("--timeout", type=int, default=60)
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--trials", type=str, default="", help="comma ids e.g. 0,1,2")
@@ -181,6 +139,8 @@ def main(argv: Optional[List[str]] = None) -> None:
                 "predicted": None,
                 "gold": None,
                 "error": str(e),
+                "failure_reason": "popper_error",
+                "failure_detail": {},
             }
         (out_dir / f"{path.parent.name}_{path.stem}.json").write_text(
             json.dumps(row, indent=2)
@@ -199,8 +159,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         )
 
     summary = summarize(rows)
-    print(json.dumps(summary, indent=2))
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

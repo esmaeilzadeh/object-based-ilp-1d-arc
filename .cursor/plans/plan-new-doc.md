@@ -1,6 +1,6 @@
 # Plan: Update all docs to current block-level ILP state
 
-**Status:** executed on branch `cursor/docs-block-primary-e0d1` (docs only)  
+**Status:** plan only (no doc rewrites in this step)  
 **Goal:** Make every user-facing and method doc match the code on `main` /
 `develop` / `cursor/fill-0-cloud-loop` tip (`d56f23f`), and align narrative
 with [`.cursor/rules/block-level-only.mdc`](../rules/block-level-only.mdc).
@@ -135,13 +135,12 @@ Capture last reported `block_primary` sweep (54 tasks, ~2 min, 2 workers): ~39 p
 
 ## 3. Acceptance criteria
 
-- [x] A newcomer reading **README → CURRENT_METHOD** can run `block_primary` and state the head schema correctly.
-- [x] No doc presents category-staged object biases or marker/reflect BK as the intended method.
-- [x] `out_block/5` Bid/Off semantics appear everywhere the head is described.
-- [x] Dual ladder / trivials / pixel stages are labeled **ablation or legacy**, not the block-lift claim.
-- [x] ILP-1D-Method todos/links match reality (object-head done).
-- [x] Rule file remains the normative “do not” list; docs cite it.
-- [x] Open Q defaults: document CLI dual default as-is; CURRENT_METHOD as-built + SOLVER_PLAN delta; skip EVAL_NOTES.
+- [ ] A newcomer reading **README → CURRENT_METHOD** can run `block_primary` and state the head schema correctly.
+- [ ] No doc presents category-staged object biases or marker/reflect BK as the intended method.
+- [ ] `out_block/5` Bid/Off semantics appear everywhere the head is described.
+- [ ] Dual ladder / trivials / pixel stages are labeled **ablation or legacy**, not the block-lift claim.
+- [ ] ILP-1D-Method todos/links match reality (object-head done).
+- [ ] Rule file remains the normative “do not” list; docs cite it.
 
 ---
 

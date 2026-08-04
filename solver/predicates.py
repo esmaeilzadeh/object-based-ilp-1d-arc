@@ -1,17 +1,15 @@
-"""Frozen predicate inventory for the dual-granularity 1D-ARC solver.
+"""Frozen predicate inventory for the object-only 1D-ARC solver.
 
 Number roles (types — never cross-role arithmetic):
   value    — color symbols
-  position — grid ordinals (pixel index)
+  position — grid ordinals (pixel index / binders)
   size     — cardinals (block lengths, counts)
   block_id — object ordinals
   rank     — length-rank ordinals (1 = longest)
 
-Ladder levels for body_pred exposure:
-  2 = block pixel-head
-  3 = dual pixel-head
-  4 = object-head (out_block); block–block relations, no pixel-paint priors,
-      no marker/mirror geometry hacks
+Runtime bias uses object-head exposure only (`body_preds_for_level(4)`).
+Entries tagged with other levels are unused legacy inventory and are not a
+second solver path.
 """
 
 from __future__ import annotations
@@ -26,7 +24,7 @@ class Predicate:
     arity: int
     types: Tuple[str, ...]
     layer: str
-    # Ladder levels that expose this as a body_pred (2=block, 3=dual, 4=object)
+    # Historical exposure tags; runtime object bias filters level 4 only.
     ladder_levels: FrozenSet[int]
 
 
@@ -70,7 +68,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("mid", 2, ("ex", "position"), "anchors", frozenset({3})),
     Predicate("mirror_index", 3, ("ex", "position", "position"), "anchors", frozenset({3})),
     Predicate("from_right", 3, ("ex", "position", "position"), "anchors", frozenset({3})),
-    # arithmetic (position ordinals — dual / pixel)
+    # arithmetic (position ordinals — unused on object path unless level 4)
     Predicate("my_succ", 2, ("position", "position"), "arith", frozenset({3})),
     Predicate("lt", 2, ("position", "position"), "arith", frozenset({3})),
     Predicate("add", 3, ("position", "position", "position"), "arith", frozenset({3})),
@@ -99,7 +97,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("block_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("edge_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("interior_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
-    # Full paint of non-largest blocks (hollow prior baked in) — pixel-head stages only
+    # Full paint of non-largest blocks (legacy inventory; not object-head)
     Predicate("solid_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("gap_cell", 5, ("ex", "block_id", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
 )

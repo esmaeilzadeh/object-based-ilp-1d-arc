@@ -1,13 +1,16 @@
 # Object-based ILP for 1D-ARC
 
-Generic per-instance solver for 1D-ARC JSON problems. Research default:
-**block-primary** — encode grids as color blocks, induce
-`out_block(Ex, Bid, Off, Len, Color)` with one mechanical object bias, then
+Per-instance solver for 1D-ARC JSON: encode grids as **color blocks (objects)**,
+induce `out_block/5` with [Popper](https://github.com/logic-and-learning-lab/popper),
 decode to pixels for scoring.
 
-Direction (mandatory): [`.cursor/rules/block-level-only.mdc`](.cursor/rules/block-level-only.mdc).  
-As-built method: [docs/CURRENT_METHOD.md](docs/CURRENT_METHOD.md).  
-Historical / dual-ladder plan: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md).  
+**Sole path:** object-head / `block_primary` only. No pixel-head ILP, dual
+induction, or trivial closed-form stages.
+
+As-built: [docs/CURRENT_METHOD.md](docs/CURRENT_METHOD.md).  
+Method plan: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md).  
+ILP landscape: [docs/ILP-1D-Method.md](docs/ILP-1D-Method.md).  
+Direction: [`.cursor/rules/block-level-only.mdc`](.cursor/rules/block-level-only.mdc).  
 Package notes: [solver/README.md](solver/README.md).
 
 ## Setup
@@ -20,41 +23,30 @@ pip install -r requirements.txt
 pip install -e ./popper
 ```
 
-## Solve (research default)
+## Solve one instance
 
 ```bash
+python -m solver.cli raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json \
+  --timeout 60 --out pred.json
+
+# or harness
 python -m solver.harness --mode block_primary --timeout 60 --one \
-  raw_data/onedarcraw/dataset/1d_recoloring_bmc/1d_recoloring_bmc_0.json
+  raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json
+
+./scripts/smoke_solver.sh
 ```
 
-Or parallel / batch:
+## Eval (first-3 trials)
 
 ```bash
 ./scripts/run_solver_eval.sh block_primary 60 0,1,2
-# JOBS=2 ./scripts/run_solver_eval_parallel.sh block_primary 60 0,1,2
+# JOBS=4 ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
 
-### Legacy CLI
-
-`python -m solver.cli …` still runs the **legacy dual ladder** by default
-(trivials → block/object/pixel/dual). Prefer `block_primary` for the block-lift
-eval. Smoke: `./scripts/smoke_solver.sh` (CLI / dual path).
-
-## Ablation harness
-
-```bash
-# Research default
-./scripts/run_solver_eval.sh block_primary 60 0,1,2
-
-# Pixel / dual ablations (not the block-lift claim)
-# modes: pixel_only | block_only | block_primary | dual | dual_no_agg | dual_no_ladder | dual_full
-./scripts/run_solver_eval.sh pixel_only 60 0,1,2
-LIMIT=5 ./scripts/run_solver_eval.sh dual 60 0
-```
+Only mode: `block_primary`.
 
 ## Layout
 
-- `solver/` — encode, mechanical bias, induce, verify, decode, harness
-- `raw_data/onedarcraw/` — 1D-ARC JSON dataset
+- `solver/` — lean encode, mechanical object bias, induce, verify, decode, harness
 - `popper/` — vendored Popper
-- `docs/` — CURRENT_METHOD, SOLVER_PLAN, ILP-1D-Method
+- `raw_data/onedarcraw/` — 1D-ARC JSON (+ external Decom baselines)

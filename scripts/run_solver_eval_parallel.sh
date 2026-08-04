@@ -6,7 +6,7 @@ cd "$ROOT"
 
 [[ -f .venv/bin/activate ]] && source .venv/bin/activate
 
-MODE="${1:-dual}"
+MODE="${1:-block_primary}"
 TIMEOUT="${2:-600}"
 TRIALS="${3:-0,1,2}"
 JOBS="${JOBS:-4}"
