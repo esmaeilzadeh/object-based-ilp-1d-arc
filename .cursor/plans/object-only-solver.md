@@ -21,10 +21,10 @@ todos:
     status: completed
   - id: docs-archive
     content: "docs: living docs object-only; SOLVER_PLAN obsolete banner"
-    status: in_progress
+    status: completed
   - id: local-verify
     content: "pytest + harness one-shot + smoke_solver locally"
-    status: pending
+    status: completed
   - id: baseline-regression
     content: "Pre/post: JOBS=4 block_primary timeout=120 trials 0,1,2 — measured 37/54; expected 39/54 had mismatches"
     status: completed
