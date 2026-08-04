@@ -1,11 +1,15 @@
 # Object-based ILP for 1D-ARC
 
-Generic per-instance solver for 1D-ARC JSON problems. Encodes each grid as
-**pixels + color blocks**, then learns an input→output logic program with
-[Popper](https://github.com/logic-and-learning-lab/popper) via a cheap-first
-ladder (trivial checks → block-only ILP → dual ILP).
+Per-instance solver for 1D-ARC JSON: encode grids as **color blocks (objects)**,
+induce `out_block/5` with [Popper](https://github.com/logic-and-learning-lab/popper),
+decode to pixels for scoring.
 
-Method details: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md).  
+**Sole path:** object-head / `block_primary` only. No pixel-head ILP, dual ladder,
+or trivial closed-form stages.
+
+As-built: [docs/CURRENT_METHOD.md](docs/CURRENT_METHOD.md).  
+Direction: [`.cursor/rules/block-level-only.mdc`](.cursor/rules/block-level-only.mdc).  
+Historical dual-ladder design: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md) (archive).  
 Package notes: [solver/README.md](solver/README.md).
 
 ## Setup
@@ -23,21 +27,25 @@ pip install -e ./popper
 ```bash
 python -m solver.cli raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json \
   --timeout 60 --out pred.json
+
+# or harness
+python -m solver.harness --mode block_primary --timeout 60 --one \
+  raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json
+
+./scripts/smoke_solver.sh
 ```
 
-Or: `./scripts/smoke_solver.sh`
-
-## Ablation harness
+## Eval (first-3 trials)
 
 ```bash
-# modes: pixel_only | block_only | dual | dual_no_agg | dual_no_ladder | dual_full
-./scripts/run_solver_eval.sh dual 60 0,1,2
-# LIMIT=5 ./scripts/run_solver_eval.sh dual 60 0
+./scripts/run_solver_eval.sh block_primary 60 0,1,2
+# JOBS=4 ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
+
+Only mode: `block_primary`.
 
 ## Layout
 
-- `solver/` — encode, bias, induce, verify, ladder CLI, harness
-- `raw_data/onedarcraw/` — 1D-ARC JSON dataset
+- `solver/` — lean encode, mechanical object bias, induce, verify, decode, harness
 - `popper/` — vendored Popper
-- `docs/` — method plans
+- `raw_data/onedarcraw/` — 1D-ARC JSON (+ external Decom baselines)

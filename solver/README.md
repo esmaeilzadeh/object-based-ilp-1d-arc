@@ -1,34 +1,30 @@
 # Object-based ILP 1D-ARC Solver
 
-Generic per-instance solver for 1D-ARC JSON problems (3 train I/O pairs + 1 test input).
-Uses Popper with a **dual pixel + color-block** representation. See [docs/SOLVER_PLAN.md](../docs/SOLVER_PLAN.md).
+Per-instance object-head solver for 1D-ARC JSON (3 train I/O + 1 test input).
+Popper induces `out_block/5`; decode paints pixels for scoring.
 
-## Input JSON
-
-```json
-{
-  "train": [{"input": [[...]], "output": [[...]]}, ...],
-  "test":  [{"input": [[...]], "output": [[...]]}]
-}
-```
+Direction: [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).  
+As-built: [docs/CURRENT_METHOD.md](../docs/CURRENT_METHOD.md).
 
 ## Pipeline
 
-1. Encode grids as `block(Ex,Id,Len,Color)` + length compares + pixel bridges
-   (`in_block` / `in_gap` / `block_edge`); Start/End stay encoder-internal.
-2. Cheap-first ladder: trivial checks → block-only ILP → pixel ILP → dual ILP.
-3. Accept only programs that exactly reproduce all train outputs.
-4. Apply to test input; closed-world decode (background = 0).
+1. Encode lean typed block BK + mechanical object bias from that instance’s BK/exs.
+2. Induce `out_block/5` (one Popper call).
+3. Accept only paint-verified train programs.
+4. Decode test; soft-score from the predicted grid.
 
 ## Run
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e ./popper
-
-python -m solver.cli raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json \
-  --timeout 60 --out pred.json
+python -m solver.cli path/to.json --timeout 60 --out pred.json
+python -m solver.harness --mode block_primary --timeout 60 --one path/to.json
+./scripts/run_solver_eval.sh block_primary 60 0,1,2
 ```
 
-Flags: `--no-ladder`, `--canonicalize-colors`, `--timeout N`.
+Only harness mode: `block_primary`.
+
+## Notes
+
+- Soft `out/3` in `test.pl` is **scoring**, not a pixel solver.
+- Static `solver/bias/object.pl` is fallback/tests only; runtime uses per-instance
+  `bias_object.pl`.

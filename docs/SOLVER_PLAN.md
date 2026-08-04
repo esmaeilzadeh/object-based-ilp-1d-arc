@@ -1,5 +1,11 @@
 # Method Plan: A Generic 1D-ARC Solver
 
+> **Archive / historical.** Research default is now **object-only**
+> `block_primary` (`out_block/5`). See [CURRENT_METHOD.md](CURRENT_METHOD.md) and
+> [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
+> Dual ladder, trivials, and pixel stages described below are **not** in the
+> current solver path.
+
 Target: a single program that takes one problem instance in the standard ARC JSON
 format (3 train input/output pairs + 1 test input) and returns the predicted test
 output grid. No per-task configuration, no task-type labels.

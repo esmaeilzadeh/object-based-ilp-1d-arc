@@ -17,7 +17,11 @@ isProject: false
 ---
 # SOTA ILP Method for Generic 1D-ARC
 
-Scope: **ILP-only lineage** (no LLM program search, no pure neural TTT). Compare [docs/SOLVER_PLAN.md](1d-arc/docs/SOLVER_PLAN.md) to recent ILP work, then propose the research method that should become the long-term target. Near-term build ([1D ARC Solver Impl](1d-arc)) can remain the first implementation slice of Stage A–B below.
+> **Note:** The as-built research path is object-only `block_primary`
+> ([CURRENT_METHOD.md](CURRENT_METHOD.md)). This document remains the ILP
+> landscape / thesis sketch; dual-ladder build order below is outdated.
+
+Scope: **ILP-only lineage** (no LLM program search, no pure neural TTT). Compare [docs/SOLVER_PLAN.md](SOLVER_PLAN.md) to recent ILP work, then propose the research method that should become the long-term target.
 
 ---
 
