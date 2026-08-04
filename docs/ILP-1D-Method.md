@@ -2,22 +2,26 @@
 ---
 todos:
   - id: "write-sota-doc"
-    content: "Write docs/SOTA_ILP_METHOD.md: ILP comparison + BRIL method"
-    status: pending
+    content: "This file is the ILP landscape + BRIL target (was SOTA_ILP_METHOD)"
+    status: completed
   - id: "link-solver-plan"
-    content: "Add pointer from SOLVER_PLAN.md to SOTA_ILP_METHOD.md"
-    status: pending
+    content: "Cross-link SOLVER_PLAN ↔ CURRENT_METHOD ↔ this doc"
+    status: completed
   - id: "upgrade-object-head"
-    content: "After dual+ladder works: add object-head ILP level (M2)"
-    status: pending
+    content: "Object-head out_block/5 (Bid,Off,Len,Color) — see CURRENT_METHOD.md"
+    status: completed
   - id: "upgrade-library"
-    content: "After object-head: add cross-task library refinement (M4) with ablations"
+    content: "Cross-task library refinement (M4) with ablations — still future"
     status: pending
 isProject: false
 ---
-# SOTA ILP Method for Generic 1D-ARC
+# ILP landscape + BRIL target for 1D-ARC
 
-Scope: **ILP-only lineage** (no LLM program search, no pure neural TTT). Compare [docs/SOLVER_PLAN.md](1d-arc/docs/SOLVER_PLAN.md) to recent ILP work, then propose the research method that should become the long-term target. Near-term build ([1D ARC Solver Impl](1d-arc)) can remain the first implementation slice of Stage A–B below.
+Scope: **ILP-only lineage** (no LLM program search, no pure neural TTT). Compare
+the dual-ladder design in [SOLVER_PLAN.md](SOLVER_PLAN.md) and the as-built
+block-primary stack in [CURRENT_METHOD.md](CURRENT_METHOD.md) to recent ILP work,
+then state the long-term **BRIL** target. Normative direction:
+[`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
 
 ---
 
@@ -39,16 +43,25 @@ Scope: **ILP-only lineage** (no LLM program search, no pure neural TTT). Compare
 - **ARGA (Xu et al., AAAI 2023):** Graph objects + constraint-guided DSL search — **94% on 1D-ARC**. Not ILP, but the performance ceiling object-centric methods set.
 - **Paper’s own undecomposed ILP baselines:** ~0% on 1D-ARC — shows representation, not Popper itself, is the bottleneck.
 
-### D. Your SOLVER_PLAN.md (proposed)
-- **Idea:** Per-instance Popper; **dual** pixel + **deterministic color-block** facts; precompute aggregations ILP cannot invent; cheap-first ladder; exact train verification; optional color canonicalization.
-- **Strengths vs A:** Fixes the main failure mode (objects + counting) while staying ILP. vs B: Prefer **learned relations over blocks** to hand-coded transform operators; dual layer covers sub-object tasks; full-benchmark + ablation design. vs ARGA: Keeps general ILP inducer; programs remain logical theories.
-- **Weaknesses vs SOTA need:** Still **no library learning** across instances; output is still pixel-head only (ILPAR’s object-generation framing may be more natural for fill/move); block definition is a single prior (maximal same-color run); ladder is heuristic, not theory-guided; no predicate invention / metarules beyond Popper defaults.
+### D. This repo (SOLVER_PLAN design → CURRENT_METHOD as-built)
+- **Idea:** Per-instance Popper; deterministic color-block facts; precompute aggregations ILP cannot invent; exact train verification; optional color canonicalization.
+- **As-built default:** `block_primary` — single mechanical object bias; head
+  `out_block(Ex, Bid, Off, Len, Color)`; paint-verify; decode to pixels.
+- **Legacy in code:** dual pixel+block ladder and trivials as **ablations only**.
+- **Strengths vs A:** Objects + counting while staying ILP. vs B: Prefer **learned
+  relations over blocks** to hand-coded transform operators; uniform language
+  (no category-named DSL stages). vs ARGA: Keeps general ILP inducer; programs
+  remain logical theories.
+- **Remaining gaps:** Still **no library learning** across instances; hard
+  categories (hollow / pcopy / flip / mirror) under **uniform** language; block
+  definition is a single prior (maximal same-color run).
 
 ```mermaid
 flowchart LR
-  pixelPopper[Pixel Popper Decomp] -->|"+objects +agg"| yourPlan[SOLVER_PLAN dual blocks]
-  ilpar[ILPAR object DSL ILP] -->|"less hand DSL more learned relations"| yourPlan
-  yourPlan -->|"+library +object-head +invention"| sota[SOTA ILP 1D]
+  pixelPopper[Pixel Popper Decomp] -->|"+objects +agg"| blockPrimary[block_primary out_block]
+  ilpar[ILPAR object DSL ILP] -->|"less hand DSL more learned relations"| blockPrimary
+  blockPrimary -->|"+library M4"| sota[BRIL SOTA ILP 1D]
+  dualAblation[dual ladder ablation] -.->|"legacy baseline"| blockPrimary
 ```
 
 ---
@@ -59,77 +72,81 @@ flowchart LR
 |--------|----------------|-----------------|-------------|-----------------|----------|
 | Pixel relational decomp | pixels | `out` pixel rules | arithmetic only | 69% @1h | no objects/count |
 | ILPAR | objects + DSL | object-generating LPs (sequenced) | rich object DSL | few curated ARC tasks | DSL completeness; scale |
-| SOLVER_PLAN | pixels + blocks + aggs | `out` over dual BK | segmentation + aggs (no transform ops) | not yet run | no transfer/library; pixel head |
-| SOTA target (below) | multi-view objects + roles | object + pixel rules; reusable preds | soft core priors only | aim ≥ ARGA on 1D, ILP-native | must stay falsifiable via ablations |
+| SOLVER_PLAN (design) | pixels + blocks + aggs | dual portfolio | segmentation + aggs | dual ladder ablations | dual as default is outdated |
+| **CURRENT_METHOD** | lean blocks + aggs | `out_block/5` | mechanical allowlist + arith sugar | harness `block_primary` | hard cats under uniform lang; no library |
+| SOTA target (below) | multi-view objects + roles | object (+ pixel ablation) rules; reusable preds | soft core priors only | aim ≥ ARGA on 1D, ILP-native | library + falsifiable ablations |
 
 ---
 
 ## 3. Proposed SOTA method (ILP-native) — **Block-Relational ILP with Library Refinement (BRIL)**
 
-**One-sentence claim:** Beat object-centric search on 1D-ARC by combining ILPAR’s object-generation mindset with Hocquette-style off-the-shelf Popper, dual representation from SOLVER_PLAN, and DreamCoder-like **ILP library refinement** — without shipping geometric transform operators.
+**One-sentence claim:** Beat object-centric search on 1D-ARC by combining ILPAR’s object-generation mindset with Hocquette-style off-the-shelf Popper, block representation from CURRENT_METHOD, and DreamCoder-like **ILP library refinement** — without shipping geometric transform operators.
 
 ### M1 — Multi-view perception (fixed, deterministic)
 Encode every grid as:
-1. **Pixels** (`in`, `empty`, `width`)
-2. **Blocks** = maximal same-color runs + derived geometry/aggregates (as in SOLVER_PLAN)
-3. **Roles** = per-example color/size ranks (`majority_color`, `len_rank`, …) for cross-example binding
+1. **Blocks** = maximal same-color runs + derived geometry/aggregates (lean allowlist on `block_primary`)
+2. **Roles** = typed size/value/block_id atoms; optional color canonicalization for ablations
+3. **Pixels** = available for **ablation** baselines (`pixel_only` / dual), not required for the block claim
 
-No ARGA-style operators (`mirror`, `denoise`, …) in BK.
+No ARGA-style operators (`mirror`, `denoise`, …) and no marker/reflect answer BK.
 
-### M2 — Dual induction targets (merge A + B)
-Run **two ILP problems** per instance (same BK), accept if either (or their composition) verifies on all trains:
+### M2 — Induction target — **object head done**
+- **Object head (default):**  
+  `out_block(Ex, Bid, Off, Len, Color) :- ...`  
+  paint at `start(Bid)+Off` for `Len` cells of `Color`.
+- **Pixel head:** `out(Ex,Pos,Color)` — ablation / legacy dual only.
 
-- **Pixel head:** `out(Ex,Pos,Color)` + bridges (`span`, `span_shift`) — covers denoise / OE recolor / stamping.
-- **Object head:** learn generators such as  
-  `out_block(Ex, Start, End, Color) :- ...`  
-  then paint via BK bridge. Prefer object-head when block counts match across I/O (move/fill/hollow/recolor-by-size).
+This is the ILPAR insight (generate objects) without a hand DSL of transforms.
 
-This is the ILPAR insight (generate objects) without requiring their full hand DSL of transforms.
+### M3 — Bias control (uniform, not category-staged)
+Use **one mechanical bias generator** per instance (`render_object_bias_from_bk`)
+with connectivity guards. Ordered **uniform** constraint tightening (clause/var
+budgets, allowlist subsets derived from BK presence) is allowed; **category-named
+stages** (`object_mirror`, …) are not — see the block-level-only rule.
 
-### M3 — Metarules / bias portfolio (ILP search control)
-Instead of only “bigger dual bias,” use a **ordered bias portfolio** (still Popper):
-1. Trivial closed-form (identity, recolor bijection, shift-k, reverse) → emit as logic programs.
-2. Object-head, short clauses, block+role preds only.
-3. Pixel-head, block+pixel dual.
-4. Pixel-head with higher `max_body` / recursion enabled if Popper settings allow.
+Legacy dual ladder (trivials → block → object → pixel → dual) remains ablation-only.
 
-Stop at first exact train verification (SOLVER_PLAN ladder, refined).
-
-### M4 — Cross-task library learning (the SOTA differentiator)
-After each **verified** solve, compress recurring clause patterns into **named BK predicates** (predicate invention / anti-unification over successful programs), e.g. `fill_between/3`, `shift_block/4`, promoted only if:
+### M4 — Cross-task library learning (the SOTA differentiator) — **future**
+After each **verified** solve, compress recurring clause patterns into **named BK predicates** (predicate invention / anti-unification over successful programs), promoted only if:
 - used in ≥K distinct task types, and
 - re-solving those tasks with the library **does not** regress train verification.
 
-Library is **OFF** for “paper-comparable single-instance” runs; **ON** for “generic improving solver” runs. This directly answers the earlier question about reusing fill/reverse knowledge — but as **invented predicates**, not raw `program.pl` dumps.
+Library is **OFF** for “paper-comparable single-instance” runs; **ON** for “generic improving solver” runs.
 
 ### M5 — Verification is the only teacher
-Exact train-grid match remains the accept/reject criterion (Hocquette + SOLVER_PLAN). Failed library candidates are rolled back. No LLM in the loop for the core claim (optional later as bias proposer only, outside ILP-SOTA claim).
+Exact train-grid match (paint-verify on object path) remains the accept/reject criterion. Failed library candidates are rolled back. No LLM in the loop for the core claim.
 
 ### M6 — Evaluation (must report)
 On full 1D-ARC 18×50:
-- vs pixel Popper (69%), vs ARGA (94%), vs SOLVER_PLAN dual without library
-- ablations: no-blocks / no-aggs / no-object-head / no-library / library-on
-- per-type solve rates + which head/level/library hit
+- vs pixel Popper (69%), vs ARGA (94%), vs `block_primary` without library
+- ablations: `pixel_only` / no-aggs / no-object-head / dual\* / library-on
+- per-type solve rates
 
 **Success criterion for “SOTA ILP on 1D-ARC”:** match or exceed ARGA aggregate **without** transform operators in BK, with interpretable Popper programs; show library-on improves hard types without hurting easy ones.
 
 ---
 
-## 4. How this relates to SOLVER_PLAN implementation
+## 4. How this relates to implementation
 
-| SOLVER_PLAN stage | Maps to BRIL |
-|-------------------|--------------|
-| Dual encode + aggs | M1 |
-| Pixel `out` + bridges | M2 pixel head |
-| Ladder | M3 (extend with object-head level) |
-| Color canonicalization | M1 roles |
-| Harness/ablations | M6 |
-| Library (was “extension”) | **M4 becomes first-class for SOTA**, not optional afterthought |
+| Piece | Maps to BRIL | Status |
+|-------|--------------|--------|
+| Lean block encode + aggs | M1 | Done (`block_primary`) |
+| `out_block/5` + paint decode | M2 object head | **Done** |
+| Mechanical bias + guards | M3 | Done |
+| Dual / pixel ladder | ablation baseline | In code; not block claim |
+| Color canonicalization | M1 roles (optional) | Ablation (`dual_full`) |
+| Harness ablations | M6 | Done |
+| Library learning | M4 | **Future** |
 
-**Build order recommendation:** implement SOLVER_PLAN commits 1–11 first (get dual+ladder numbers), then add object-head (M2) and library refinement (M4) as the SOTA upgrade commits.
+**Build order (updated):** object-primary is **current**. Dual ladder is an
+ablation baseline for pixel comparison, **not** a prerequisite for the block
+claim. Next SOTA upgrade is library refinement (M4), plus pushing hard
+categories under the same uniform language — not “add object-head.”
 
 ---
 
-## 5. Deliverable for this planning turn
+## 5. Deliverable note
 
-Write method doc [`1d-arc/docs/SOTA_ILP_METHOD.md`](1d-arc/docs/SOTA_ILP_METHOD.md) containing the comparison (§1–2) and BRIL method (§3–4), and add a short pointer from `SOLVER_PLAN.md` → SOTA doc. No code changes in this step beyond docs when execution is approved.
+This file holds the comparison (§1–2) and BRIL method (§3–4). Living as-built
+detail lives in [CURRENT_METHOD.md](CURRENT_METHOD.md); historical dual-ladder
+prose in [SOLVER_PLAN.md](SOLVER_PLAN.md).
