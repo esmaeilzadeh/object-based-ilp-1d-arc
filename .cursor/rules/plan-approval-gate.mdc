@@ -1,0 +1,33 @@
+---
+description: Never implement a plan until the user explicitly confirms — plan means propose only
+alwaysApply: true
+---
+
+# Plan approval gate
+
+When the user asks for a **plan**, a design, an approach, or similar: **propose only**. Do not implement.
+
+## Hard stop
+
+- Do **not** edit files, create branches, run migrations, install deps for the work, or start coding after delivering a plan.
+- Do **not** treat “plan”, “make a plan”, “how should we…”, or Plan mode as approval to execute.
+- Stop after the proposal. Wait for an explicit go-ahead.
+
+## What counts as approval
+
+Only clear confirmation, for example:
+
+- “approved”, “go ahead”, “implement it”, “execute the plan”, “do it”
+
+Ambiguous replies (“ok”, “sounds good”, “thanks”, questions about the plan) are **not** approval — ask once whether to implement.
+
+## After approval
+
+Follow `plan-implementation.mdc` (clean tree, new branch, one commit per step).
+
+## Examples
+
+```
+❌ BAD: User: "plan the bias refactor" → agent writes a plan then immediately starts editing files
+✅ GOOD: User: "plan the bias refactor" → agent writes the plan and stops until the user says to implement
+```
