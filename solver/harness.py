@@ -96,6 +96,9 @@ def run_one(path: Path, mode: str, timeout: int, out_dir: Path) -> dict:
         "elapsed": elapsed,
         "predicted": result.predicted_grid,
         "gold": gold,
+        "failure_reason": result.failure_reason,
+        "failure_detail": result.failure_detail,
+        "program": result.program,
     }
 
 

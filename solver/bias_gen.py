@@ -25,6 +25,12 @@ _FACT_PRED_RE = re.compile(r"^([a-z][a-z0-9_]*)\(")
 _SIZE_CONST_RE = re.compile(r"\bs(\d+)\b")
 _VALUE_CONST_RE = re.compile(r"\bv(\d+)\b")
 
+# Baseline B0 object budgets (stepwise tuning). Override kwargs for A/B only.
+OBJECT_MAX_VARS = 10
+OBJECT_MAX_BODY = 6
+OBJECT_MAX_CLAUSES = 3
+OBJECT_MAX_LITERALS = (1 + OBJECT_MAX_BODY) * OBJECT_MAX_CLAUSES  # 21
+
 
 def _types_block(preds: Sequence[Predicate]) -> str:
     return "\n".join(f"type({p.name},{p.types})." for p in preds)
@@ -142,9 +148,9 @@ def render_object_bias_from_bk(
     bk_text: str,
     *,
     exs_text: str = "",
-    max_vars: int = 10,
-    max_body: int = 6,
-    max_clauses: int = 3,
+    max_vars: int = OBJECT_MAX_VARS,
+    max_body: int = OBJECT_MAX_BODY,
+    max_clauses: int = OBJECT_MAX_CLAUSES,
 ) -> str:
     """Mechanical object bias from one instance's BK (+ optional exs).
 
@@ -223,7 +229,12 @@ def render_object_bias_from_bk(
     return "\n".join(parts) + "\n"
 
 
-def render_object_bias(*, max_vars: int = 10, max_body: int = 6) -> str:
+def render_object_bias(
+    *,
+    max_vars: int = OBJECT_MAX_VARS,
+    max_body: int = OBJECT_MAX_BODY,
+    max_clauses: int = OBJECT_MAX_CLAUSES,
+) -> str:
     """Static fallback: full lean allowlist (tests / non-instance paths only)."""
     bk_lines = [f"{name}(dummy)." for name in sorted(OBJECT_BODY_ALLOWLIST)]
     return render_object_bias_from_bk(
@@ -231,6 +242,7 @@ def render_object_bias(*, max_vars: int = 10, max_body: int = 6) -> str:
         exs_text="",
         max_vars=max_vars,
         max_body=max_body,
+        max_clauses=max_clauses,
     )
 
 
