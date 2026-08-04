@@ -1,6 +1,7 @@
 # Plan: Step-wise object bias budget tuning (accuracy + stability)
 
-**Status:** plan only  
+**Status:** executing on `feature/stepwise-bias-tuning`  
+**Progress:** B0 code landed (`failure_reason` + `max_literals=21`); B0 R=3 protocol running.
 **Targets:** (1) exact solve rate on fixed eval slice, (2) **stability** =
 repeatability of pass/fail under same timeout / machine class.  
 **Constraint:** [block-level-only.mdc](../rules/block-level-only.mdc) — one
