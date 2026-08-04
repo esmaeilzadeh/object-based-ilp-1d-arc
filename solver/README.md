@@ -1,7 +1,12 @@
 # Object-based ILP 1D-ARC Solver
 
-Generic per-instance solver for 1D-ARC JSON problems (3 train I/O pairs + 1 test input).
-Uses Popper with a **dual pixel + color-block** representation. See [docs/SOLVER_PLAN.md](../docs/SOLVER_PLAN.md).
+Generic per-instance solver for 1D-ARC JSON problems (3 train I/O pairs + 1 test
+input). Research default: **block-primary** object head
+`out_block(Ex, Bid, Off, Len, Color)`.
+
+- As-built: [docs/CURRENT_METHOD.md](../docs/CURRENT_METHOD.md)
+- Direction: [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc)
+- Historical dual-ladder plan: [docs/SOLVER_PLAN.md](../docs/SOLVER_PLAN.md)
 
 ## Input JSON
 
@@ -12,13 +17,22 @@ Uses Popper with a **dual pixel + color-block** representation. See [docs/SOLVER
 }
 ```
 
-## Pipeline
+## Pipeline (`block_primary`)
 
-1. Encode grids as `block(Ex,Id,Len,Color)` + length compares + pixel bridges
-   (`in_block` / `in_gap` / `block_edge`); Start/End stay encoder-internal.
-2. Cheap-first ladder: trivial checks → block-only ILP → pixel ILP → dual ILP.
-3. Accept only programs that exactly reproduce all train outputs.
-4. Apply to test input; closed-world decode (background = 0).
+1. **Encode** input runs → lean BK (`block`, `gap`, `obj_succ`, … per
+   `OBJECT_BODY_ALLOWLIST`); train outputs → mechanical `out_block` pos/neg.
+2. **Bias** → `render_object_bias_from_bk(bk, exs)` (per-instance; connectivity
+   guards on `block` Bid and `size_add` / `size_sum3`).
+3. **Induce** → one Popper call, head `out_block/5`.
+4. **Verify** → paint-verify all train outputs (`start(Bid)+Off`, length `Len`).
+5. **Decode** → paint test on a zero canvas; abolish dynamic `out_block/5`.
+
+`Off` is an offset from the **input block start**, not an absolute grid index.
+
+Static `solver/bias/object.pl` mirrors the lean allowlist for tests/fallback;
+production uses the mechanical per-instance file. Tests in
+`solver/tests/test_encoder.py` lock the allowlist and reject answer-leaking
+preds (`mirrored_out_block`, …).
 
 ## Run
 
@@ -27,8 +41,35 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e ./popper
 
-python -m solver.cli raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json \
-  --timeout 60 --out pred.json
+# Research default
+python -m solver.harness --mode block_primary --timeout 60 --one path/to.json
+
+# Batch / parallel
+./scripts/run_solver_eval.sh block_primary 60 0,1,2
+JOBS=2 ./scripts/run_solver_eval_parallel.sh block_primary 60 0,1,2
 ```
 
-Flags: `--no-ladder`, `--canonicalize-colors`, `--timeout N`.
+### `pipeline.solve` flags
+
+| Flag | Notes |
+|------|--------|
+| `include_pixels=False`, `include_blocks=True` | Object path (as in `block_primary`) |
+| `ladder` | Dual-ladder only; ignored for pure object path |
+| `force_bias="pixel"` | Pixel-only induce |
+| `force_bias="object"` | Force object bias path |
+| `canonicalize_colors` | Optional role remap (dual_full ablation) |
+
+### Legacy CLI
+
+`python -m solver.cli path.json --timeout 60 --out pred.json` defaults to the
+**legacy dual ladder**. Flags: `--no-ladder`, `--canonicalize-colors`,
+`--timeout N`, `--work-dir`.
+
+## Harness modes
+
+| Mode | Meaning |
+|------|---------|
+| `block_primary` | Object-head only — **research default** |
+| `pixel_only` | Pixel BK / pixel head |
+| `block_only` | Blocks, no pixels |
+| `dual`, `dual_no_agg`, `dual_no_ladder`, `dual_full` | Legacy pixel/dual ablations |
