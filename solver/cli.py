@@ -14,16 +14,12 @@ def main(argv=None) -> None:
     p.add_argument("json_path", type=Path)
     p.add_argument("--timeout", type=int, default=600)
     p.add_argument("--out", type=Path, default=None)
-    p.add_argument("--no-ladder", action="store_true")
-    p.add_argument("--canonicalize-colors", action="store_true")
     p.add_argument("--work-dir", type=Path, default=None)
     args = p.parse_args(argv)
 
     result = solve(
         args.json_path,
         timeout=args.timeout,
-        canonicalize_colors=args.canonicalize_colors,
-        ladder=not args.no_ladder,
         work_dir=args.work_dir,
     )
     payload = result.to_dict()

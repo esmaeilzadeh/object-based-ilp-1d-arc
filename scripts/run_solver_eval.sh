@@ -5,7 +5,7 @@ cd "$ROOT"
 
 [[ -f .venv/bin/activate ]] && source .venv/bin/activate
 
-MODE="${1:-dual}"
+MODE="${1:-block_primary}"
 TIMEOUT="${2:-60}"
 TRIALS="${3:-0,1,2}"
 LIMIT="${LIMIT:-0}"
