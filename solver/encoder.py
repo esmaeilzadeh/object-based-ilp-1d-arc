@@ -617,6 +617,21 @@ def _exs_out_blocks(
                     neg.append(
                         f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
                     )
+            # Cross-block Len/Color mix at a true (Bid, Off): block1 with block2's
+            # (Len,Color). Compact O(|true|*|colored|); kills over-general rules that
+            # take Off from gap(Bid,_) but Len/Color from a different block(_).
+            input_lc: List[Tuple[int, int, int]] = []
+            for bid2, (s2, e2, c2) in enumerate(runs):
+                if c2 == 0:
+                    continue
+                input_lc.append((bid2, e2 - s2 + 1, c2))
+            for bid, off, L, c in true_blocks:
+                for _b2, L2, C2 in input_lc:
+                    if (bid, off, L2, C2) in true_set:
+                        continue
+                    neg.append(
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L2, t)},{_col(C2, t)}))."
+                    )
         else:
             w = len(eg.out)
             for bid in colored_bids:
