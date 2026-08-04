@@ -48,3 +48,8 @@ bad_body(obj_pair, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(component_start, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
 bad_body(component_len, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 
+% Every clause: block must use head Bid (var 1).
+:- clause(C), not body_literal(C, block, 4, (0,1,_,_)).
+bad_body(size_add, Vars):- vars(_, Vars), Vars = (_,_,R), R != 2, R != 3.
+bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (_,_,_,R), R != 2, R != 3.
+
