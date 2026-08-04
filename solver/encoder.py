@@ -632,6 +632,18 @@ def _exs_out_blocks(
                     neg.append(
                         f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L2, t)},{_col(C2, t)}))."
                     )
+            # Off=0 wrong color at each input block's own length: kills
+            # ``vK(Color), s0(Off), block(_,Bid,Len,_)`` over-paints.
+            observed_colors = sorted(colors_used | {c for _b, _L, c in input_lc})
+            for bid2, Lin, Cin in input_lc:
+                for C2 in observed_colors:
+                    if C2 == Cin:
+                        continue
+                    if (bid2, 0, Lin, C2) in true_set:
+                        continue
+                    neg.append(
+                        f"neg(out_block({eg.ex_id},{_bid(bid2, t)},{_sz(0, t)},{_sz(Lin, t)},{_col(C2, t)}))."
+                    )
         else:
             w = len(eg.out)
             for bid in colored_bids:

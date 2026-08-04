@@ -199,6 +199,26 @@ def render_object_bias_from_bk(
     parts.append("type(C,(T,)):- constant(C,T).")
     parts.append("")
     parts.append(_bad_body_for_ex_preds(bodies))
+    # Connectivity guards (uniform for every instance):
+    # 1) Every clause must mention block/4 with head Bid (var 1).
+    # 2) size_add / size_sum3 result must be head Off (2) or Len (3),
+    #    so arith cannot float with discarded outputs.
+    parts.append("")
+    parts.append(
+        "% Every clause: block must use head Bid (var 1).\n"
+        ":- clause(C), not body_literal(C, block, 4, (0,1,_,_))."
+    )
+    body_names = {p.name for p in bodies}
+    if "size_add" in body_names:
+        parts.append(
+            "bad_body(size_add, Vars):- vars(_, Vars), "
+            "Vars = (_,_,R), R != 2, R != 3."
+        )
+    if "size_sum3" in body_names:
+        parts.append(
+            "bad_body(size_sum3, Vars):- vars(_, Vars), "
+            "Vars = (_,_,_,R), R != 2, R != 3."
+        )
     parts.append("")
     return "\n".join(parts) + "\n"
 
