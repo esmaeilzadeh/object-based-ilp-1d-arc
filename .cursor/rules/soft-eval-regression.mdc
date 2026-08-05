@@ -1,0 +1,53 @@
+# Soft eval regression gate
+
+Applies to 54-task (or similar) `block_primary` sweeps used as step acceptance
+gates. **Regression is soft**, not absolute.
+
+## Core idea
+
+Balance **net success** against regressions. Prefer changes that unlock more
+exact passes — especially across **multiple previously weak/failing categories** —
+even if some previously strong categories lose a trial or two.
+
+## Accept (keep) when
+
+1. **Net exact improves** vs the frozen baseline for that step (e.g. 39→42), **or**
+2. Net exact is flat / slightly down (−1) **but** there is clear multi-category
+   progress on hard fails (e.g. flip/hollow/pcopy move from 0/3 toward partial),
+   **and**
+3. No previously **perfect (3/3)** category is driven to **0/3** (full wipe).
+
+Partial drops on a perfect category are acceptable under soft balance, e.g.:
+
+- `3/3 → 2/3` while gaining `+2` or more elsewhere, especially on fail families
+- `3/3 → 1/3` only if gains clearly dominate and are spread across categories
+  (document the trade; prefer not)
+
+## Reject (revert) when
+
+- Net exact **falls** with **no** compensating gains on failed/partial categories
+- A previously **3/3** category becomes **0/3**
+- Many perfect categories regress at once with only narrow/single-task gains
+- Search-space blowups that tank formerly easy categories (historical S1 dense
+  `size_add`: 38→19) — soft balance still fails when losses dominate
+
+## How to score a step
+
+Report explicitly:
+
+1. Net Δ exact (tasks)
+2. Per-category Δ table (focus fail/partial + any perfect-cat drops)
+3. Count of categories improved vs worsened
+4. Soft-gate verdict: KEEP / REVERT with one-sentence rationale
+
+Example KEEP: exact +3; `pcopy_1c` 0→2, `flip` 0→1; `recolor_cnt` 3→2  
+Example REVERT: exact −3; `recolor_cnt` 3→2, `scale_dp` 3→2; no fail-family gains
+
+## Interaction with plans
+
+Plans may still state a *preferred* hard bar (e.g. “prefer no perfect regressions”).
+When this rule conflicts with a plan’s hard “zero perfect regressions” line, **this
+rule wins** unless the user explicitly asks for a hard gate on that step.
+
+Do not use soft balance to justify answer-leaking BK, category-named bias switches,
+or other `block-level-only.mdc` violations.
