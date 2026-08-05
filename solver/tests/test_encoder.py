@@ -89,6 +89,17 @@ def test_encode_instance_object_only(tmp_path: Path):
     assert "head_pred(out,3)." not in bias
 
 
+def test_object_bias_size_add_bidirectional():
+    """S6: size_add legal if any arg is head Off/Len (compute or check)."""
+    text = render_object_bias()
+    assert "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), " in text
+    assert "A != 2, A != 3, B != 2, B != 3, R != 2, R != 3." in text
+    # Old result-only guard must be gone.
+    assert "Vars = (_,_,R), R != 2, R != 3." not in text
+    assert "Vars = (_,_,_,R), R != 2, R != 3." not in text
+    assert "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), " in text
+
+
 def test_mechanical_bias_from_bk_no_category():
     lean = "block(0,b0,s2,v1).\nobj_succ(0,b0,b2).\n"
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s2,v1)).")

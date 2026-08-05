@@ -121,15 +121,17 @@ def render_object_bias_from_bk(
         ":- clause(C), not body_literal(C, block, 4, (0,1,_,_))."
     )
     body_names = {p.name for p in bodies}
+    # Legal iff at least one arg is head Off (var 2) or Len (var 3).
+    # Allows compute (result ∈ {2,3}) and check (an input ∈ {2,3}) directions.
     if "size_add" in body_names:
         parts.append(
-            "bad_body(size_add, Vars):- vars(_, Vars), "
-            "Vars = (_,_,R), R != 2, R != 3."
+            "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
+            "A != 2, A != 3, B != 2, B != 3, R != 2, R != 3."
         )
     if "size_sum3" in body_names:
         parts.append(
-            "bad_body(size_sum3, Vars):- vars(_, Vars), "
-            "Vars = (_,_,_,R), R != 2, R != 3."
+            "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), "
+            "A != 2, A != 3, B != 2, B != 3, C != 2, C != 3, R != 2, R != 3."
         )
     parts.append("")
     return "\n".join(parts) + "\n"
