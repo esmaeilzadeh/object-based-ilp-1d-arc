@@ -1,6 +1,6 @@
 max_vars(10).
 max_body(6).
-max_clauses(3).
+max_clauses(4).
 enable_multi_clause.
 :- not body_var(_,1).
 :- not body_var(_,2).
