@@ -223,6 +223,11 @@ def _block_and_derived(
             facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
         facts.append(f"obj_succ({ex},{_bid(a, t)},{_bid(b, t)}).")
+        facts.append(f"obj_pred({ex},{_bid(b, t)},{_bid(a, t)}).")
+    if lean:
+        for i, a in enumerate(colored_ids):
+            for b in colored_ids[i + 1 :]:
+                facts.append(f"left_of({ex},{_bid(a, t)},{_bid(b, t)}).")
     # Every-other colored pair (o0-o1, o2-o3, ...): neutral pairing geometry.
     for i in range(0, len(colored_ids) - 1, 2):
         a, b = colored_ids[i], colored_ids[i + 1]

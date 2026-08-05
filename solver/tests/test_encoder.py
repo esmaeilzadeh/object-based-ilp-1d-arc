@@ -37,11 +37,30 @@ def test_lean_size_lt_over_observed():
     assert "size_add(s1,s2,s3)." in facts or "size_add(s1,s1,s2)." in facts
 
 
+def test_lean_left_of_and_obj_pred():
+    """S2: block_id ordinal structure on lean path."""
+    facts = _facts([2, 2, 2, 0, 5, 5])  # colored b0 left of b2
+    assert "left_of(0,b0,b2)." in facts
+    assert "obj_succ(0,b0,b2)." in facts
+    assert "obj_pred(0,b2,b0)." in facts
+
+
 def test_object_bias_includes_size_lt():
     lean = "block(0,b0,s3,v2).\nsize_lt(s2,s3).\n"
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
     assert "body_pred(size_lt,2)." in text
     assert "type(size_lt,('size', 'size'))." in text
+
+
+def test_object_bias_includes_left_of_obj_pred():
+    lean = (
+        "block(0,b0,s3,v2).\n"
+        "left_of(0,b0,b2).\n"
+        "obj_pred(0,b2,b0).\n"
+    )
+    text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
+    assert "body_pred(left_of,3)." in text
+    assert "body_pred(obj_pred,3)." in text
 
 
 def test_object_bias_head_only():
@@ -51,6 +70,8 @@ def test_object_bias_head_only():
     assert "max_vars(10)." in text
     assert "max_body(6)." in text
     assert "body_pred(size_lt,2)." in text
+    assert "body_pred(left_of,3)." in text
+    assert "body_pred(obj_pred,3)." in text
 
 
 def test_encode_instance_object_only(tmp_path: Path):
