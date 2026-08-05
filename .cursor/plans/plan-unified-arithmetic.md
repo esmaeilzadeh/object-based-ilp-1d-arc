@@ -63,11 +63,11 @@ offset/position (ordinal, `p*`).
    plus attestation: `uniform mechanical emit; no category/name gating; no answer-leaking BK.`
 3. Run 54-task eval:
    `OUT=results/eval_s1b JOBS=2 ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2`
-4. **Acceptance:**
-   - exact ≥ 38/54 (baseline) — prefer ≥ 40
-   - **zero regressions** in the 11 perfect categories:
-     `1d_denoising_1c, 1d_denoising_mc, 1d_fill, 1d_move_1p, 1d_move_2p, 1d_move_2p_dp,
-     1d_move_3p, 1d_move_dp, 1d_recolor_cmp, 1d_recolor_cnt, 1d_scale_dp`
+4. **Acceptance (soft gate — `.cursor/rules/soft-eval-regression.mdc`):**
+   - Prefer exact ≥ 38/54 (baseline); prefer ≥ 40 with fail-family gains
+   - Partial perfect-cat drops (e.g. 3→2) OK if net exact rises / gains dominate
+   - Reject if net exact falls with no fail-family gains, or any 3/3 → 0/3
+   - Soft rule wins over older “zero perfect regressions” wording in this plan
 5. **If gate FAILS:** `git revert HEAD`, push, mark row ❌ REVERTED with reason, stop or
    move to next TODO.
 6. **If gate PASSES:** mark row ✅, push, proceed to S1′c evaluation decision.
@@ -94,8 +94,8 @@ Only implement if:
 - Risks (from analysis): Popper bias-language mismatch; search guidance loss (constants no
   longer suggested by facts); eval-time overhead; debugging opacity.
 
-**Gate:** same as S1′b (pytest, commit, 54-task eval, perfect categories intact,
-exact ≥ baseline).
+**Gate:** same soft gate as S1′b (pytest, commit, 54-task eval; see
+`.cursor/rules/soft-eval-regression.mdc`).
 
 **Status:** DEFERRED — do not implement without explicit user confirmation after S1′b.
 

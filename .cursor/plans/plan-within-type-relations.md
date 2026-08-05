@@ -56,8 +56,9 @@ Targets: `1d_hollow`, `1d_pcopy_*`; mild help elsewhere.
 Rule check: uniform emission from observed sizes only ("generic arith sugar" — allowed);
 no category switches; no answer-leaking BK.
 Validation: `pytest solver/tests`; `scripts/smoke_solver.sh`; 54-task slice (120 s, JOBS=2,
-trials `0,1,2`) → keep iff exact ≥ 40/54 AND zero regressions in the 11 perfect categories;
-else revert the commit.
+trials `0,1,2`) → soft gate per `.cursor/rules/soft-eval-regression.mdc` (prefer exact ≥ 40/54
+and multi-category gains; partial 3→2 OK if gains dominate; reject net loss without gains
+or any 3/3 → 0/3); else revert the commit.
 
 ### S2 — Ordinal structure on `block_id`
 
@@ -70,8 +71,7 @@ Changes:
 - Tests updated accordingly.
 
 Targets: `1d_flip` (ordering prerequisite), clause economy in move families.
-Rule check / validation: same gates as S1 (exact ≥ max(baseline, S1 result); no
-perfect-category regressions).
+Rule check / validation: same soft gate as S1 (`.cursor/rules/soft-eval-regression.mdc`).
 
 ### S3 — Rank/ordinal arithmetic (conditional)
 
@@ -107,7 +107,9 @@ true `1d_pcopy_*` rule.
       "uniform mechanical emit; no category/name gating; no answer-leaking BK."
 - [ ] Per-step artifacts: `results/eval_sN/` with `summary.json` + `FULL_REPORT.md`;
       maintain a comparison table vs frozen baseline.
-- [ ] Acceptance gate: 11 perfect categories stay perfect; exact improves by ≥2 tasks.
+- [ ] Soft acceptance gate (`.cursor/rules/soft-eval-regression.mdc`): net exact / multi-category
+      fail-family gains outweigh regressions; partial 3→2 OK; reject 3→0 wipe or net loss
+      without gains. Soft rule wins over older “zero perfect regressions” wording.
 - [ ] Tests: `pytest solver/tests` green; smoke scripts pass before each commit.
 - [ ] SPEC sync (`spec-sync.mdc`): S1/S2/S4 change documented BK/bias vocabulary → ask
       before editing any `spec/` file; edit only the smallest relevant file; update root
