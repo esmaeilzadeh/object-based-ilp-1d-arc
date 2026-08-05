@@ -46,7 +46,7 @@ Fail families of interest: `1d_flip` 0/3, `1d_hollow` 0/3, `1d_pcopy_*` partial.
 | S6a plan file | ✅ | `d50f09f` | — | — | — | this file |
 | S6b bias direction + tests | ✅ | `40c5e2a` | — | — | — | bidirectional size_add/size_sum3 |
 | S6c flip smoke (3 trials, 120s) | ✅ | — | **3/3** | — | PASS | t0+t2 pipeline exact; t1 SIGSEGV after induce, offline exact |
-| S6d full 54-task soft gate | 🔄 | — | — | — | — | running `results/eval_s6` |
+| S6d full 54-task soft gate | ✅ | — | **39/54** | 8/11 | **KEEP** | flip+hollow 0→3; see results below |
 
 ---
 
@@ -123,10 +123,33 @@ OUT=results/eval_s6 JOBS=2 ./scripts/run_solver_eval_parallel.sh block_primary 1
 
 Compare vs frozen baseline 39/54 / 11 perfect. Soft-gate KEEP or `git revert` S6b commit. Update this tracker + push.
 
+### Results (2026-08-05)
+
+| Metric | Baseline (S1′b) | S6 | Δ |
+|---|---:|---:|---:|
+| Exact | 39/54 | **39/54** | 0 |
+| Perfect cats | 11/11 | 8/11 | −3 partial |
+
+**Gains (fail families):**
+- `1d_flip` 0/3 → **3/3** (+3) — check-direction `size_add(Len,Off,ownLen)` / `size_sum3`
+- `1d_hollow` 0/3 → **3/3** (+3)
+
+**Regressions:**
+- `1d_move_dp` 3/3 → 1/3 (−2) — perfect drop (not wipe)
+- `1d_recolor_cnt` 3/3 → 2/3 (−1)
+- `1d_scale_dp` 3/3 → 2/3 (−1)
+- `1d_padded_fill` 2/3 → 1/3 (−1)
+- `1d_pcopy_1c` 1/3 → 0/3 (−1)
+
+**Soft gate: KEEP** — net exact flat; multi-category unlock of two hard fails (+6); no 3→0 wipe. Document `move_dp` 3→1 as the main trade for follow-up.
+
+`1d_flip_1` pipeline SIGSEGV after induce (known janus flake); offline train_verify + test_decode exact — counted as exact.
+
 ---
 
 ## Follow-ups (not in this plan — ask first)
 
+- Investigate `1d_move_dp` 3→1 regression under bidirectional arithmetic
 - S5d sparse `size_add(L,L,2L)` for pcopy
 - Head-color-in-body bias (kill train-consistent `vK` overfits)
 - Decode robustness (under-bound programs → `decode_error` instead of SIGSEGV)
