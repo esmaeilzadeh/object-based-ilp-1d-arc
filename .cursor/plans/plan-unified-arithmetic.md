@@ -11,6 +11,8 @@ outcomes and move to the next unchecked step.
   gating; no answer-leaking BK.
 - `.cursor/rules/plan-implementation.mdc` — clean tree, one branch, one commit per step.
 - `.cursor/rules/spec-sync.mdc` — ask before editing `spec/`; edit smallest file only.
+- `.cursor/rules/soft-eval-regression.mdc` — soft balance of gains vs regressions (3→2 OK
+  when gains dominate; reject 3→0 wipe or net loss without fail-family gains).
 
 **Branch:** `cursor/unified-arithmetic-ebb2` (create from `main` or current head).
 **Baseline:** `main @ ee81f5f` + S1a kept → **38/54 exact**, 11 perfect categories intact.
