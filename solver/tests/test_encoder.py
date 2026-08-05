@@ -28,21 +28,6 @@ def test_lean_block_atoms_typed():
     assert not any(f.startswith("in(") for f in facts)
 
 
-def test_lean_obj_pred_no_left_of():
-    """S2v2: obj_pred inverse of obj_succ; left_of not on lean path."""
-    facts = _facts([2, 2, 2, 0, 5, 5])
-    assert "obj_succ(0,b0,b2)." in facts
-    assert "obj_pred(0,b2,b0)." in facts
-    assert not any(f.startswith("left_of(") for f in facts)
-
-
-def test_object_bias_includes_obj_pred():
-    lean = "block(0,b0,s3,v2).\nobj_pred(0,b2,b0).\n"
-    text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
-    assert "body_pred(obj_pred,3)." in text
-    assert "type(obj_pred,('ex', 'block_id', 'block_id'))." in text
-
-
 def test_lean_size_lt_over_observed():
     """S1a: size_lt on lean path; sparse size_add unchanged."""
     facts = _facts([2, 2, 2, 0, 5, 5])  # lengths 3,2; gap 1
@@ -80,8 +65,6 @@ def test_object_bias_head_only():
     assert "max_body(6)." in text
     assert "body_pred(size_lt,2)." in text
     assert "body_pred(cardinal_ordinal,2)." in text
-    assert "body_pred(obj_pred,3)." in text
-    assert "body_pred(left_of,3)." not in text
 
 
 def test_encode_instance_object_only(tmp_path: Path):
