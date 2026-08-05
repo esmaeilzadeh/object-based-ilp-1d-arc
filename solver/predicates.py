@@ -72,6 +72,8 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("my_succ", 2, ("position", "position"), "arith", frozenset({3})),
     Predicate("lt", 2, ("position", "position"), "arith", frozenset({3})),
     Predicate("add", 3, ("position", "position", "position"), "arith", frozenset({3})),
+    # Cardinal ↔ ordinal bridge: same integer as size constant and position index.
+    Predicate("cardinal_ordinal", 2, ("size", "position"), "arith", frozenset({4})),
     # Generic size/position sugar for object stage (not task-shaped transforms)
     Predicate("offset_pos", 3, ("position", "size", "position"), "arith", frozenset({2, 3, 4})),
     Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3, 4})),
@@ -129,6 +131,7 @@ OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
         "size_sum3",
         "size_add",
         "size_lt",
+        "cardinal_ordinal",
         "largest",
         "non_largest",
         "component_start",

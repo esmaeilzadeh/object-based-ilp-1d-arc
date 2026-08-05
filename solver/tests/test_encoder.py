@@ -37,6 +37,19 @@ def test_lean_size_lt_over_observed():
     assert "size_add(s1,s2,s3)." in facts or "size_add(s1,s1,s2)." in facts
 
 
+def test_lean_cardinal_ordinal_bridge():
+    """S1'b: size constant ↔ position index where values coincide."""
+    facts = _facts([1, 1, 1, 0])  # width 4, block length 3
+    assert "cardinal_ordinal(s3,p3)." in facts
+
+
+def test_object_bias_includes_cardinal_ordinal():
+    lean = "block(0,b0,s3,v2).\ncardinal_ordinal(s3,p3).\n"
+    text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
+    assert "body_pred(cardinal_ordinal,2)." in text
+    assert "type(cardinal_ordinal,('size', 'position'))." in text
+
+
 def test_object_bias_includes_size_lt():
     lean = "block(0,b0,s3,v2).\nsize_lt(s2,s3).\n"
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
@@ -51,6 +64,7 @@ def test_object_bias_head_only():
     assert "max_vars(10)." in text
     assert "max_body(6)." in text
     assert "body_pred(size_lt,2)." in text
+    assert "body_pred(cardinal_ordinal,2)." in text
 
 
 def test_encode_instance_object_only(tmp_path: Path):

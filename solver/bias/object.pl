@@ -13,6 +13,7 @@ body_pred(obj_succ,3).
 body_pred(size_lt,2).
 body_pred(largest,2).
 body_pred(non_largest,2).
+body_pred(cardinal_ordinal,2).
 body_pred(size_add,3).
 body_pred(size_sum3,4).
 body_pred(size_even,1).
@@ -32,6 +33,7 @@ type(obj_succ,('ex', 'block_id', 'block_id')).
 type(size_lt,('size', 'size')).
 type(largest,('ex', 'block_id')).
 type(non_largest,('ex', 'block_id')).
+type(cardinal_ordinal,('size', 'position')).
 type(size_add,('size', 'size', 'size')).
 type(size_sum3,('size', 'size', 'size', 'size')).
 type(size_even,('size',)).

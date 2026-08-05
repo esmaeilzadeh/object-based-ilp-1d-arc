@@ -309,6 +309,10 @@ def _block_and_derived(
             for b in sizes:
                 if a < b:
                     facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
+        # Bridge: observed cardinal equals valid position index (uniform).
+        for i in sizes:
+            if 0 <= i < w:
+                facts.append(f"cardinal_ordinal({_sz(i, t)},{_pos(i, t)}).")
     else:
         for i in range(n_runs):
             for j in range(i + 1, n_runs):
