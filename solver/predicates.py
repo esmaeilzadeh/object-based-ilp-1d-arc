@@ -50,7 +50,6 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("touches_edge", 3, ("ex", "block_id", "edge"), "geometry", frozenset({2, 3, 4})),
     Predicate("block_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("obj_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({3, 4})),
-    Predicate("obj_pred", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({4})),
     # length comparison
     Predicate("shorter", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("longer", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
@@ -125,9 +124,7 @@ OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
         "obj_succ",
-        "obj_pred",
         "obj_pair",
-        "left_of",
         "gap",
         "size_sum3",
         "size_add",
