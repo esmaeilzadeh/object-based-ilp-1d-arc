@@ -137,8 +137,8 @@ def _block_and_derived(
     / ``mid`` — pixel starts live in Python ``block_geometry`` for decode only.
 
     On ``typed_roles`` (block-primary): lean geometry only — ``obj_succ``-only
-    ``gap``, ``size_sum3`` for obj_succ triples, dense ``size_add`` / ``size_lt``
-    over observed sizes, and bias-allowlisted preds only (``OBJECT_BODY_ALLOWLIST``).
+    ``gap``, ``size_sum3`` for obj_succ triples (no width² ``size_add``), and
+    bias-allowlisted preds only (``OBJECT_BODY_ALLOWLIST``).
     """
     t = typed_roles
     cell = include_cell_bridges
@@ -289,25 +289,20 @@ def _block_and_derived(
                 facts.append(
                     f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
                 )
-                observed_sizes.add(total)
-        # Uniform size universe for within-type cardinal relations: observed
-        # lengths/gaps/spans plus predecessor lengths and {0,1}.
+            # Binary size_add over observed succession lengths/gaps (uniform).
+            for x, y in ((La, g), (1, g)):
+                s = x + y
+                if s <= w and x >= 0 and y >= 0:
+                    facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
+                    observed_sizes.add(s)
+        # size_add(1, L-1, L) for each colored length (uniform arith closure).
         for bid in colored_ids:
             L = lengths[bid]
             if L >= 2 and L <= w:
+                facts.append(
+                    f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
+                )
                 observed_sizes.add(L - 1)
-        observed_sizes.add(0)
-        observed_sizes.add(1)
-        sizes = sorted(s for s in observed_sizes if s >= 0)
-        for a in sizes:
-            for b in sizes:
-                if a < b:
-                    facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
-        for a in sizes:
-            for b in sizes:
-                s = a + b
-                if s <= w:
-                    facts.append(f"size_add({_sz(a, t)},{_sz(b, t)},{_sz(s, t)}).")
     else:
         for i in range(n_runs):
             for j in range(i + 1, n_runs):

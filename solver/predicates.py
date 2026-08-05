@@ -54,7 +54,7 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("shorter", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("longer", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("same_len", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
-    Predicate("size_lt", 2, ("size", "size"), "geometry", frozenset({3, 4})),
+    Predicate("size_lt", 2, ("size", "size"), "geometry", frozenset({3})),
     # aggregation
     Predicate("largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3, 4})),
     Predicate("smallest", 2, ("ex", "block_id"), "agg", frozenset({2, 3, 4})),
@@ -128,7 +128,6 @@ OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
         "gap",
         "size_sum3",
         "size_add",
-        "size_lt",
         "largest",
         "non_largest",
         "component_start",

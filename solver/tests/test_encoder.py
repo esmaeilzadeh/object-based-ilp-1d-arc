@@ -28,37 +28,12 @@ def test_lean_block_atoms_typed():
     assert not any(f.startswith("in(") for f in facts)
 
 
-def test_lean_size_lt_and_dense_size_add():
-    """S1: within-type cardinal relations on lean path (observed sizes only)."""
-    facts = _facts([2, 2, 2, 0, 5, 5])  # lengths 3, 2; gap 1
-    assert "size_lt(s2,s3)." in facts
-    assert "size_add(s1,s2,s3)." in facts  # dense: 1+2=3 from observed {0,1,2,3,...}
-    assert "size_add(s2,s1,s3)." in facts
-    # Predecessor length still present via dense closure.
-    assert "size_add(s1,s2,s3)." in facts
-    assert any(f.startswith("size_lt(") for f in facts)
-    assert any(f.startswith("size_add(") for f in facts)
-
-
-def test_object_bias_includes_size_lt():
-    lean = (
-        "block(0,b0,s3,v2).\n"
-        "size_lt(s2,s3).\n"
-        "size_add(s1,s2,s3).\n"
-    )
-    text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
-    assert "body_pred(size_lt,2)." in text
-    assert "body_pred(size_add,3)." in text
-    assert "type(size_lt,('size', 'size'))." in text
-
-
 def test_object_bias_head_only():
     text = render_object_bias()
     assert "head_pred(out_block,5)." in text
     assert "head_pred(out,3)." not in text
     assert "max_vars(10)." in text
     assert "max_body(6)." in text
-    assert "body_pred(size_lt,2)." in text
 
 
 def test_encode_instance_object_only(tmp_path: Path):

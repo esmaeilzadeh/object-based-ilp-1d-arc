@@ -10,7 +10,6 @@ head_pred(out_block,5).
 body_pred(block,4).
 body_pred(gap,4).
 body_pred(obj_succ,3).
-body_pred(size_lt,2).
 body_pred(largest,2).
 body_pred(non_largest,2).
 body_pred(size_add,3).
@@ -29,7 +28,6 @@ type(out_block,('ex', 'block_id', 'size', 'size', 'value')).
 type(block,('ex', 'block_id', 'size', 'value')).
 type(gap,('ex', 'block_id', 'block_id', 'size')).
 type(obj_succ,('ex', 'block_id', 'block_id')).
-type(size_lt,('size', 'size')).
 type(largest,('ex', 'block_id')).
 type(non_largest,('ex', 'block_id')).
 type(size_add,('size', 'size', 'size')).
