@@ -303,6 +303,16 @@ def _block_and_derived(
                     f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
                 )
                 observed_sizes.add(L - 1)
+        # Within-type cardinal comparison over observed sizes (lean).
+        sizes = sorted(s for s in observed_sizes if s >= 0)
+        for a in sizes:
+            for b in sizes:
+                if a < b:
+                    facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
+        # Bridge: observed cardinal equals valid position index (uniform).
+        for i in sizes:
+            if 0 <= i < w:
+                facts.append(f"cardinal_ordinal({_sz(i, t)},{_pos(i, t)}).")
     else:
         for i in range(n_runs):
             for j in range(i + 1, n_runs):
