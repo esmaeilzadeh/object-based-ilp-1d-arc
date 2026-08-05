@@ -1,6 +1,6 @@
 # Plan: S2v2 obj_pred + S5d sparse doubling (from updated main)
 
-**Status:** APPROVED TO EXECUTE — user: plan in detail, then implement and push; start from updated `main`.
+**Status:** S2v2 FAILED and reverted; S5d not started (plan says stop if S2v2 fails).
 **Base:** `main @ 64393f2` (includes S1′a `size_lt` + S1′b `cardinal_ordinal`; baseline **39/54** exact, 11/11 perfect).
 **Branch:** `cursor/obj-pred-doubling-ebb2`
 **Direction:** `.cursor/rules/block-level-only.mdc` — uniform mechanical emit only; no category/name gating; no answer-leaking BK; no S4 marker/reflect hacks.
@@ -22,8 +22,8 @@ Perfect categories (must stay 3/3 after every step):
 
 | Step | Status | Commit | Exact | Perfect | Gate | Notes |
 |---|---|---|---|---|---|---|
-| S2v2 `obj_pred` only | ⬜ TODO | — | — | — | — | next |
-| S5d `size_add(L,L,2L)` | ⬜ TODO | — | — | — | — | after S2v2 |
+| S2v2 `obj_pred` only | ❌ REVERTED | `bf1c1af` | 36/54 | 9/11 | FAIL | regressed `recolor_cnt`+`scale_dp`; lost `pcopy_1c` |
+| S5d `size_add(L,L,2L)` | ⏭️ BLOCKED | — | — | — | — | plan: stop if S2v2 fails; ask to run alone? |
 | S1′c constraint arith | ⏭️ SKIP | — | — | — | — | not in this plan |
 | S4 position bridge | ⏭️ SKIP | — | — | — | — | needs separate confirmation |
 
@@ -61,13 +61,16 @@ Full S2 added `left_of` (O(n²) block-id pairs) **and** `obj_pred`. Eval regress
 5. Prefer exact ≥ 40; if 39 with no perfect regressions and a clear gain on flip/mirror/pcopy, still keep (document trade)
 6. **If fail:** `git revert HEAD`, push, mark ❌, stop before S5d
 
-### Results (fill after run)
-- Exact: ___/54 | Perfect: ___/11 | Gains: ___ | Regressions: ___
-- Gate: PASS / FAIL → kept / reverted
+### Results (2026-08-05)
+- Exact: **36/54** | Perfect: **9/11** | Gains: none | Regressions: `1d_recolor_cnt` 3→2, `1d_scale_dp` 3→2, `1d_pcopy_1c` 1→0
+- Gate: **FAIL** → action: **reverted** (`bf1c1af`)
+- Note: `obj_pred` alone still hurt search (same failure mode as full S2, without `left_of`)
 
 ---
 
 ## S5d — sparse doubling `size_add(L, L, 2L)`
+
+**Status:** BLOCKED by this plan’s “stop if S2v2 fails” rule (see tracker). Spec retained below if user authorizes running S5d alone.
 
 ### Why
 `1d_pcopy_*` needs second copy at `Off = Len` / length `2·L`. Sparse `size_add` today only emits succession pairs + `size_add(1,L-1,L)`. Missing uniform `size_add(L,L,2L)` for each observed colored length (when `2L ≤ width`).
@@ -75,7 +78,7 @@ Full S2 added `left_of` (O(n²) block-id pairs) **and** `obj_pred`. Eval regress
 ### Why not dense size_add
 S1 dense closure caused 5–12× BK growth and 19/54 collapse. Doubling is **one fact per observed L**, same sparsity class as the existing predecessor closure.
 
-### Changes (exact) — only after S2v2 kept
+### Changes (exact) — only after S2v2 kept, or alone if user confirms
 1. `solver/encoder.py` lean branch — after the `size_add(1, L-1, L)` loop, add:
    ```python
    if 2 * L <= w:
@@ -89,7 +92,7 @@ S1 dense closure caused 5–12× BK growth and 19/54 collapse. Doubling is **one
 3. No allowlist change (`size_add` already listed)
 
 ### Gate (mandatory)
-Same as S2v2, baseline = **post-S2v2 exact** (or 39 if S2v2 was flat).
+Accept iff exact ≥ 39/54 and all 11 perfect stay 3/3.
 Artifacts: `results/eval_s5d/`
 Commit: `feat(solver): S5d sparse size_add(L,L,2L) doubling closure`
 
@@ -108,9 +111,8 @@ Commit: `feat(solver): S5d sparse size_add(L,L,2L) doubling closure`
 - Ask before any `spec/` edit (`spec-sync.mdc`).
 - Do **not** implement S1′c or S4 in this plan.
 
-## Current next action
+## Current next action for an agent resuming this plan
 
-1. Create `cursor/obj-pred-doubling-ebb2` from `main`.
-2. Execute **S2v2** exactly as above.
-3. Gate; then **S5d** only if S2v2 kept.
-4. Stop and report; do not start S1′c/S4 without confirmation.
+1. S2v2 is reverted — do **not** re-implement without a new design.
+2. S5d was blocked by this plan’s “stop if S2v2 fails” rule.
+3. To continue toward failed categories: ask user whether to run **S5d alone** from current HEAD (S1′a+S1′b, no `obj_pred`).
