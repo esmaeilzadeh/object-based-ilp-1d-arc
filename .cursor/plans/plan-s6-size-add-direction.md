@@ -43,10 +43,10 @@ Fail families of interest: `1d_flip` 0/3, `1d_hollow` 0/3, `1d_pcopy_*` partial.
 
 | Step | Status | Commit | Exact | Perfect | Gate | Notes |
 |---|---|---|---|---|---|---|
-| S6a plan file | ⬜ | — | — | — | — | this file |
-| S6b bias direction + tests | ⬜ | — | — | — | — | code change |
-| S6c flip smoke (3 trials, 120s) | ⬜ | — | — | — | — | decide whether to run full |
-| S6d full 54-task soft gate | ⬜ | — | — | — | — | KEEP / REVERT |
+| S6a plan file | ✅ | `d50f09f` | — | — | — | this file |
+| S6b bias direction + tests | ✅ | `40c5e2a` | — | — | — | bidirectional size_add/size_sum3 |
+| S6c flip smoke (3 trials, 120s) | ✅ | — | **3/3** | — | PASS | t0+t2 pipeline exact; t1 SIGSEGV after induce, offline exact |
+| S6d full 54-task soft gate | 🔄 | — | — | — | — | running `results/eval_s6` |
 
 ---
 
