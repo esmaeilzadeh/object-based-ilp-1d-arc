@@ -1,6 +1,7 @@
 # Plan: Unified arithmetic execution (S1′ series) — stepwise with per-step gates
 
-**Status:** PROPOSED — supersedes `plan-within-type-relations.md` steps S1–S5.
+**Status:** IN PROGRESS — S1′b complete and kept; S1′c deferred pending confirmation.
+**Supersedes:** `plan-within-type-relations.md` steps S1–S5 for execution.
 **Purpose:** Self-contained runbook. Future agents execute steps in order and update
 checkboxes + results below; **do not re-derive prior analysis** — trust the recorded
 outcomes and move to the next unchecked step.
@@ -28,8 +29,8 @@ Baseline eval artifacts: `results/eval_main_120s_j2_t012/` (frozen) and
 | S3 rank/ordinal | ⏭️ SKIPPED | — | — | — | — | S2 hurt flip |
 | S5a max_clauses 4 | ❌ REVERTED | `1bc6fa0` | 36/52 | 10/11 | FAIL | recolor_cnt regression |
 | S4 bridge | ⏭️ SKIPPED | — | — | — | — | user instruction |
-| S1′b bridge_cardinal_ordinal | ⬜ TODO | — | — | — | — | next step |
-| S1′c constraint arithmetic | ⬜ DEFERRED | — | — | — | — | optional; see §4 |
+| S1′b bridge_cardinal_ordinal | ✅ DONE | `35dd2e6` | 39/54 | 11/11 | PASS | pcopy_1c +1; flip/hollow/pcopy_mc still 0/3 |
+| S1′c constraint arithmetic | ⬜ DEFERRED | — | — | — | — | optional; needs explicit user confirmation |
 
 ---
 
@@ -71,9 +72,11 @@ offset/position (ordinal, `p*`).
    move to next TODO.
 6. **If gate PASSES:** mark row ✅, push, proceed to S1′c evaluation decision.
 
-**Results (fill after run):**
-- Exact: ___/54 | Perfect intact: ___/11 | Regressions: ___ | Gains: ___
-- Gate: PASS / FAIL → action: kept / reverted
+**Results (2026-08-05):**
+- Exact: **39/54** | Perfect intact: **11/11** | Regressions: none | Gains: `1d_pcopy_1c` 0→1
+- Soft: 0.722 | `1d_flip_1` segfaulted in parallel pass, re-ran cleanly (still fail)
+- Gate: **PASS** → action: **kept**
+- Induction time on paired PASSes: mean −2.1s vs baseline; notable wins on `move_2p_dp` / `move_dp`, small overhead elsewhere
 
 ---
 
