@@ -147,6 +147,29 @@ Compare vs frozen baseline 39/54 / 11 perfect. Soft-gate KEEP or `git revert` S6
 
 ---
 
+## S6e — Full 54-task @ 600s (10 min)
+
+```bash
+OUT=results/eval_s6_600s JOBS=2 ./scripts/run_solver_eval_parallel.sh block_primary 600 0,1,2
+```
+
+### Results (2026-08-06)
+
+| Metric | S1′b (120s) | S6 @120s | **S6 @600s** |
+|---|---:|---:|---:|
+| Exact | 39/54 | 39/54 | **41/54** |
+| Soft | — | — | 0.759 ± 0.059 |
+| Perfect cats | 11/11 | 8/11 | **9/11** |
+
+**Unlocks / gains vs S1′b:** flip +3, hollow +3, pcopy_mc +1  
+**Extra vs S6@120:** pcopy_mc +1, scale_dp 2→3 (+1)  
+**Still regressed:** move_dp 3→1, recolor_cnt 3→2, padded_fill 2→1, pcopy_1c 1→0  
+**SIGSEGV recoveries (offline):** flip_1 exact; pcopy_mc_1 exact; pcopy_mc_0 inexact
+
+Report artifact: `results/eval_s6_600s/SUMMARY_REPORT.md` (gitignored under `results/`).
+
+---
+
 ## Follow-ups (not in this plan — ask first)
 
 - Investigate `1d_move_dp` 3→1 regression under bidirectional arithmetic
