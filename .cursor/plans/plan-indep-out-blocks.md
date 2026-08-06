@@ -52,6 +52,17 @@ No `out_*` answer facts in BK (would leak). Output structure appears only as hea
 OUT=results/eval_indep_out JOBS=2 ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
 
+### Results @120s (2026-08-06) — **FAIL soft gate; skip 600s**
+
+| Metric | Indep @120 | S1′b / S6 @120 |
+|---|---:|---:|
+| Exact | **0/54** | 39/54 |
+| Soft | 0.0 | — |
+
+All 18 categories 0/3. Failures: `popper_exhausted` 38, `paint_verify_failed` 13, `popper_timeout` 3.
+
+**Verdict:** not “somehow good” → **do not run 10-min eval**. Soft-gate **REVERT** recommendation for this rewrite as-is.
+
 Report vs S1′b / S6@120 baselines. Soft-gate KEEP/REVERT after report (user may still want the experiment kept for analysis even if net drops).
 
 ## Non-goals
