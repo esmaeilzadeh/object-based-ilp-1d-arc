@@ -193,7 +193,13 @@ def _block_and_derived(
                 facts.append(f"before_block({ex},{bb},{_pos(s - 1, t)}).")
 
         if c == 0:
-            if not lean:
+            if lean:
+                # Independent-out rewrite: empty runs are first-class blocks (v0).
+                facts.append(f"block({ex},{bb},{_sz(L, t)},{_col(0, t)}).")
+                facts.append(f"in_start({ex},{bb},{_sz(s, t)}).")
+                facts.append(f"in_rank({ex},{bb},{_rank(bid, t)}).")
+                observed_sizes.add(s)
+            else:
                 facts.append(f"empty_block({ex},{bb},{_sz(L, t)}).")
             if cell:
                 for p in range(s, e + 1):
@@ -201,6 +207,10 @@ def _block_and_derived(
             continue
 
         facts.append(f"block({ex},{bb},{_sz(L, t)},{_col(c, t)}).")
+        if lean:
+            facts.append(f"in_start({ex},{bb},{_sz(s, t)}).")
+            facts.append(f"in_rank({ex},{bb},{_rank(bid, t)}).")
+            observed_sizes.add(s)
         if not lean:
             facts.append(f"block_len({ex},{bb},{_sz(L, t)}).")
             facts.append(f"obj_index({ex},{bb},{_rank(obj_k, t)}).")
@@ -218,7 +228,15 @@ def _block_and_derived(
                 else:
                     facts.append(f"interior_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
 
-    if not lean:
+    if lean:
+        for i in range(n_runs - 1):
+            facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
+        # Ordinal reverse sugar for this example's run count.
+        if n_runs >= 1:
+            for i in range(n_runs):
+                k = n_runs - 1 - i
+                facts.append(f"rank_rev({_rank(i, t)},{_rank(k, t)}).")
+    else:
         for i in range(n_runs - 1):
             facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
@@ -270,11 +288,11 @@ def _block_and_derived(
                     facts.append(f"same_len({ex},{bi},{bj}).")
 
     if lean:
-        # Obj_succ-only gaps (drop neighbor-only empty/run gaps — search clutter).
-        for a, b in zip(colored_ids, colored_ids[1:]):
-            _s1, e1, _c1 = runs[a]
-            s2, _e2, _c2 = runs[b]
-            bi, bj = _bid(a, t), _bid(b, t)
+        # Gaps between consecutive runs (all runs, incl. empty) — independent-out geometry.
+        for i in range(n_runs - 1):
+            _s1, e1, _c1 = runs[i]
+            s2, _e2, _c2 = runs[i + 1]
+            bi, bj = _bid(i, t), _bid(i + 1, t)
             g = s2 - e1 - 1
             facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
             observed_sizes.add(g)
@@ -295,8 +313,8 @@ def _block_and_derived(
                 if s <= w and x >= 0 and y >= 0:
                     facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
                     observed_sizes.add(s)
-        # size_add(1, L-1, L) for each colored length (uniform arith closure).
-        for bid in colored_ids:
+        # size_add(1, L-1, L) for each run length (uniform arith closure).
+        for bid in range(n_runs):
             L = lengths[bid]
             if L >= 2 and L <= w:
                 facts.append(
@@ -411,6 +429,8 @@ def _block_and_derived(
             facts.append(f"v{i}(v{i}).")
         for i in range(w + 1):
             facts.append(f"s{i}(s{i}).")
+        for i in range(max(n_runs, 1)):
+            facts.append(f"r{i}(r{i}).")
     return facts
 
 
@@ -500,140 +520,81 @@ def _exs_out_blocks(
     *,
     typed_roles: bool = False,
 ) -> List[str]:
-    """Object-head examples: pos/neg ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Object-head examples: pos/neg ``out_block(Ex, Rank, Start, Len, Color)``.
 
-    ``Bid`` is an input run id; ``Off`` is pixels from that run's start.
-    Decode paints at ``start(Bid)+Off``.
+    ``Rank`` is the left→right index of an output run (incl. empty).
+    ``Start`` is the absolute pixel start. Decode paints ``[Start, Start+Len)``.
     """
     t = typed_roles
     pos: List[str] = []
     neg: List[str] = []
     for eg in train:
         assert eg.out is not None
-        runs = segment_all_runs(eg.inp)
-        colored_bids = [bid for bid, (_s, _e, c) in enumerate(runs) if c != 0]
-        true_blocks: List[Tuple[int, int, int, int]] = []  # bid, off, L, c
+        out_runs = segment_all_runs(eg.out)
+        w = len(eg.out)
+        true_blocks: List[Tuple[int, int, int, int]] = []  # rank, start, L, c
         true_set: set = set()
         colors_used: set = set()
         observed_sizes: set = set([0])
-        for bid, (s, e, c) in enumerate(runs):
-            if c == 0:
-                continue
+        for rank, (s, e, c) in enumerate(out_runs):
             L = e - s + 1
-            observed_sizes.add(L)
-        for a, b in zip(colored_bids, colored_bids[1:]):
-            La = runs[a][1] - runs[a][0] + 1
-            Lb = runs[b][1] - runs[b][0] + 1
-            g = runs[b][0] - runs[a][1] - 1
-            observed_sizes.add(g)
-            observed_sizes.add(La + g + Lb)
-            observed_sizes.add(La + g)
-            observed_sizes.add(g + Lb)
-            if g >= 0:
-                observed_sizes.add(1 + g)  # common unit+gap offset
-        for s, e, c in segment_blocks(eg.out):
-            L = e - s + 1
-            anchored = anchor_input_block_offset(eg.inp, s, e)
-            if anchored is None:
-                continue
-            bid, off = anchored
-            true_blocks.append((bid, off, L, c))
-            true_set.add((bid, off, L, c))
+            true_blocks.append((rank, s, L, c))
+            true_set.add((rank, s, L, c))
             colors_used.add(c)
             observed_sizes.add(L)
-            observed_sizes.add(off)
+            observed_sizes.add(s)
             pos.append(
-                f"pos(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
+                f"pos(out_block({eg.ex_id},{_rank(rank, t)},{_sz(s, t)},{_sz(L, t)},{_col(c, t)}))."
             )
-        for bid, off, L, c in true_blocks:
-            for v in range(1, max_color + 1):
-                if v != c:
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(v, t)}))."
-                    )
-        if not colors_used or not colored_bids:
+        if not true_blocks:
             continue
-        if typed_roles:
-            w = len(eg.out)
-            # Wrong lengths at true Bid/Off/Color (observed + 1..w sample).
-            len_cands = sorted(set(observed_sizes) | set(range(1, min(w, 12) + 1)))
-            # Wrong offsets: full 0..w so cross-example size_add cannot sneak Offs.
-            off_cands = list(range(0, w + 1))
-            for bid, off, L, c in true_blocks:
-                for L2 in len_cands:
-                    if L2 < 1 or L2 == L:
-                        continue
-                    if (bid, off, L2, c) in true_set:
-                        continue
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L2, t)},{_col(c, t)}))."
-                    )
-                for off2 in off_cands:
-                    if off2 == off:
-                        continue
-                    if (bid, off2, L, c) in true_set:
-                        continue
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off2, t)},{_sz(L, t)},{_col(c, t)}))."
-                    )
-            # Off=0 prefixes/identity: any Len at input block color not a true out.
-            # Kills loose ``s0(Off), s1(Len), block(_,Bid,_,Color)`` over-paints.
-            for bid, (s, e, c) in enumerate(runs):
-                if c == 0:
+        # Wrong color at true (Rank, Start, Len).
+        for rank, start, L, c in true_blocks:
+            for v in range(0, max_color + 1):
+                if v == c:
                     continue
-                Lin = e - s + 1
-                for L0 in range(1, Lin + 1):
-                    if (bid, 0, L0, c) not in true_set:
-                        neg.append(
-                            f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(0, t)},{_sz(L0, t)},{_col(c, t)}))."
-                        )
-            # Wrong Bid for a true (Off,Len,Color).
-            for bid in colored_bids:
-                for _tb, off, L, c in true_blocks:
-                    if (bid, off, L, c) in true_set:
-                        continue
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
-                    )
-            # Cross-block Len/Color mix at a true (Bid, Off): block1 with block2's
-            # (Len,Color). Compact O(|true|*|colored|); kills over-general rules that
-            # take Off from gap(Bid,_) but Len/Color from a different block(_).
-            input_lc: List[Tuple[int, int, int]] = []
-            for bid2, (s2, e2, c2) in enumerate(runs):
-                if c2 == 0:
+                neg.append(
+                    f"neg(out_block({eg.ex_id},{_rank(rank, t)},{_sz(start, t)},{_sz(L, t)},{_col(v, t)}))."
+                )
+        if not typed_roles:
+            continue
+        len_cands = sorted(set(observed_sizes) | set(range(1, min(w, 12) + 1)))
+        start_cands = list(range(0, w + 1))
+        rank_cands = list(range(0, max(len(out_runs) + 2, 1)))
+        for rank, start, L, c in true_blocks:
+            for L2 in len_cands:
+                if L2 < 1 or L2 == L:
                     continue
-                input_lc.append((bid2, e2 - s2 + 1, c2))
-            for bid, off, L, c in true_blocks:
-                for _b2, L2, C2 in input_lc:
-                    if (bid, off, L2, C2) in true_set:
-                        continue
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L2, t)},{_col(C2, t)}))."
-                    )
-            # Off=0 wrong color at each input block's own length: kills
-            # ``vK(Color), s0(Off), block(_,Bid,Len,_)`` over-paints.
-            observed_colors = sorted(colors_used | {c for _b, _L, c in input_lc})
-            for bid2, Lin, Cin in input_lc:
-                for C2 in observed_colors:
-                    if C2 == Cin:
-                        continue
-                    if (bid2, 0, Lin, C2) in true_set:
-                        continue
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid2, t)},{_sz(0, t)},{_sz(Lin, t)},{_col(C2, t)}))."
-                    )
-        else:
-            w = len(eg.out)
-            for bid in colored_bids:
-                for off in sorted(observed_sizes):
-                    if off < 0 or off > w:
-                        continue
-                    for L in range(1, w + 1):
-                        for c in colors_used:
-                            if (bid, off, L, c) not in true_set:
-                                neg.append(
-                                    f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
-                                )
+                if (rank, start, L2, c) in true_set:
+                    continue
+                neg.append(
+                    f"neg(out_block({eg.ex_id},{_rank(rank, t)},{_sz(start, t)},{_sz(L2, t)},{_col(c, t)}))."
+                )
+            for s2 in start_cands:
+                if s2 == start:
+                    continue
+                if (rank, s2, L, c) in true_set:
+                    continue
+                neg.append(
+                    f"neg(out_block({eg.ex_id},{_rank(rank, t)},{_sz(s2, t)},{_sz(L, t)},{_col(c, t)}))."
+                )
+            for r2 in rank_cands:
+                if r2 == rank:
+                    continue
+                if (r2, start, L, c) in true_set:
+                    continue
+                neg.append(
+                    f"neg(out_block({eg.ex_id},{_rank(r2, t)},{_sz(start, t)},{_sz(L, t)},{_col(c, t)}))."
+                )
+        # Identity / loose overpaint killers: wrong Len at (rank, start) with same color.
+        for rank, (s, e, c) in enumerate(out_runs):
+            Lin = e - s + 1
+            for L0 in range(1, min(w, Lin + 3) + 1):
+                if (rank, s, L0, c) in true_set:
+                    continue
+                neg.append(
+                    f"neg(out_block({eg.ex_id},{_rank(rank, t)},{_sz(s, t)},{_sz(L0, t)},{_col(c, t)}))."
+                )
     seen: set = set()
     out: List[str] = []
     for line in pos + neg:

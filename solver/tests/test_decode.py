@@ -1,4 +1,4 @@
-"""Tests for out_block → pixel decoder."""
+"""Tests for out_block → pixel decoder (absolute Start)."""
 
 from pathlib import Path
 
@@ -16,13 +16,17 @@ def test_object_decoder_paints_blocks(tmp_path: Path):
         "test": [{"input": [[2, 2, 0, 9]]}],
     }
     enc = encode_instance(inst, tmp_path / "enc")
-    prog = "out_block(0,b0,s0,s2,v2).\nout_block(0,b2,s0,s1,v9).\n"
+    # Independent out: Rank, absolute Start, Len, Color (incl. empty v0).
+    prog = (
+        "out_block(0,r0,s0,s2,v2).\n"
+        "out_block(0,r1,s2,s1,v0).\n"
+        "out_block(0,r2,s3,s1,v9).\n"
+    )
     preds = apply_object_program(
         prog,
         enc.bk_path,
         enc.train,
         typed_roles=True,
-        block_geometry=enc.block_geometry,
     )
     assert preds[0] == [2, 2, 0, 9]
 
@@ -36,13 +40,12 @@ def test_object_decoder_typed_roles(tmp_path: Path):
         tmp_path / "enc",
     )
     assert enc.typed_roles
-    prog = "out_block(0,b0,s0,s3,v7).\n"
+    prog = "out_block(0,r0,s0,s3,v7).\n"
     preds = apply_object_program(
         prog,
         enc.bk_path,
         enc.train,
         typed_roles=True,
-        block_geometry=enc.block_geometry,
     )
     assert preds[0] == [7, 7, 7]
 
@@ -55,12 +58,11 @@ def test_object_decoder_rejects_overlap(tmp_path: Path):
         },
         tmp_path / "enc",
     )
-    prog = "out_block(0,b0,s0,s3,v1).\nout_block(0,b0,s1,s2,v2).\n"
+    prog = "out_block(0,r0,s0,s3,v1).\nout_block(0,r1,s1,s2,v2).\n"
     with pytest.raises(ValueError):
         apply_object_program(
             prog,
             enc.bk_path,
             enc.train,
             typed_roles=True,
-            block_geometry=enc.block_geometry,
         )

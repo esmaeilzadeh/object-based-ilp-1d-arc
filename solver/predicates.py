@@ -31,9 +31,10 @@ class Predicate:
 PREDICATES: Tuple[Predicate, ...] = (
     # heads
     Predicate("out", 3, ("ex", "position", "value"), "head", frozenset()),
-    # Object head: anchor input block id + output length/color (pixel start is decode-only).
-    Predicate("out_block", 5, ("ex", "block_id", "size", "size", "value"), "head_object", frozenset()),
-    # out_block(E, Bid, Off, Len, Color): paint at start(Bid)+Off.
+    # Object head: independent output-run rank + absolute start (no input Bid anchor).
+    Predicate("out_block", 5, ("ex", "rank", "size", "size", "value"), "head_object", frozenset()),
+    # out_block(E, Rank, Start, Len, Color): paint Len pixels of Color at absolute Start.
+    # Input↔output relations (in_rank / in_start / rank_rev) are body BK for ILP to discover.
     # pixel
     Predicate("in", 3, ("ex", "position", "value"), "pixel", frozenset({3})),
     Predicate("empty", 2, ("ex", "position"), "pixel", frozenset({3})),
@@ -43,6 +44,11 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3, 4})),
     Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3, 4})),
+    # Lean input geometry for independent-out head (absolute start + ordinal rank).
+    Predicate("in_start", 3, ("ex", "block_id", "size"), "block", frozenset({4})),
+    Predicate("in_rank", 3, ("ex", "block_id", "rank"), "block", frozenset({4})),
+    # Mechanical ordinal reverse sugar: rank_rev(I, K) with K = n-1-I for observed n.
+    Predicate("rank_rev", 2, ("rank", "rank"), "arith", frozenset({4})),
     # geometry (object–object)
     Predicate("left_of", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("adjacent", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
@@ -125,6 +131,10 @@ def head_pred_object() -> Predicate:
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
+        "in_start",
+        "in_rank",
+        "rank_rev",
+        "block_succ",
         "obj_succ",
         "obj_pair",
         "gap",
