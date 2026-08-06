@@ -18,6 +18,7 @@ _BIAS_DIR = Path(__file__).resolve().parent / "bias"
 _FACT_PRED_RE = re.compile(r"^([a-z][a-z0-9_]*)\(")
 _SIZE_CONST_RE = re.compile(r"\bs(\d+)\b")
 _VALUE_CONST_RE = re.compile(r"\bv(\d+)\b")
+_RANK_CONST_RE = re.compile(r"\br(\d+)\b")
 
 OBJECT_MAX_VARS = 10
 OBJECT_MAX_BODY = 6
@@ -56,15 +57,18 @@ def _preds_present_in_bk(bk_text: str, allow: FrozenSet[str]) -> Set[str]:
     return present
 
 
-def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int]]:
+def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int], Set[int]]:
     sizes: Set[int] = set()
     values: Set[int] = set()
+    ranks: Set[int] = set()
     blob = "\n".join(texts)
     for m in _SIZE_CONST_RE.finditer(blob):
         sizes.add(int(m.group(1)))
     for m in _VALUE_CONST_RE.finditer(blob):
         values.add(int(m.group(1)))
-    return sizes, values
+    for m in _RANK_CONST_RE.finditer(blob):
+        ranks.add(int(m.group(1)))
+    return sizes, values, ranks
 
 
 def render_object_bias_from_bk(
@@ -85,9 +89,10 @@ def render_object_bias_from_bk(
     if not bodies:
         bodies = tuple(p for p in body_preds_for_level(4) if p.name == "block")
 
-    sizes, values = _constants_present_in_texts(bk_text, exs_text)
+    sizes, values, ranks = _constants_present_in_texts(bk_text, exs_text)
     sizes.add(0)
     sizes.add(1)
+    ranks.add(0)
 
     hp = head_pred_object()
     all_typed = (hp,) + bodies
@@ -110,19 +115,16 @@ def render_object_bias_from_bk(
         parts.append(f"constant(s{i}, 'size').")
     for i in sorted(values):
         parts.append(f"constant(v{i}, 'value').")
+    for i in sorted(ranks):
+        parts.append(f"constant(r{i}, 'rank').")
     parts.append("")
     parts.append(_types_block(all_typed))
     parts.append("type(C,(T,)):- constant(C,T).")
     parts.append("")
     parts.append(_bad_body_for_ex_preds(bodies))
     parts.append("")
-    parts.append(
-        "% Every clause: block must use head Bid (var 1).\n"
-        ":- clause(C), not body_literal(C, block, 4, (0,1,_,_))."
-    )
+    # Start=var2, Len=var3: size_add/sum3 legal if any arg is head Start/Len.
     body_names = {p.name for p in bodies}
-    # Legal iff at least one arg is head Off (var 2) or Len (var 3).
-    # Allows compute (result ∈ {2,3}) and check (an input ∈ {2,3}) directions.
     if "size_add" in body_names:
         parts.append(
             "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
@@ -147,7 +149,7 @@ def render_object_bias(
     bk_lines = [f"{name}(dummy)." for name in sorted(OBJECT_BODY_ALLOWLIST)]
     return render_object_bias_from_bk(
         "\n".join(bk_lines),
-        exs_text="",
+        exs_text="pos(out_block(0,r0,s0,s1,v1)).",
         max_vars=max_vars,
         max_body=max_body,
         max_clauses=max_clauses,

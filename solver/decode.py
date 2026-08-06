@@ -5,13 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-from solver.encoder import (
-    ExampleGrids,
-    _bid,
-    _col,
-    _sz,
-    block_geometry_for_row,
-)
+from solver.encoder import ExampleGrids, _col, _rank, _sz
 
 PathLike = Union[str, Path]
 
@@ -29,38 +23,34 @@ def _strip_program(text: str) -> str:
 def _collect_out_blocks(
     ex_id: int,
     width: int,
-    bids: Sequence[int],
-    geometry: Dict[int, Tuple[int, int]],
     *,
     typed_roles: bool = False,
+    max_rank: int = 16,
 ) -> List[Tuple[int, int, int]]:
-    """Enumerate grounded ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Enumerate grounded ``out_block(Ex, Rank, Start, Len, Color)``.
 
-    Returns ``(paint_start, Len, Color)`` with ``paint_start = start(Bid)+Off``.
+    Returns ``(paint_start, Len, Color)`` with absolute ``paint_start = Start``.
     """
     from janus_swi import query_once
 
     t = typed_roles
     blocks: List[Tuple[int, int, int]] = []
-    for bid in bids:
-        if bid not in geometry:
-            continue
-        start, _end = geometry[bid]
-        for off in range(0, width + 1):
+    for rank in range(0, max_rank):
+        for start in range(0, width + 1):
             for L in range(1, width + 1):
-                if start + off + L > width + 1:
+                if start + L > width:
                     break
-                for c in range(1, 10):
+                for c in range(0, 10):
                     atom = (
-                        f"out_block({ex_id},{_bid(bid, t)},"
-                        f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)})"
+                        f"out_block({ex_id},{_rank(rank, t)},"
+                        f"{_sz(start, t)},{_sz(L, t)},{_col(c, t)})"
                     )
                     try:
                         res = query_once(atom)
                     except Exception:
                         continue
                     if res.get("truth"):
-                        blocks.append((start + off, L, c))
+                        blocks.append((start, L, c))
     return blocks
 
 
@@ -72,10 +62,12 @@ def apply_object_program(
     typed_roles: bool = False,
     block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
 ) -> Dict[int, List[int]]:
-    """Paint pixels from ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Paint pixels from ``out_block(Ex, Rank, Start, Len, Color)``.
 
+    ``block_geometry`` is ignored (kept for call-site compatibility).
     Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
     """
+    del block_geometry  # independent-out decode uses absolute Start only
     from janus_swi import consult, query_once
 
     prog = _strip_program(program)
@@ -86,7 +78,6 @@ def apply_object_program(
     consult(str(bk_path))
     consult(str(tmp))
 
-    geo = block_geometry
     out: Dict[int, List[int]] = {}
     try:
         for eg in examples:
@@ -94,15 +85,11 @@ def apply_object_program(
                 w = len(eg.out)
             else:
                 w = len(eg.inp)
-            eg_geo = (
-                geo[eg.ex_id]
-                if geo is not None and eg.ex_id in geo
-                else block_geometry_for_row(eg.inp)
-            )
             row = [0] * w
             occupied: Dict[int, int] = {}
+            max_rank = max(w, 8)
             for s, L, c in _collect_out_blocks(
-                eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
+                eg.ex_id, w, typed_roles=typed_roles, max_rank=max_rank
             ):
                 if L <= 0 or s < 0 or s + L > w:
                     raise ValueError(
