@@ -137,6 +137,36 @@ under object paint-decode. That is the sole quality gate.
 
 ---
 
+## Not implemented feature requests
+
+Tracked here (main docs), not only in `.cursor/plans/`. Ask before implementing.
+
+### Anytime train-paint-valid candidate retention / paint-aware induction
+
+**Status:** not implemented.
+
+**Problem:** Popper keeps searching after the first train-perfect program for a
+smaller one. Longer timeouts can replace an earlier train-valid answer with a
+later compressed program that still looks good to Popper but fails the stronger
+block-level paint check, or paint-passes train yet generalizes worse on test.
+Paint verification today is **post-hoc** (`verify_object_on_train` after induce),
+not part of Popper’s hypothesis acceptance during search. Test gold must never
+leak into this process.
+
+**Desired behavior (no test leakage):**
+
+1. Prefer making the **train paint/color signal** accessible to ILP during
+   induction (compact / block-level; avoid dumping huge raw pixel constraints),
+   **or**
+2. If that is too invasive / expands search too much: keep an **anytime set** of
+   train-perfect candidates, paint-verify each on train, and deterministically
+   return the first/best **train-paint-valid** candidate.
+
+So if a shorter budget already found a train-paint-valid program, extra search
+time must not ruin it by returning a later junk/overfit replacement.
+
+---
+
 ## Implementation checklist (current code)
 
 1. JSON → lean block facts + mechanical object exs/bias — `solver/encoder.py`,
