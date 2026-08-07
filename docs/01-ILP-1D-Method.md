@@ -1,7 +1,10 @@
 # 01 — ILP Method for Generic 1D-ARC
 
-**Reading order:** start here → [02](02-SOLVER_PLAN.md) → [03](03-CURRENT_METHOD.md) →
-[04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) → [05](05-REPO_STRUCTURE.md).
+**Reading order:** start here
+([01 landscape](01-ILP-1D-Method.md) → [02 plan](02-SOLVER_PLAN.md) →
+[03 as-built](03-CURRENT_METHOD.md) → [04 vs Decom](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+[05 repo map](05-REPO_STRUCTURE.md) → [06 running](06-RUNNING.md)).
+Full blurbs: root [README](../README.md).
 
 Landscape note + how this repo’s **object-only** path sits among ILP work.
 As-built: [03-CURRENT_METHOD.md](03-CURRENT_METHOD.md). Method plan:

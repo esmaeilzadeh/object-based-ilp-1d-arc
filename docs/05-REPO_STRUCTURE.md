@@ -1,8 +1,9 @@
 # 05 — Repository structure and file descriptions
 
-**Reading order:** [01](01-ILP-1D-Method.md) → [02](02-SOLVER_PLAN.md) →
-[03](03-CURRENT_METHOD.md) → [04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
-**you are here**.
+**Reading order:** [01 landscape](01-ILP-1D-Method.md) → [02 plan](02-SOLVER_PLAN.md) →
+[03 as-built](03-CURRENT_METHOD.md) → [04 vs Decom](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+**you are here (repo map)** → [06 running](06-RUNNING.md).
+Full blurbs: root [README](../README.md).
 
 Map of this repo’s folders and important files. Method details live in
 [03-CURRENT_METHOD.md](03-CURRENT_METHOD.md) and [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md);
@@ -26,7 +27,7 @@ object-based-ilp-1d-arc/
 ├── scripts/                  # Eval / smoke / stability shell wrappers
 ├── raw_data/onedarcraw/      # Vendored 1D-ARC JSON dataset (+ parser helpers)
 ├── popper/                   # Vendored Popper ILP system (editable install)
-├── docs/                     # Numbered reading order: 01…05 (+ Decom PDF)
+├── docs/                     # Numbered reading order: 01…06 (+ Decom PDF)
 ├── tests/fixtures/           # Hand fixtures for hard smokes (not full dataset)
 ├── results/                  # Eval outputs (gitignored)
 ├── work/                     # Scratch encode/induce dumps (gitignored)
@@ -100,6 +101,8 @@ Example:
 JOBS=4 OUT=results/eval_s6_60s ./scripts/run_solver_eval_parallel.sh block_primary 60 0,1,2
 ```
 
+Full flag tables, smoke/stability, and troubleshooting → [06-RUNNING.md](06-RUNNING.md).
+
 ---
 
 ## `raw_data/onedarcraw/` — dataset
@@ -162,6 +165,7 @@ and consumes the induced program.
 | `03-CURRENT_METHOD.md` | As-built encode–induce–decode snapshot |
 | `04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md` | Exact/soft scoreboard vs pixel Decom |
 | `05-REPO_STRUCTURE.md` | This file — folders and file roles |
+| `06-RUNNING.md` | Setup, CLI/harness, smoke/eval/stability scripts, troubleshooting |
 | `2408.12212v3.pdf` | Decom paper PDF (local copy; not in the numbered sequence) |
 
 ---
@@ -290,6 +294,7 @@ mode here.
 | Change Popper invoke / timeout | `solver/induce.py` |
 | Run one JSON | `python -m solver.cli …` or `scripts/smoke_solver.sh` |
 | Run 54-task slice | `scripts/run_solver_eval_parallel.sh` |
+| Full runbook (flags/examples) | `docs/06-RUNNING.md` |
 | Read method claim | `docs/03-CURRENT_METHOD.md` |
 | Read vs-Decom numbers | `docs/04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md` |
 | Publishing / venue plan | `.cursor/plans/plan-publishing-paper.md` |

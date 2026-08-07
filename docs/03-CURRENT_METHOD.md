@@ -1,8 +1,9 @@
 # 03 — Current method (as-built)
 
-**Reading order:** [01](01-ILP-1D-Method.md) → [02](02-SOLVER_PLAN.md) →
-**you are here** → [04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
-[05](05-REPO_STRUCTURE.md).
+**Reading order:** [01 landscape](01-ILP-1D-Method.md) → [02 plan](02-SOLVER_PLAN.md) →
+**you are here (as-built)** → [04 vs Decom](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+[05 repo map](05-REPO_STRUCTURE.md) → [06 running](06-RUNNING.md).
+Full blurbs: root [README](../README.md).
 
 Living snapshot of **what the code does now** on the object-only path.
 
@@ -34,6 +35,9 @@ python -m solver.harness --mode block_primary --timeout 60 --trials 0,1,2
 ```
 
 CLI: `python -m solver.cli path.json --timeout 60` (same object path).
+
+Full setup, script flags, smoke/eval/stability examples →
+[06-RUNNING.md](06-RUNNING.md).
 
 ## Non-goals (see block-level-only rule)
 

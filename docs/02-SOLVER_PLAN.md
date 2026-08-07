@@ -1,8 +1,9 @@
 # 02 — Method Plan: Object-only 1D-ARC Solver
 
-**Reading order:** [01](01-ILP-1D-Method.md) → **you are here** →
-[03](03-CURRENT_METHOD.md) → [04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
-[05](05-REPO_STRUCTURE.md).
+**Reading order:** [01 landscape](01-ILP-1D-Method.md) → **you are here (plan)** →
+[03 as-built](03-CURRENT_METHOD.md) → [04 vs Decom](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+[05 repo map](05-REPO_STRUCTURE.md) → [06 running](06-RUNNING.md).
+Full blurbs: root [README](../README.md).
 
 Living method plan for the **object-only** path. As-built snapshot:
 [03-CURRENT_METHOD.md](03-CURRENT_METHOD.md). Direction:

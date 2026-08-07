@@ -1,7 +1,9 @@
 # 04 — Comparison: this solver (block-ILP, S6) vs Hocquette & Cropper IJCAI-25 "Relational Decomposition" (Decom)
 
-**Reading order:** [01](01-ILP-1D-Method.md) → [02](02-SOLVER_PLAN.md) →
-[03](03-CURRENT_METHOD.md) → **you are here** → [05](05-REPO_STRUCTURE.md).
+**Reading order:** [01 landscape](01-ILP-1D-Method.md) → [02 plan](02-SOLVER_PLAN.md) →
+[03 as-built](03-CURRENT_METHOD.md) → **you are here (vs Decom)** →
+[05 repo map](05-REPO_STRUCTURE.md) → [06 running](06-RUNNING.md).
+Full blurbs: root [README](../README.md).
 
 Reference: `2408.12212v3.pdf` (next to this file in `docs/`), code + stored results in
 `../sources/ijcai25-relational-decomposition-main/` (in the parent `ml-project/` dir, outside
