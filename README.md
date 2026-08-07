@@ -10,6 +10,7 @@ induction, or trivial closed-form stages.
 As-built: [docs/CURRENT_METHOD.md](docs/CURRENT_METHOD.md).  
 Method plan: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md).  
 ILP landscape: [docs/ILP-1D-Method.md](docs/ILP-1D-Method.md).  
+Repo map: [docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md).  
 Direction: [`.cursor/rules/block-level-only.mdc`](.cursor/rules/block-level-only.mdc).  
 Package notes: [solver/README.md](solver/README.md).
 
@@ -47,6 +48,11 @@ Only mode: `block_primary`.
 
 ## Layout
 
+Full folder/file map: [docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md).
+
 - `solver/` — lean encode, mechanical object bias, induce, verify, decode, harness
 - `popper/` — vendored Popper
 - `raw_data/onedarcraw/` — 1D-ARC JSON (+ external Decom baselines)
+- `scripts/` — eval / smoke wrappers
+- `docs/` — method, comparison, structure
+- `results/`, `work/` — generated eval/scratch (gitignored)
