@@ -1,0 +1,96 @@
+---
+description: Long-run reporting, impossible-regression checks, and viable eval conditions
+alwaysApply: true
+---
+
+# Eval hygiene (reporting, sanity, resources)
+
+Scientific evals must stay **observable**, **physically plausible**, and run under
+**viable machine conditions**. Violating any of these wastes hours and produces
+untrustworthy numbers.
+
+## 1. Report frequently on long-running work
+
+If a command, eval, or wait is expected to take more than a few minutes:
+
+- **Do not go silent.** Emit progress updates on a steady cadence (at least every
+  ~10–15 minutes for multi-hour jobs; sooner if status changes).
+- Each update should include: what is running, how long elapsed, fraction done
+  when known (e.g. `32/54` result JSONs), and any anomaly (timeouts, SIGSEGV,
+  hung workers, missing summary).
+- Prefer short status messages over waiting until the entire job finishes to
+  speak. A finished summary does **not** excuse hours of no intermediate report.
+- If blocked on a long wait, keep reporting from joblogs / result counts / process
+  state rather than assuming “still running” with no evidence.
+
+## 2. Impossible regressions are infra bugs until proven otherwise
+
+Treat these as **eval/setup failures**, not as true solver regressions, until
+disproven with per-task evidence:
+
+- Exact (or soft) score **worse than a shorter-timeout** result on the same
+  commit/config (e.g. 120s was 39/54 but 3600s reports 29/54).
+- A category that recently scored well at short timeout collapses to **0/3**
+  under a longer budget (e.g. `1d_flip` 3/3 @120s → 0/3 @3600s).
+- Soft accuracy collapses to roughly equal exact with many hard zeros (suggests
+  crashes / no-program / decode failures, not near-miss programs).
+
+### Required response
+
+1. **Stop treating the number as a capability verdict.**
+2. Report the contradiction vs the known shorter/better baseline immediately.
+3. Inspect failure modes (`failure_reason`, joblog exit/signal, SIGSEGV, OOM,
+   missing result JSON) before proposing code reverts.
+4. Prefer a cheap confirmation rerun under known-good conditions (see §3) over
+   another long, suspicious sweep.
+
+This rule complements `soft-eval-regression.mdc` (KEEP/REVERT gate). Soft-gate
+scoring assumes the sweep itself is trustworthy; this rule decides when the
+sweep is **not** trustworthy.
+
+## 3. Never run evals under bad machine conditions
+
+Before starting any parallel solver/eval sweep, check host resources
+(`nproc` / CPU count, RAM, swap) and compare to `JOBS`.
+
+### Hard alerts — stop and confirm
+
+Do **not** start (or immediately pause and ask) when:
+
+- `JOBS` **> number of CPUs** (oversubscription)
+- Concurrent jobs are likely to thrash RAM (no/low swap, many heavy Popper/clingo
+  workers)
+- Requested settings differ sharply from last known-good gate (e.g. prior KEEP
+  used `JOBS=2`, request is `JOBS=7` on a 4-core box)
+
+Even if the user **explicitly** asks for an oversubscribed or otherwise non-viable
+setup: **alert first**, explain why the result would be less scientific, and get
+explicit confirmation that they still want that experiment. Default is to refuse
+and propose a viable config (typically `JOBS ≤ nproc`, often `JOBS=2` on small
+machines, matching prior gates).
+
+### Do
+
+- State the planned `JOBS`, timeout, trial filter, and host `nproc`/RAM before
+  launch when the run is expensive.
+- Prefer matching prior successful gate settings unless the user confirms a
+  deliberate change.
+- Preserve per-task artifacts / joblogs long enough to diagnose crashes; note
+  known janus/SWI SIGSEGV flakes and offline recovery when scoring.
+
+### Do not
+
+- Quietly launch a multi-hour sweep that cannot produce a comparable result.
+- Hide resource mismatch behind “user asked for JOBS=N”.
+- Burn a full 54-task long-timeout run to “confirm” a number that already
+  contradicts a shorter healthy baseline without first checking conditions.
+
+## Examples
+
+```
+❌ BAD: Start JOBS=7 on 4 CPUs for 3600s×54, stay silent for hours, then report
+       29/54 as an S6 regression vs 39/54 @120s.
+✅ GOOD: Alert: "4 CPUs but JOBS=7 will oversubscribe; prior S6 gates used JOBS=2.
+        Confirm if you still want this, else I run JOBS=2." Report 18/54, 32/54…
+        during the run. If 3600s < 120s baseline, flag infra/crash suspicion first.
+```

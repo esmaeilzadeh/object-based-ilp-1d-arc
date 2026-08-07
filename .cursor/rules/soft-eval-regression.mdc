@@ -51,3 +51,6 @@ rule wins** unless the user explicitly asks for a hard gate on that step.
 
 Do not use soft balance to justify answer-leaking BK, category-named bias switches,
 or other `block-level-only.mdc` violations.
+
+Before applying KEEP/REVERT, ensure the sweep is trustworthy per `eval-hygiene.mdc`
+(viable `JOBS`/CPU, progress reporting, no impossible longer-timeout regressions).
