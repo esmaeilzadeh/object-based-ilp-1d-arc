@@ -59,7 +59,10 @@ BK/exs.
 Derived relations (encoding-time, not learned): geometry (`left_of`,
 `adjacent`, `gap`, `block_succ`, `obj_succ`, …), length compare, ranking
 (`largest`, `smallest`, …), and generic arith sugar (`offset_pos`, `size_add`,
-…) when emitted uniformly from observed sizes/gaps.
+`size_sum3`, …) when emitted uniformly from observed sizes/gaps. `size_add` /
+`size_sum3` are bidirectional: legal when any argument binds the head `Off` or
+`Len`, so ILP can both *compute* a target size/offset and *check* one against
+input geometry (S6, `solver/bias_gen.py`).
 
 ---
 
