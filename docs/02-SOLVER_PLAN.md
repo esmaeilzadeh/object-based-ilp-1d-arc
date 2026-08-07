@@ -145,25 +145,93 @@ Tracked here (main docs), not only in `.cursor/plans/`. Ask before implementing.
 
 **Status:** not implemented.
 
-**Problem:** Popper keeps searching after the first train-perfect program for a
-smaller one. Longer timeouts can replace an earlier train-valid answer with a
-later compressed program that still looks good to Popper but fails the stronger
-block-level paint check, or paint-passes train yet generalizes worse on test.
-Paint verification today is **post-hoc** (`verify_object_on_train` after induce),
-not part of Popper’s hypothesis acceptance during search. Test gold must never
-leak into this process.
+#### Background (current pipeline)
 
-**Desired behavior (no test leakage):**
+1. Popper induces `out_block/5` under a timeout budget.
+2. After induction returns **one** program (the final best), we run
+   **block-level paint verification on train**
+   (`verify_object_on_train` → `apply_object_program` must reproduce every
+   train output cell).
+3. Only then do we decode the test input and score exact/soft vs gold.
 
-1. Prefer making the **train paint/color signal** accessible to ILP during
-   induction (compact / block-level; avoid dumping huge raw pixel constraints),
-   **or**
-2. If that is too invasive / expands search too much: keep an **anytime set** of
-   train-perfect candidates, paint-verify each on train, and deterministically
-   return the first/best **train-paint-valid** candidate.
+Paint verification is already **block-level** (not a separate pixel ILP stage).
+What is missing is integrating that stronger train signal into **candidate
+selection during / across the search**, not only as a post-hoc reject of the
+final program.
 
-So if a shorter budget already found a train-paint-valid program, extra search
-time must not ruin it by returning a later junk/overfit replacement.
+#### What Popper actually does with more time
+
+- The timeout is a **search budget**, not “stop at first success.”
+- When Popper finds a train-perfect program (covers all positives / no
+  negatives under its own tester), it typically **keeps searching for a
+  smaller** program (`solution_found`, tighten `max_literals`).
+- At the end (timeout or exhaustion) it returns the **last best**
+  (`BEST_PROG`), not the first program that was already good.
+- A worker only moves to another instance when that process exits; there is no
+  mid-task switch. Exact-at-120s trials can still consume ~120s of wall time
+  while compressing.
+
+#### The mismatch (Popper objective vs paint verify)
+
+Relative to Popper’s induction objective, train paint/color consistency is
+**stronger / partly hidden**:
+
+| Signal | In Popper search today? | In post-hoc paint verify? |
+|--------|-------------------------:|--------------------------:|
+| Train block/out_block examples | yes | yes (via decode) |
+| Full train pixel/paint consistency | no / only indirect | **yes** |
+| Test gold | **never** (must stay out) | no (test is eval only) |
+
+So a program can be Popper-train-perfect and still:
+
+- fail paint verify → pipeline falls back to identity (`paint_verify_failed`), or
+- pass paint on train yet generalize worse on test than an earlier candidate.
+
+#### Failure mode we care about
+
+It is possible that:
+
+1. At a shorter budget (e.g. 2 min), search has already produced a
+   **train-paint-valid** program (and that program may also be test-exact).
+2. With more budget (e.g. +8 min in the same run, or a longer timeout rerun),
+   Popper replaces it with a later **smaller** train-perfect program.
+3. That later program fails paint verify, or paint-passes train but is a worse
+   generalizer on test.
+4. The harness scores only the final returned program → exact can **drop**
+   even though a shorter budget already had a valid answer.
+
+Important clarifications:
+
+- “Valid” here means **train-only**: Popper-consistent **and** paint-verified
+  on train. It does **not** mean test-passed; test remains evaluation-only.
+- This is not “Popper randomly unsolves train.” It is **non-monotonic final
+  selection** under continued compression + a post-hoc filter that does not
+  retain earlier candidates.
+- Dumping full raw pixel paint constraints into Popper may **blow up** the
+  search space; any ILP integration should stay **compact / block-level**.
+
+#### Desired behavior (no test leakage)
+
+Hard constraint: **never** use test gold / test predictions to choose among
+candidates during induction or acceptance.
+
+Preferred directions (either is acceptable; ask before implementing):
+
+1. **Paint-aware induction (stronger):** make the train paint/color signal
+   accessible inside ILP hypothesis testing / BK in a compact block-level form
+   so search is steered toward paint-consistent programs, **or**
+2. **Anytime candidate retention (practical fallback):** while searching,
+   retain train-perfect candidates; paint-verify each on train; keep a
+   deterministic train-only policy such as **first train-paint-valid wins**
+   (or another fixed train-only ranking). Later compressed programs must not
+   displace an already retained train-paint-valid answer unless the chosen
+   policy explicitly allows a better train-only score.
+
+Success criterion: if a shorter time limit already yielded a train-paint-valid
+program, extra search time must not ruin that result by returning later
+junk/overfit replacements. Test metrics may still vary across tasks, but the
+pipeline must stop throwing away known train-valid answers solely because
+Popper kept compressing.
 
 ---
 
