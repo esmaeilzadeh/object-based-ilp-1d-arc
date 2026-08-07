@@ -1,4 +1,7 @@
-# Comparison: this solver (block-ILP, S6) vs Hocquette & Cropper IJCAI-25 "Relational Decomposition" (Decom)
+# 04 — Comparison: this solver (block-ILP, S6) vs Hocquette & Cropper IJCAI-25 "Relational Decomposition" (Decom)
+
+**Reading order:** [01](01-ILP-1D-Method.md) → [02](02-SOLVER_PLAN.md) →
+[03](03-CURRENT_METHOD.md) → **you are here** → [05](05-REPO_STRUCTURE.md).
 
 Reference: `2408.12212v3.pdf` (next to this file in `docs/`), code + stored results in
 `../sources/ijcai25-relational-decomposition-main/` (in the parent `ml-project/` dir, outside
@@ -25,6 +28,12 @@ because the answer is "repeat pixel i at position 2i", which a block head cannot
 ---
 
 ## 1. Protocol alignment (verified against their code, not just the PDF)
+
+**Learning setup (both sides):** each trial is induced **from scratch** from that
+trial’s own train pairs — no curriculum, no transfer from simpler categories.
+That matches the ARC few-shot synthesis framing and keeps the comparison about
+representation (pixel vs block), not lifelong ILP. Rationale:
+[01-ILP-1D-Method.md §4](01-ILP-1D-Method.md#why-per-task-from-scratch-not-curriculum--transfer).
 
 The PDF says "18 tasks, 3 train + 1 test each" (App. B). The user asked us to double-check
 that "first 3 of each category" matches. Verified in the repo:

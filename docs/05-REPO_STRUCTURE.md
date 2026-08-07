@@ -1,8 +1,13 @@
-# Repository structure and file descriptions
+# 05 — Repository structure and file descriptions
+
+**Reading order:** [01](01-ILP-1D-Method.md) → [02](02-SOLVER_PLAN.md) →
+[03](03-CURRENT_METHOD.md) → [04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+**you are here**.
 
 Map of this repo’s folders and important files. Method details live in
-[CURRENT_METHOD.md](CURRENT_METHOD.md) and [SOLVER_PLAN.md](SOLVER_PLAN.md);
-comparison numbers in [COMPARISON-vs-Hocquette-Cropper-IJCAI25.md](COMPARISON-vs-Hocquette-Cropper-IJCAI25.md).
+[03-CURRENT_METHOD.md](03-CURRENT_METHOD.md) and [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md);
+comparison numbers in
+[04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md).
 
 **Sole runtime path:** object-head / `block_primary` (`out_block/5` → paint decode).
 Direction: [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
@@ -21,7 +26,7 @@ object-based-ilp-1d-arc/
 ├── scripts/                  # Eval / smoke / stability shell wrappers
 ├── raw_data/onedarcraw/      # Vendored 1D-ARC JSON dataset (+ parser helpers)
 ├── popper/                   # Vendored Popper ILP system (editable install)
-├── docs/                     # Method, comparison, this structure doc
+├── docs/                     # Numbered reading order: 01…05 (+ Decom PDF)
 ├── tests/fixtures/           # Hand fixtures for hard smokes (not full dataset)
 ├── results/                  # Eval outputs (gitignored)
 ├── work/                     # Scratch encode/induce dumps (gitignored)
@@ -148,16 +153,16 @@ and consumes the induced program.
 
 ---
 
-## `docs/` — human documentation
+## `docs/` — human documentation (read in number order)
 
 | File | Contents |
 |---|---|
-| `REPO_STRUCTURE.md` | This file — folders and file roles |
-| `CURRENT_METHOD.md` | As-built encode–induce–decode snapshot |
-| `SOLVER_PLAN.md` | Living method plan / stage design |
-| `ILP-1D-Method.md` | Broader ILP / 1D-ARC landscape notes |
-| `COMPARISON-vs-Hocquette-Cropper-IJCAI25.md` | Exact/soft scoreboard vs pixel Decom |
-| `2408.12212v3.pdf` | Decom paper PDF (local copy) |
+| `01-ILP-1D-Method.md` | ILP / 1D-ARC landscape; why per-task scratch induction |
+| `02-SOLVER_PLAN.md` | Living method plan / stage design |
+| `03-CURRENT_METHOD.md` | As-built encode–induce–decode snapshot |
+| `04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md` | Exact/soft scoreboard vs pixel Decom |
+| `05-REPO_STRUCTURE.md` | This file — folders and file roles |
+| `2408.12212v3.pdf` | Decom paper PDF (local copy; not in the numbered sequence) |
 
 ---
 
@@ -271,7 +276,7 @@ raw_data/.../<task>.json
 
 Pixel Relational Decomposition (Hocquette & Cropper) programs and paper-style
 evals typically live in a sibling checkout such as `../1d-arc/programs/relational/{60,120,600,3600}/`.
-This repo’s `docs/COMPARISON-…` references those paths; they are **not** a solver
+This repo’s `docs/04-COMPARISON-…` references those paths; they are **not** a solver
 mode here.
 
 ---
@@ -285,6 +290,6 @@ mode here.
 | Change Popper invoke / timeout | `solver/induce.py` |
 | Run one JSON | `python -m solver.cli …` or `scripts/smoke_solver.sh` |
 | Run 54-task slice | `scripts/run_solver_eval_parallel.sh` |
-| Read method claim | `docs/CURRENT_METHOD.md` |
-| Read vs-Decom numbers | `docs/COMPARISON-vs-Hocquette-Cropper-IJCAI25.md` |
+| Read method claim | `docs/03-CURRENT_METHOD.md` |
+| Read vs-Decom numbers | `docs/04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md` |
 | Publishing / venue plan | `.cursor/plans/plan-publishing-paper.md` |

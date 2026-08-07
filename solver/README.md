@@ -4,7 +4,8 @@ Per-instance object-head solver for 1D-ARC JSON (3 train I/O + 1 test input).
 Popper induces `out_block/5`; decode paints pixels for scoring.
 
 Direction: [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).  
-As-built: [docs/CURRENT_METHOD.md](../docs/CURRENT_METHOD.md).
+As-built: [docs/03-CURRENT_METHOD.md](../docs/03-CURRENT_METHOD.md).  
+Docs reading order: [01](../docs/01-ILP-1D-Method.md) → [02](../docs/02-SOLVER_PLAN.md) → [03](../docs/03-CURRENT_METHOD.md) → [04](../docs/04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) → [05](../docs/05-REPO_STRUCTURE.md).
 
 ## Pipeline
 

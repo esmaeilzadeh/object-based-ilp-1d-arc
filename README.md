@@ -7,12 +7,17 @@ decode to pixels for scoring.
 **Sole path:** object-head / `block_primary` only. No pixel-head ILP, dual
 induction, or trivial closed-form stages.
 
-As-built: [docs/CURRENT_METHOD.md](docs/CURRENT_METHOD.md).  
-Method plan: [docs/SOLVER_PLAN.md](docs/SOLVER_PLAN.md).  
-ILP landscape: [docs/ILP-1D-Method.md](docs/ILP-1D-Method.md).  
-Repo map: [docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md).  
-Direction: [`.cursor/rules/block-level-only.mdc`](.cursor/rules/block-level-only.mdc).  
-Package notes: [solver/README.md](solver/README.md).
+**Docs (read in order):**
+
+| # | Doc | What it is |
+|---|-----|------------|
+| 1 | [ILP landscape](docs/01-ILP-1D-Method.md) | Where this work sits among ILP/1D-ARC methods; why we induce per task from scratch (not curriculum/transfer) |
+| 2 | [Method plan](docs/02-SOLVER_PLAN.md) | Designed method: thesis, stages, allowed/forbidden paths, eval protocol, optional extensions |
+| 3 | [Current method (as-built)](docs/03-CURRENT_METHOD.md) | What the code does *now*: pipeline, how to run, failure reasons, non-goals (trust this if plan and tip drift) |
+| 4 | [vs Decom comparison](docs/04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) | Exact/soft scoreboard vs pixel Relational Decomposition on the same 54-task slice |
+| 5 | [Repo map](docs/05-REPO_STRUCTURE.md) | Folder/file roles and “where do I…?” pointers |
+
+Also: [block-level-only direction](.cursor/rules/block-level-only.mdc) (mandatory research constraints) · [solver package notes](solver/README.md) · [Decom paper PDF](docs/2408.12212v3.pdf) (reference appendix)
 
 ## Setup
 
@@ -48,7 +53,7 @@ Only mode: `block_primary`.
 
 ## Layout
 
-Full folder/file map: [docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md).
+Full folder/file map: [docs/05-REPO_STRUCTURE.md](docs/05-REPO_STRUCTURE.md).
 
 - `solver/` — lean encode, mechanical object bias, induce, verify, decode, harness
 - `popper/` — vendored Popper

@@ -1,4 +1,8 @@
-# Current method (as-built)
+# 03 — Current method (as-built)
+
+**Reading order:** [01](01-ILP-1D-Method.md) → [02](02-SOLVER_PLAN.md) →
+**you are here** → [04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+[05](05-REPO_STRUCTURE.md).
 
 Living snapshot of **what the code does now** on the object-only path.
 
@@ -7,6 +11,8 @@ Living snapshot of **what the code does now** on the object-only path.
 Measure whether lifting 1D-ARC to **blocks** (`out_block/5`) improves results vs
 pixel Decom under one **uniform mechanical** language. Decode to pixels for
 metrics. External Decom remains the pixel baseline (not an in-solver mode).
+Each trial is induced from scratch (no curriculum); see
+[01-ILP-1D-Method.md §4](01-ILP-1D-Method.md#why-per-task-from-scratch-not-curriculum--transfer).
 
 ## Pipeline (`block_primary`)
 
@@ -35,5 +41,5 @@ CLI: `python -m solver.cli path.json --timeout 60` (same object path).
 - Category-named bias stages
 - Marker / reflect answer hacks
 
-Method plan → [SOLVER_PLAN.md](SOLVER_PLAN.md).  
-ILP landscape → [ILP-1D-Method.md](ILP-1D-Method.md).
+Method plan → [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md).  
+ILP landscape → [01-ILP-1D-Method.md](01-ILP-1D-Method.md).

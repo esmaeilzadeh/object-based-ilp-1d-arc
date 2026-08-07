@@ -1,8 +1,11 @@
-# ILP Method for Generic 1D-ARC
+# 01 — ILP Method for Generic 1D-ARC
+
+**Reading order:** start here → [02](02-SOLVER_PLAN.md) → [03](03-CURRENT_METHOD.md) →
+[04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) → [05](05-REPO_STRUCTURE.md).
 
 Landscape note + how this repo’s **object-only** path sits among ILP work.
-As-built: [CURRENT_METHOD.md](CURRENT_METHOD.md). Method plan:
-[SOLVER_PLAN.md](SOLVER_PLAN.md). Direction:
+As-built: [03-CURRENT_METHOD.md](03-CURRENT_METHOD.md). Method plan:
+[02-SOLVER_PLAN.md](02-SOLVER_PLAN.md). Direction:
 [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
 
 Scope: **ILP-only lineage** (no LLM program search, no pure neural TTT).
@@ -94,3 +97,34 @@ On 1D-ARC categories / trials via harness `block_primary`:
 
 Success for the block-lift question: honest object-only numbers, not scores
 inflated by pixel induction.
+
+### Why per-task from scratch (not curriculum / transfer)
+
+Both this repo and pixel Decom treat each JSON trial as an independent
+**few-shot program synthesis** problem: induce from that trial’s train pairs,
+then score the held-out test. There is no shared training set across
+categories, and no warm-start from an “easier” sibling task.
+
+That is deliberate:
+
+1. **ARC-style claim.** The target is inventing a program for a *novel*
+   transform from a tiny support set — not accumulating a curriculum of known
+   transforms. Simple→complex transfer answers a different question
+   (lifelong / multi-task ILP).
+2. **Fair vs Decom.** Head-to-head numbers only measure the representation
+   (pixel vs block) if both sides use the same per-trial scratch protocol.
+   Transfer on our side alone would confound the block-lift claim.
+3. **Hypotheses do not transfer cleanly.** Each instance has its own latent
+   rule, BK constants, and geometry. A program that paint-verifies on one
+   trial is usually wrong for another category — or even another trial in the
+   same family. Reusing “simple” solutions as priors is easy to turn into
+   answer leakage or category-routed search (forbidden for the claim).
+4. **Scientific target is representation.** We ask whether lifting
+   pixels→blocks under one uniform mechanical language improves induction.
+   Curriculum adds a second axis (what to transfer, when, how to avoid
+   contamination) and muddies that measurement.
+
+Cross-task library refinement remains an **optional later** extension
+(Stage 7 in [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md)), OFF for comparable
+single-instance runs. Scoreboards and Decom comparisons assume scratch
+induction per trial.

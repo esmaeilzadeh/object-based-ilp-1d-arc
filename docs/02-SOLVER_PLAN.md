@@ -1,7 +1,11 @@
-# Method Plan: Object-only 1D-ARC Solver
+# 02 — Method Plan: Object-only 1D-ARC Solver
+
+**Reading order:** [01](01-ILP-1D-Method.md) → **you are here** →
+[03](03-CURRENT_METHOD.md) → [04](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+[05](05-REPO_STRUCTURE.md).
 
 Living method plan for the **object-only** path. As-built snapshot:
-[CURRENT_METHOD.md](CURRENT_METHOD.md). Direction:
+[03-CURRENT_METHOD.md](03-CURRENT_METHOD.md). Direction:
 [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
 
 Target: a single program that takes one ARC JSON instance (3 train I/O + 1 test
@@ -29,6 +33,8 @@ Fixed pipeline, fresh per instance:
 
 "Generic" means one mechanical codegen for `exs` / `bk` / `bias` from that
 instance’s grids. Learning is per-instance; nothing is trained offline.
+No curriculum / transfer across tasks — same scratch protocol as pixel Decom
+(rationale: [01-ILP-1D-Method.md §4](01-ILP-1D-Method.md#why-per-task-from-scratch-not-curriculum--transfer)).
 
 ---
 
@@ -115,6 +121,8 @@ under object paint-decode. That is the sole quality gate.
 - Metric: top-1 exact match on the test output grid.
 - Baseline: external pixel Decom (not an in-solver mode).
 - Report per-category solve rates for `block_primary`.
+- Each trial induced **from scratch** (no simple→complex curriculum); see
+  [01-ILP-1D-Method.md §4](01-ILP-1D-Method.md#why-per-task-from-scratch-not-curriculum--transfer).
 - Ablations that switch to pixel/dual induction are **off-direction** for the
   block-lift claim unless explicitly confirmed.
 
