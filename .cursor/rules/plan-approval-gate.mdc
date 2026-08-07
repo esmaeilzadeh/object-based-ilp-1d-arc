@@ -6,6 +6,7 @@ alwaysApply: true
 # Plan approval gate
 
 When the user asks for a **plan**, a design, an approach, or similar: **propose only**. Do not implement.
+Save the proposal under `.cursor/plans/` per `store-plans.mdc` (unless the user asks chat-only).
 
 ## Hard stop
 
