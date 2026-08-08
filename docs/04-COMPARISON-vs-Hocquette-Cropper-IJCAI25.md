@@ -207,15 +207,15 @@ Failure mix on the 24 inexact trials: `popper_timeout` 15, `paint_verify_failed`
 code solves flip **3/3 @120s** (and a later `JOBS=2` @120s flip smoke also recovered 3/3
 with one offline SIGSEGV). **We do not hide this regression.**
 
-**Hypothesis (why longer budget can hurt):** missing
+**Hypothesis (leading, not proven):** the drop is explained by the missing
 [Anytime train-paint-valid candidate retention / paint-aware induction](02-SOLVER_PLAN.md#anytime-train-paint-valid-candidate-retention--paint-aware-induction).
-Today Popper keeps searching after the first train-perfect program for a smaller one and
-returns only the final best; block-level paint verification is post-hoc on that one program
-(not part of induction, and earlier candidates are discarded). Extra time can therefore
-replace a shorter-budget train-paint-valid answer with a later compressed program that
-times out, fails paint, or generalizes worse — with **no test leakage** involved. Until
-that feature is implemented, non-monotonic drops like 41/54 @600s → 30/54 @3600s are an
-expected risk, not evidence that the S6 bias itself disappeared.
+
+Mechanism in one line: Popper keeps compressing after the first train-perfect
+program and returns only the final best; paint verify is post-hoc on that one
+program, so longer budgets can discard earlier train-paint-valid answers
+(`popper_timeout` / `paint_verify_failed` / worse generalization). No test
+leakage. Until that feature lands, non-monotonic 600s→3600s drops remain an
+expected risk — not evidence that S6 bias disappeared.
 
 Per-category (x/3) for this run:
 

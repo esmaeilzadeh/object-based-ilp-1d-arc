@@ -145,6 +145,12 @@ Tracked here (main docs), not only in `.cursor/plans/`. Ask before implementing.
 
 **Status:** not implemented.
 
+**Observed evidence (motivating, not a completed root-cause proof):**
+measured S6 @3600s (`JOBS=2`) scored **30/54 exact**, below **39/54 @120s** and
+**41/54 @600s**. Documented as a real regression with this feature named as the
+leading hypothesis in
+[04-COMPARISON §2d](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md#2d-3600-s-run-added-2026-08-08--measured-regression-vs-shorter-budgets).
+
 #### Background (current pipeline)
 
 1. Popper induces `out_block/5` under a timeout budget.
