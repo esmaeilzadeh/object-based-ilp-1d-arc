@@ -177,3 +177,5 @@ Report artifact: `results/eval_s6_600s/SUMMARY_REPORT.md` (gitignored under `res
 - Head-color-in-body bias (kill train-consistent `vK` overfits)
 - Decode robustness (under-bound programs → `decode_error` instead of SIGSEGV)
 - SPEC sync for bias policy wording
+- Anytime train-paint-valid candidate retention / paint-aware induction —
+  tracked in main docs: [docs/02-SOLVER_PLAN.md § Not implemented feature requests](../../docs/02-SOLVER_PLAN.md#not-implemented-feature-requests)

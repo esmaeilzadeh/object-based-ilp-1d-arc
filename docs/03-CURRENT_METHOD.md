@@ -1,4 +1,9 @@
-# Current method (as-built)
+# 03 — Current method (as-built)
+
+**Reading order:** [01 landscape](01-ILP-1D-Method.md) → [02 plan](02-SOLVER_PLAN.md) →
+**you are here (as-built)** → [04 vs Decom](04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md) →
+[05 repo map](05-REPO_STRUCTURE.md) → [06 running](06-RUNNING.md).
+Full blurbs: root [README](../README.md).
 
 Living snapshot of **what the code does now** on the object-only path.
 
@@ -7,6 +12,8 @@ Living snapshot of **what the code does now** on the object-only path.
 Measure whether lifting 1D-ARC to **blocks** (`out_block/5`) improves results vs
 pixel Decom under one **uniform mechanical** language. Decode to pixels for
 metrics. External Decom remains the pixel baseline (not an in-solver mode).
+Each trial is induced from scratch (no curriculum); see
+[01-ILP-1D-Method.md §4](01-ILP-1D-Method.md#why-per-task-from-scratch-not-curriculum--transfer).
 
 ## Pipeline (`block_primary`)
 
@@ -29,11 +36,14 @@ python -m solver.harness --mode block_primary --timeout 60 --trials 0,1,2
 
 CLI: `python -m solver.cli path.json --timeout 60` (same object path).
 
+Full setup, script flags, smoke/eval/stability examples →
+[06-RUNNING.md](06-RUNNING.md).
+
 ## Non-goals (see block-level-only rule)
 
 - Pixel / dual / trivial induction stages
 - Category-named bias stages
 - Marker / reflect answer hacks
 
-Method plan → [SOLVER_PLAN.md](SOLVER_PLAN.md).  
-ILP landscape → [ILP-1D-Method.md](ILP-1D-Method.md).
+Method plan → [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md).  
+ILP landscape → [01-ILP-1D-Method.md](01-ILP-1D-Method.md).
