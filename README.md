@@ -37,7 +37,8 @@ induction, or trivial closed-form stages.
 
 Also: [block-level-only direction](.cursor/rules/block-level-only.mdc) (mandatory
 research constraints) · [solver package notes](solver/README.md) ·
-[Decom paper PDF](docs/2408.12212v3.pdf) (reference appendix; not a living doc)
+[Decom / Relational Decomposition (IJCAI 2025)](https://dl.acm.org/doi/10.24963/ijcai.2025/504)
+(Hocquette & Cropper; [local PDF](docs/2408.12212v3.pdf))
 
 ## Setup
 
