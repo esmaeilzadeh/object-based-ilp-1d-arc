@@ -205,11 +205,17 @@ OUT=results/eval_s6_3600s_jobs2 JOBS=2 \
 Failure mix on the 24 inexact trials: `popper_timeout` 15, `paint_verify_failed` 7,
 `decode_error` 2. Notably `flip` is **0/3 all `popper_timeout`** even though the same S6
 code solves flip **3/3 @120s** (and a later `JOBS=2` @120s flip smoke also recovered 3/3
-with one offline SIGSEGV). This matches the known non-monotonic longer-search failure mode
-documented under
-[Not implemented feature requests](02-SOLVER_PLAN.md#not-implemented-feature-requests):
-Popper keeps compressing after the first train-perfect program; paint verify is post-hoc;
-extra budget can replace an earlier train-valid answer. **We do not hide this regression.**
+with one offline SIGSEGV). **We do not hide this regression.**
+
+**Hypothesis (why longer budget can hurt):** missing
+[Anytime train-paint-valid candidate retention / paint-aware induction](02-SOLVER_PLAN.md#anytime-train-paint-valid-candidate-retention--paint-aware-induction).
+Today Popper keeps searching after the first train-perfect program for a smaller one and
+returns only the final best; block-level paint verification is post-hoc on that one program
+(not part of induction, and earlier candidates are discarded). Extra time can therefore
+replace a shorter-budget train-paint-valid answer with a later compressed program that
+times out, fails paint, or generalizes worse — with **no test leakage** involved. Until
+that feature is implemented, non-monotonic drops like 41/54 @600s → 30/54 @3600s are an
+expected risk, not evidence that the S6 bias itself disappeared.
 
 Per-category (x/3) for this run:
 
