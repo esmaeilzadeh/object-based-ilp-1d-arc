@@ -5,7 +5,9 @@
 [05 repo map](05-REPO_STRUCTURE.md) → [06 running](06-RUNNING.md).
 Full blurbs: root [README](../README.md).
 
-Reference: `2408.12212v3.pdf` (next to this file in `docs/`), code + stored results in
+Reference paper (authoritative IJCAI 2025 proceedings):
+[Hocquette & Cropper, *Relational Decomposition for Program Synthesis*](https://dl.acm.org/doi/10.24963/ijcai.2025/504)
+([local PDF](2408.12212v3.pdf)). Code + stored results in
 `../sources/ijcai25-relational-decomposition-main/` (in the parent `ml-project/` dir, outside
 this repo; `programs/relational/{60,600,3600}/1d/*`).
 
