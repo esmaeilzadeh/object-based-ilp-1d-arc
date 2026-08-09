@@ -89,7 +89,7 @@ local runs; @600 = S6 plan).
 is the flip+hollow unlock at *lower* search time, not net exact.)
 
 Decom soft % (not exact; paper Table 2/4 + local rerun): 59.3 / 55.6 / 63.0 / 68.5 across
-60/120/600/3600 s. Ours soft (= exact on this dataset): 46.3 @60 s, 68.5 @120 s,
+60/120/600/3600 s. Ours soft (= exact rate on this path): 46.3 @60 s, **72.2** @120 s,
 75.9 @600 s, **55.6 @3600 s**.
 
 The Decom @120s row is a **local rerun** (this machine, `JOBS=4` — see §2b), stored in
@@ -188,7 +188,7 @@ OUT=results/eval_s6_3600s_jobs2 JOBS=2 \
 | Metric | @120s | @600s | **@3600s (this run)** |
 |---|---:|---:|---:|
 | Exact | 39/54 | **41/54** | **30/54** |
-| Soft | 68.5 | **75.9** | 55.6 |
+| Soft | 72.2 | **75.9** | 55.6 |
 | Perfect cats (3/3) | 8 | 9 | 8 |
 
 **Category collapses vs @600s (exact x/3):**
@@ -261,11 +261,11 @@ code; `@60`/`@120` local `JOBS=4`; `@600` from the S6 plan; `@3600` local `JOBS=
 
 | Method | @60 | @120 | @600 | @3600 |
 |---|---|---|---|---|
-| **Ours (block-ILP, S6)** | 46.3 | 68.5* | **75.9** | 55.6 |
+| **Ours (block-ILP, S6)** | 46.3 | **72.2** | **75.9** | 55.6 |
 | **Decom (pixel-ILP)** | **59.3** | 55.6 | 63.0 | **68.5** |
 
-\* Ours @120 soft 68.5 is from the stored `baseline_block_primary_120` summary (exact=soft
-on this dataset); it is consistent with the 39/54 exact.
+Ours soft % = exact/54 at each budget (S6 path). Do **not** confuse with Decom soft @3600
+(also 68.5) or any pre-S6 artifact.
 
 Per-category totals (exact x/3) for every cell above are in §3.
 
