@@ -13,26 +13,37 @@ this repo; `programs/relational/{60,600,3600}/1d/*`).
 
 ## 0. TL;DR
 
-On the **identical 54-task 1D-ARC slice** (18 categories × first-3 instances), the two approaches
-have **complementary per-category strengths**. We now also **win at the paper’s 1‑min budget**
-(**40/54 exact @60s** vs Decom **32/54**; see §2a). Our best measured budget so far is still
-**@600s (41/54 exact)** — not @3600s. A measured 1h `JOBS=2` S6 run scores **30/54 exact** and
-is a **real regression vs 39/54 @120s and 41/54 @600s** (raw harness scores; not
-offline-corrected). See §2d.
+On the **identical 54-task 1D-ARC slice** (18 categories × first-3 instances), **block-ILP
+wins at every short/mid budget** and already beats Decom’s long-budget headline at 1 min:
+
+| Budget | Ours | Decom | Margin |
+|---|---|---|---|
+| **60 s (1 min)** | **40/54** | 32/54 | **+8** |
+| 120 s | **39/54** | 30/54 | **+9** |
+| 600 s (10 min) | **41/54** | 34/54 | **+7** |
+| 3600 s (1 h) | 30/54 | **37/54** | −7 (ours regresses; §2d) |
+
+**Headline:** our **40/54 exact @60 s** already exceeds Decom’s **best paper exact**
+(**37/54 @3600 s**). Soft matches that story (ours **74.1% @60 s** vs their **59.3% @60 s**
+and even their **68.5% @3600 s**). Peak for us remains **41/54 @600 s**.
+
+Host fairness (detail §1a): paper ran **1× Xeon Gold 6138** core, serial; our @60 s run used
+`JOBS=2` on a **4 vCPU / 15 GiB** Cloud Agent VPS. Same per-task wall timeout; our per-task
+CPU is **not stronger** than theirs (likely a weaker KVM vCPU). Parallelism is a caveat,
+not a free single-core upgrade.
 
 | Side | Wins on | Reason shape |
 |---|---|---|
 | **Decom (pixel-level)** | `pcopy_1c`, `pcopy_mc`, `scale_dp` (part), `flip`/`mirror` at long budget | pixel rules can invent position arithmetic; but no object concept, so it dies on all 3 `recolor_*` |
-| **Ours (block-ILP, S6)** | `recolor_*` (already @60s), `move_2p_dp`, `move_dp` (part), `flip`+`hollow`+`padded_fill` (part) already @60s | object/block facts capture "the block", "its length/color", count/sum; but we still die on `pcopy` duplication and can lose short-budget wins when search keeps compressing |
+| **Ours (block-ILP, S6)** | `recolor_*` (already @60 s), `move_2p_dp`, `move_dp` (part), `flip`+`hollow`+`padded_fill` (part) already @60 s | object/block facts capture "the block", "its length/color", count/sum; but we still die on `pcopy` duplication and can lose short-budget wins when search keeps compressing |
 
 Decom remains 0/3 on `move_dp` and `padded_fill` at every paper budget; ours gets partial credit
-there already at 60 s (`move_dp` 1/3, `padded_fill` 2/3) and at mid/long budgets.
+there already at 60 s (`move_dp` 1/3, `padded_fill` 2/3).
 
-The takeaway for the project: **block-level representation pays off from 1 min through 10 min**,
-dominating the `recolor` family where pixel Decom is 0/9, **but longer Popper search is currently
-non-monotonic** for us (see not-implemented anytime paint-valid retention in
-[02-SOLVER_PLAN.md](02-SOLVER_PLAN.md#not-implemented-feature-requests)). The `pcopy` family
-remains the pixel-head blind spot for blocks.
+The takeaway: **the block lift shows up under lesser time limits (1–10 min)** — dominating
+`recolor` where pixel Decom is 0/9 — **but longer Popper search is currently non-monotonic**
+for us (see [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md#not-implemented-feature-requests)). The
+`pcopy` family remains the pixel-head blind spot for blocks.
 
 ---
 
@@ -54,7 +65,7 @@ that "first 3 of each category" matches. Verified in the repo:
   and 9 neg atoms, so a wrong pixel drowns in ≈9 TN ⇒ their accuracy is a **soft cell-accuracy**,
   not exact. `solved: True` in `results.pl` (`test.py`: `fn==0 and fp==0`) is the **exact**
   all-pixels-correct flag.
-- Timeouts stored: 60 / 600 / 3600 s, single CPU (paper: Xeon Gold 6138).
+- Timeouts stored: 60 / 600 / 3600 s, **single CPU** (paper: Xeon **Gold 6138**). Host fairness vs our Cloud Agent VPS: §1a.
 - Their 1D bias (`train/relational/1d/*/bias.pl`): head `out(ex,pos,val)`; body = `in/3`,
   `empty/2`, `my_succ/2`, `add/3`, `lt/2`, unary color constants `cK`/`vK`.
   **Pixel-level only — no block/run concepts at all.**
@@ -67,6 +78,26 @@ all-or-nothing cell ratio per run and our failures return identity).
 **Apples-to-apples caveat:** their "accuracy%" is soft; our headline "exact" is all-or-nothing.
 We therefore compare their **solved count** (exact) against our **exact count**, and separately
 their soft % against our soft %.
+
+### 1a. Host / machine fairness (for this eval)
+
+| | Paper Decom (IJCAI artifacts) | Ours @60 s (`eval_60s_first3_j2`) |
+|---|---|---|
+| Parallelism | **Single CPU**, tasks serial | `JOBS=2` on **4** KVM vCPUs |
+| CPU | Xeon **Gold 6138** (~2.0–3.7 GHz, server class) | Generic “Intel Xeon” **vCPU** (KVM) |
+| Per-task timeout | 60 / 600 / 3600 s wall | **Same** 60 s wall (this run) |
+| RAM | Not the limiting factor | **15 GiB**, **0 swap** |
+| OS / pin | Paper experimental setup | Ubuntu 24.04 Cloud Agent; profile in `.cursor/environment.json` and [06-RUNNING §6.0](06-RUNNING.md#60-eval-host-profile-cloud-agent-vps) |
+
+**Per-task search (what the timeout measures):** not in our favor. They get exclusive access
+to one Gold 6138 core; we give each Popper job a shared virtual core while two jobs run.
+Same wall-clock budget, likely **weaker** single-thread CPU on our side.
+
+**Aggregate box:** we have more concurrent capacity (`JOBS=2` finishes the 54-slice sooner),
+but that does **not** lengthen any one task’s 60 s budget. Stricter match = `JOBS=1`.
+
+So the short-budget lead (40 vs 32 @60 s; 40 already > their 37 @3600 s) is **not** explained
+by a fatter per-task machine than the paper’s.
 
 ---
 
@@ -96,12 +127,12 @@ Decom soft % (not exact; paper Table 2/4 + local rerun): 59.3 / 55.6 / 63.0 / 68
 The Decom @120s row is a **local rerun** (this machine, `JOBS=4` — see §2b), stored in
 `1d-arc/programs/relational/120/`, log `1d-arc/logs/eval120.log`.
 
-Reading: **at 1 minute we already lead** (**40/54** vs Decom 32/54, +8). At 10 minutes ours
-peaks at **41/54** vs their 34/54 (+7). At 1h Decom recovers to 37/54 while our measured
-`JOBS=2` run **falls to 30/54** — below both our 120s and 600s scores. That drop is
-documented as a real regression in §2d (not corrected). Our peak soft **0.759 @600s**
-remains the strongest like-for-like soft number vs their 0.63 @600s / 0.685 @3600s; the
-new @60s soft **0.741** already beats Decom’s paper soft at 1 min (59.3%).
+**Short-budget read (the main claim):** under **lesser time limits** we lead on exact
+and soft — **+8 @60 s, +9 @120 s, +7 @600 s**. At **1 min** we are already ahead of Decom’s
+**1 h** paper exact (40 > 37) and ahead of their **1 h** soft (74.1% > 68.5%). Peak ours =
+**41/54 @600 s** (soft 0.759). At 1 h Decom recovers to 37/54 while our measured `JOBS=2`
+run **falls to 30/54** (§2d regression — not corrected). Host fairness for the @60 s cell:
+§1a (not a stronger per-task CPU than Gold 6138).
 
 ### 2a. 60 s run (updated 2026-08-11)
 
@@ -139,13 +170,13 @@ Per-category (x/3):
 | scale_dp | 2 | 3 |
 | **Total** | **40/54** | **32/54** |
 
-Interpretation: at 1 min the block path **wins overall**. Fast object wins hold
-(`move_*`, `hollow`, now also partial `flip`/`mirror`/`padded_fill`), and most of
-`recolor_*` already fires (7/9) where Decom is 0/9. Remaining Decom edges at this budget
-are `pcopy_*` (6/6) and `scale_dp` (3 vs 2). Earlier `JOBS=4` artifact
-`results/eval_s6_60s/` (25/54, 2026-08-07) is superseded by this run. **Fairness caveat:**
-this run used `JOBS=2` on the 4‑CPU / 15 GiB Cloud Agent VPS (§ host above); the paper ran
-single-CPU — a stricter apples-to-apples would use `JOBS=1`.
+Interpretation: at 1 min the block path **wins overall** — and that single cell
+(**40/54**) already beats Decom’s best paper exact (**37/54 @3600 s**). Fast object wins
+hold (`move_*`, `hollow`, partial `flip`/`mirror`/`padded_fill`); most of `recolor_*`
+already fires (7/9) where Decom is 0/9. Remaining Decom edges here: `pcopy_*` (6/6) and
+`scale_dp` (3 vs 2). Earlier `JOBS=4` artifact `results/eval_s6_60s/` (25/54, 2026-08-07)
+is superseded. Host / parallelism fairness: **§1a** (same 60 s wall; per-task CPU not
+stronger than paper; `JOBS=1` would be stricter).
 
 ### 2b. Decom @120 s local rerun (added 2026-08-07)
 
@@ -281,11 +312,11 @@ Do **not** confuse with Decom soft @3600 (also 68.5) or any pre-S6 artifact.
 
 Per-category totals (exact x/3) for every cell above are in §3.
 
-**Trend:** Ours already leads at 1 min (**40**), stays strong through mid budgets
-(40 → 39 → **41**) then **falls at 1h to 30/54** under the current final-program / post-hoc
-paint policy. Decom is nearly flat then slowly recovers (32 → 30 → 34 → 37). Peak block-ILP
-advantage remains at 60–600 s; the 1h cell is currently a known regression, not a capability
-peak.
+**Trend — win early, then regress late:** under lesser limits we dominate
+(**40 → 39 → 41** at 60/120/600 s) while Decom crawls (32 → 30 → 34 → **37** only at 1 h).
+Our 1 min exact already clears their 1 h exact. Then we **fall at 1 h to 30/54** under the
+current final-program / post-hoc paint policy (§2d) — a known regression, not a capability
+peak. Peak block-ILP advantage is the **1–10 min** window.
 
 ---
 
@@ -418,10 +449,11 @@ project constraint, not an oversight.
 
 ## 5. Conclusions for the block-ILP direction
 
-1. **The block lift is real from 1 min onward**: at the paper’s 1‑min budget we beat
-   pixel-Decom on exact (**40 vs 32 @60s**), and at equal 10‑min budget **41 vs 34 @600s**,
-   with a *uniform* block language and no per-category vocabulary — the property pixel Decom
-   lacks (`recolor` 0/9).
+1. **The block lift wins under lesser time limits**: **40 vs 32 @60 s**, **39 vs 30
+   @120 s**, **41 vs 34 @600 s** — and **40/54 @1 min already exceeds Decom’s 37/54 @1 h**.
+   Soft @60 s (**74.1%**) likewise beats their paper soft at 1 min and at 1 h. Uniform block
+   language, no per-category vocabulary — the property pixel Decom lacks (`recolor` 0/9).
+   Per-task host is **not** stronger than their Gold 6138 (§1a).
 2. **Longer is not currently better for us**: measured @3600s is **30/54**, a clear drop vs
    39/54 @120s and 41/54 @600s. Treat that as a pipeline/search-selection regression
    (final compressed program + post-hoc paint), not as evidence that S6 bias is absent.
@@ -449,4 +481,6 @@ project constraint, not an oversight.
 | Our pre-S6 baseline | `results/solver/baseline_block_primary_120/block_primary/summary.json` (37/54 stored; 39/54 frozen-baseline per `plan-unified-arithmetic.md` commit `653b9d7`) |
 | Our 60 s run | `results/eval_60s_first3_j2/block_primary/summary.json` (**40/54** exact / soft 74.1%, `JOBS=2`, run 2026-08-11; `1d_flip_1` SIGSEGV counted fail; supersedes older `results/eval_s6_60s/` 25/54 @ `JOBS=4`) |
 | Our 3600 s run | `results/eval_s6_3600s_jobs2/block_primary/summary.json` (30/54 exact, soft 0.556, `JOBS=2`, wall ~19.9 h, finished 2026-08-08; raw harness scores, no offline recovery) |
+| Paper host | Single CPU, Xeon Gold 6138 (paper experimental setup; §1 timeouts bullet + §1a) |
+| Our @60 s host | Cloud Agent VPS: 4× Xeon vCPU (KVM), 15 GiB RAM, 0 swap, Ubuntu 24.04 — `.cursor/environment.json` + [06-RUNNING §6.0](06-RUNNING.md#60-eval-host-profile-cloud-agent-vps) |
 | Our head/bias shape | `solver/encoder.py`, `solver/bias_gen.py`, `solver/predicates.py` on `cursor/s6-size-add-direction-ebb2` |
