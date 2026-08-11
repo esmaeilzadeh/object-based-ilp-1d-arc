@@ -15,6 +15,15 @@ PathLike = Union[str, Path]
 # Predicates lean BK may emit (bias allowlist + no side tables).
 _LEAN_EMIT_ALLOW = OBJECT_BODY_ALLOWLIST
 
+# Popper functional-test: color unique given (Ex, Bid, Off, Len).
+# Replaces explicit wrong-color neg(out_block(...)) atoms in exs.
+_NON_FUNCTIONAL_BK = """\
+%% Color unique for stroke key (Ex, Bid, Off, Len); Off stays in the id.
+non_functional(out_block(E, Bid, Off, Len, C)) :-
+    out_block(E, Bid, Off, Len, D),
+    C \\= D.
+"""
+
 
 @dataclass
 class ExampleGrids:
@@ -545,12 +554,8 @@ def _exs_out_blocks(
             pos.append(
                 f"pos(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
             )
-        for bid, off, L, c in true_blocks:
-            for v in range(1, max_color + 1):
-                if v != c:
-                    neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(v, t)}))."
-                    )
+        # Wrong-color negs omitted: Popper functional-test + non_functional/1 in BK
+        # enforces color unique given (Ex, Bid, Off, Len).
         if not colors_used or not colored_bids:
             continue
         if typed_roles:
@@ -680,7 +685,7 @@ def encode_instance(
     test_path = out_dir / "test.pl"
     exs_object_path = out_dir / "exs_object.pl"
 
-    bk_path.write_text("\n".join(train_bk) + "\n")
+    bk_path.write_text("\n".join(train_bk) + "\n" + _NON_FUNCTIONAL_BK)
     test_bk_path.write_text("\n".join(test_bk) + "\n")
 
     labeled_test = [eg for eg in test if eg.out is not None]
