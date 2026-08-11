@@ -89,6 +89,28 @@ def test_encode_instance_object_only(tmp_path: Path):
     assert "head_pred(out,3)." not in bias
 
 
+def test_functional_color_no_wrong_color_negs(tmp_path: Path):
+    """Wrong-color negs dropped; non_functional/1 in train BK instead."""
+    inst = {
+        "train": [
+            {"input": [[4, 4, 4, 0, 4]], "output": [[4, 4, 4, 0, 0]]},
+        ],
+        "test": [{"input": [[2, 2, 0, 2]], "output": [[2, 2, 0, 0]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    exs = enc.exs_object_path.read_text()
+    bk = enc.bk_path.read_text()
+    assert "pos(out_block(" in exs
+    # No wrong-color negs for same Bid/Off/Len with different v*
+    assert "neg(out_block(0,b0,s0,s3,v1))." not in exs
+    assert "neg(out_block(0,b0,s0,s3,v2))." not in exs
+    assert "neg(out_block(0,b0,s0,s3,v3))." not in exs
+    # Length/offset style negs may still exist
+    assert "neg(out_block(" in exs
+    assert "non_functional(out_block(E, Bid, Off, Len, C))" in bk
+    assert "C \\= D" in bk
+
+
 def test_object_bias_size_add_bidirectional():
     """S6: size_add legal if any arg is head Off/Len (compute or check)."""
     text = render_object_bias()

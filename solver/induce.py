@@ -74,6 +74,7 @@ def _worker(
             bias_file=bias,
             timeout=int(timeout_s),
             max_literals=int(max_literals),
+            functional_test=True,
         )
         prog, _terminated = learn_solution(settings)
         if prog:
