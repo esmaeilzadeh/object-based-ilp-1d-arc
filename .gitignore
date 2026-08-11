@@ -13,3 +13,5 @@ pred.json
 results/logs/
 # Nested encode/Popper dumps under result campaigns (per-task *.json still tracked)
 results/*/*/*/
+.env
+.idea/
