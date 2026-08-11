@@ -356,6 +356,7 @@ python -m solver.cli \
   --timeout 60 --out pred.json --work-dir work/demo
 less pred.json
 ls work/demo/encode
+cat work/demo/popper_object/program.pl
 
 # 4. Unit tests
 pytest solver/tests -q
@@ -367,6 +368,29 @@ LIMIT=3 ./scripts/run_solver_eval.sh block_primary 30 0
 JOBS=2 OUT=results/eval_local_120 \
   ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
+
+### Demo program (`work/demo`, `1d_denoising_1c_0`)
+
+Typical induced clause:
+
+```prolog
+out_block(V0,V1,V2,V3,V4):- largest(V0,V1),s0(V2),block(V0,V1,V3,V4).
+```
+
+Roles: `out_block(Ex, Bid, Off, Len, Color)`.
+
+| Var | Role | Bound by |
+|---|---|---|
+| `V0` | example id | shared |
+| `V1` | input block id | `largest(Ex, Bid)` |
+| `V2` | offset | `s0` → offset **0** |
+| `V3` | length | from `block(..., Len, Color)` |
+| `V4` | color | from `block(..., Len, Color)` |
+
+**Meaning:** for each example, paint exactly one output block — the **largest**
+input colored block — at the **same place** (offset 0), with the **same length
+and color**. Shorter same-color “noise” runs are dropped (single-color
+denoising). Decode paints at `start(Bid) + 0` for `Len` cells in `Color`.
 
 ---
 
