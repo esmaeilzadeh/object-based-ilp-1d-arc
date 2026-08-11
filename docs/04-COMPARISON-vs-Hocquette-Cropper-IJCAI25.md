@@ -14,21 +14,22 @@ this repo; `programs/relational/{60,600,3600}/1d/*`).
 ## 0. TL;DR
 
 On the **identical 54-task 1D-ARC slice** (18 categories × first-3 instances), the two approaches
-have **complementary per-category strengths**. Our best measured budget so far is **@600s
-(41/54 exact)** — not @3600s. A measured 1h `JOBS=2` S6 run scores **30/54 exact** and is a
-**real regression vs 39/54 @120s and 41/54 @600s** (raw harness scores; not offline-corrected).
-See §2d.
+have **complementary per-category strengths**. We now also **win at the paper’s 1‑min budget**
+(**40/54 exact @60s** vs Decom **32/54**; see §2a). Our best measured budget so far is still
+**@600s (41/54 exact)** — not @3600s. A measured 1h `JOBS=2` S6 run scores **30/54 exact** and
+is a **real regression vs 39/54 @120s and 41/54 @600s** (raw harness scores; not
+offline-corrected). See §2d.
 
 | Side | Wins on | Reason shape |
 |---|---|---|
 | **Decom (pixel-level)** | `pcopy_1c`, `pcopy_mc`, `scale_dp` (part), `flip`/`mirror` at long budget | pixel rules can invent position arithmetic; but no object concept, so it dies on all 3 `recolor_*` |
-| **Ours (block-ILP, S6)** | `recolor_*` (at short/mid budgets), `move_2p_dp`, `move_dp` (part), `flip`+`hollow` already @120s | object/block facts capture "the block", "its length/color", count/sum; but we still die on `pcopy` duplication and can lose short-budget wins when search keeps compressing |
+| **Ours (block-ILP, S6)** | `recolor_*` (already @60s), `move_2p_dp`, `move_dp` (part), `flip`+`hollow`+`padded_fill` (part) already @60s | object/block facts capture "the block", "its length/color", count/sum; but we still die on `pcopy` duplication and can lose short-budget wins when search keeps compressing |
 
 Decom remains 0/3 on `move_dp` and `padded_fill` at every paper budget; ours gets partial credit
-there at mid/long budgets (`move_dp` 1/3, `padded_fill` up to 2/3).
+there already at 60 s (`move_dp` 1/3, `padded_fill` 2/3) and at mid/long budgets.
 
-The takeaway for the project: **block-level representation pays off at 2–10 min**, dominating
-the `recolor` family where pixel Decom is 0/9, **but longer Popper search is currently
+The takeaway for the project: **block-level representation pays off from 1 min through 10 min**,
+dominating the `recolor` family where pixel Decom is 0/9, **but longer Popper search is currently
 non-monotonic** for us (see not-implemented anytime paint-valid retention in
 [02-SOLVER_PLAN.md](02-SOLVER_PLAN.md#not-implemented-feature-requests)). The `pcopy` family
 remains the pixel-head blind spot for blocks.
@@ -82,59 +83,63 @@ local runs; @600 = S6 plan).
 | Approach | @60s (paper:1min) | @120s | @600s (10min) | @3600s (1h) |
 |---|---|---|---|---|
 | **Decom (pixel-ILP)** | 32/54 | 30/54 (local rerun) | 34/54 | **37/54** |
-| **Ours S6** | 25/54 (see §2a) | **39/54** | **41/54** | 30/54 (see §2d) |
-| **Winner (margin)** | Decom (−7) | **Ours (+9)** | **Ours (+7)** | Decom (−7) |
+| **Ours S6** | **40/54** (see §2a) | **39/54** | **41/54** | 30/54 (see §2d) |
+| **Winner (margin)** | **Ours (+8)** | **Ours (+9)** | **Ours (+7)** | Decom (−7) |
 
 (The pre-S6 `S1′a+S1′b` main scored 39/54 @120 s — same total as S6 @120 s; S6's gain over it
 is the flip+hollow unlock at *lower* search time, not net exact.)
 
 Decom soft % (not exact; paper Table 2/4 + local rerun): 59.3 / 55.6 / 63.0 / 68.5 across
-60/120/600/3600 s. Ours soft (= exact rate on this path): 46.3 @60 s, **72.2** @120 s,
+60/120/600/3600 s. Ours soft (= exact rate on this path): **74.1 @60 s**, **72.2** @120 s,
 75.9 @600 s, **55.6 @3600 s**.
 
 The Decom @120s row is a **local rerun** (this machine, `JOBS=4` — see §2b), stored in
 `1d-arc/programs/relational/120/`, log `1d-arc/logs/eval120.log`.
 
-Reading: at 10 minutes ours peaks at **41/54** vs their 34/54 (+7). At 1h Decom recovers to
-37/54 while our measured `JOBS=2` run **falls to 30/54** — below both our 120s and 600s
-scores. That drop is documented as a real regression in §2d (not corrected). Our peak soft
-**0.759 @600s** remains the strongest like-for-like soft number vs their 0.63 @600s /
-0.685 @3600s.
+Reading: **at 1 minute we already lead** (**40/54** vs Decom 32/54, +8). At 10 minutes ours
+peaks at **41/54** vs their 34/54 (+7). At 1h Decom recovers to 37/54 while our measured
+`JOBS=2` run **falls to 30/54** — below both our 120s and 600s scores. That drop is
+documented as a real regression in §2d (not corrected). Our peak soft **0.759 @600s**
+remains the strongest like-for-like soft number vs their 0.63 @600s / 0.685 @3600s; the
+new @60s soft **0.741** already beats Decom’s paper soft at 1 min (59.3%).
 
-### 2a. 60 s run (added 2026-08-07)
+### 2a. 60 s run (updated 2026-08-11)
 
-Ran on the S6 branch tip (`JOBS=4`, `TIMEOUT=60`), stored in
-`results/eval_s6_60s/block_primary/summary.json`. **25/54 exact** — below Decom's 32/54 at
-the same budget. Per-category (x/3):
+Latest matched slice (`JOBS=2`, `TIMEOUT=60`, trials `0,1,2`), stored in
+`results/eval_60s_first3_j2/block_primary/summary.json`. **40/54 exact** — **ahead of**
+Decom’s **32/54** at the same budget (+8). One trial (`1d_flip_1`) SIGSEGV’d in post-ILP
+janus/SWI paint-apply (retried; still no result JSON) and is counted as **fail** so the
+denominator stays 54. Per-category (x/3):
 
 | Category | Ours @60s | Decom @60s |
 |---|---|---|
-| denoising_1c | 1 | 3 |
+| denoising_1c | 3 | 3 |
 | denoising_mc | 3 | 3 |
 | fill | 3 | 3 |
-| flip | 0 | 0 |
+| flip | 2 | 0 |
 | hollow | 3 | 3 |
-| mirror | 0 | 1 |
+| mirror | 2 | 1 |
 | move_1p | 3 | 3 |
 | move_2p | 3 | 3 |
 | move_2p_dp | 3 | 1 |
 | move_3p | 3 | 3 |
 | move_dp | 1 | 0 |
-| padded_fill | 0 | 0 |
+| padded_fill | 2 | 0 |
 | pcopy_1c | 0 | 3 |
 | pcopy_mc | 0 | 3 |
-| recolor_cmp | 2 | 0 |
-| recolor_cnt | 0 | 0 |
-| recolor_oe | 0 | 0 |
-| scale_dp | 0 | 3 |
-| **Total** | **25/54** | **32/54** |
+| recolor_cmp | 3 | 0 |
+| recolor_cnt | 2 | 0 |
+| recolor_oe | 2 | 0 |
+| scale_dp | 2 | 3 |
+| **Total** | **40/54** | **32/54** |
 
-Interpretation: block induction + paint-verify converges slower than the paper's minimal
-pixel bias at 60 s — the categories we lose at 60 s (`denoising_1c`, `mirror`, `recolor_*`,
-`scale_dp`) are exactly those that recover at 120 s+. Our fast wins (`move_2p_dp`, `move_dp`,
-`hollow`) hold even at 60 s. **Fairness caveat:** our run was 4-way parallel on one host
-(each job effectively ≈ ¼ machine), whereas the paper ran single-CPU; a true 1-min
-apples-to-apples should use `JOBS=1`.
+Interpretation: at 1 min the block path **wins overall**. Fast object wins hold
+(`move_*`, `hollow`, now also partial `flip`/`mirror`/`padded_fill`), and most of
+`recolor_*` already fires (7/9) where Decom is 0/9. Remaining Decom edges at this budget
+are `pcopy_*` (6/6) and `scale_dp` (3 vs 2). Earlier `JOBS=4` artifact
+`results/eval_s6_60s/` (25/54, 2026-08-07) is superseded by this run. **Fairness caveat:**
+this run used `JOBS=2` on a 4-CPU host; the paper ran single-CPU — a stricter
+apples-to-apples would use `JOBS=1`.
 
 ### 2b. Decom @120 s local rerun (added 2026-08-07)
 
@@ -164,13 +169,13 @@ runs). Per-category exact (x/3), from `results.pl` `solved` flags:
 | scale_dp | 3 |
 | **Total** | **30/54** (soft 55.6%) |
 
-**This is the sharpest budget-matched result in our favor:** at the *same* 120 s budget on
+**This is still a sharp budget-matched result in our favor:** at the *same* 120 s budget on
 the *same* host, ours scores **39/54 exact vs Decom 30/54** (+9). Decom is essentially flat
 from 60 s→120 s (32→30, within noise) — pixel rules either fire almost immediately or not at
-all — while our block method nearly doubles (25→39) over the same window. The categories
-Decom still loses at 120 s (`flip`, `mirror`, `move_2p_dp`, `move_dp`, `padded_fill`, all
-`recolor_*`) are the block-friendly ones; ours at 120 s still loses only `pcopy_*` (pixel-index
-duplication) and the two shared-hard categories.
+all — while our current @60s already leads (40/54; §2a) and @120s stays in the same band
+(39/54). The categories Decom still loses at 120 s (`flip`, `mirror`, `move_2p_dp`, `move_dp`,
+`padded_fill`, all `recolor_*`) are the block-friendly ones; ours at 120 s still loses only
+`pcopy_*` (pixel-index duplication) and the two shared-hard categories.
 
 ### 2d. 3600 s run (added 2026-08-08) — measured regression vs shorter budgets
 
@@ -247,32 +252,34 @@ Per-category (x/3) for this run:
 
 Decom provenance: @60/@600/@3600 are the paper's own artifacts (May 2025, single-CPU);
 @120 is the local rerun (this host, `JOBS=4`, `1d-arc/programs/relational/120`). Ours: S6
-code; `@60`/`@120` local `JOBS=4`; `@600` from the S6 plan; `@3600` local `JOBS=2` (§2d).
+code; `@60` local `JOBS=2` (§2a, 2026-08-11); `@120` local `JOBS=4`; `@600` from the S6
+plan; `@3600` local `JOBS=2` (§2d).
 
 **Exact (/54):**
 
 | Method | @60 | @120 | @600 | @3600 |
 |---|---|---|---|---|
-| **Ours (block-ILP, S6)** | 25 | **39** | **41** | 30 |
-| **Decom (pixel-ILP)** | **32** | 30 | 34 | **37** |
-| **Winner (margin)** | Decom (−7) | **Ours (+9)** | **Ours (+7)** | Decom (−7) |
+| **Ours (block-ILP, S6)** | **40** | **39** | **41** | 30 |
+| **Decom (pixel-ILP)** | 32 | 30 | 34 | **37** |
+| **Winner (margin)** | **Ours (+8)** | **Ours (+9)** | **Ours (+7)** | Decom (−7) |
 
 **Soft (%):**
 
 | Method | @60 | @120 | @600 | @3600 |
 |---|---|---|---|---|
-| **Ours (block-ILP, S6)** | 46.3 | **72.2** | **75.9** | 55.6 |
-| **Decom (pixel-ILP)** | **59.3** | 55.6 | 63.0 | **68.5** |
+| **Ours (block-ILP, S6)** | **74.1** | **72.2** | **75.9** | 55.6 |
+| **Decom (pixel-ILP)** | 59.3 | 55.6 | 63.0 | **68.5** |
 
-Ours soft % = exact/54 at each budget (S6 path). Do **not** confuse with Decom soft @3600
-(also 68.5) or any pre-S6 artifact.
+Ours soft % = exact/54 at each budget (S6 path; @60 counts `1d_flip_1` SIGSEGV as fail).
+Do **not** confuse with Decom soft @3600 (also 68.5) or any pre-S6 artifact.
 
 Per-category totals (exact x/3) for every cell above are in §3.
 
-**Trend:** Ours rises steeply through mid budgets (25 → 39 → **41**) then **falls at 1h to
-30/54** under the current final-program / post-hoc paint policy. Decom is nearly flat then
-slowly recovers (32 → 30 → 34 → 37). Peak block-ILP advantage remains at 120–600 s; the 1h
-cell is currently a known regression, not a capability peak.
+**Trend:** Ours already leads at 1 min (**40**), stays strong through mid budgets
+(40 → 39 → **41**) then **falls at 1h to 30/54** under the current final-program / post-hoc
+paint policy. Decom is nearly flat then slowly recovers (32 → 30 → 34 → 37). Peak block-ILP
+advantage remains at 60–600 s; the 1h cell is currently a known regression, not a capability
+peak.
 
 ---
 
@@ -289,18 +296,18 @@ Decom @120 is the local rerun; ours @3600 is the measured `JOBS=2` run (§2d).
 
 | Category | Method | @60 | @120 | @600 | @3600 |
 |---|---|---|---|---|---|
-| **1d_denoising_1c** | Ours | 1 | **3** | **3** | **3** |
+| **1d_denoising_1c** | Ours | **3** | **3** | **3** | **3** |
 | | Decom | **3** | **3** | **3** | **3** |
 | **1d_denoising_mc** | Ours | **3** | **3** | **3** | **3** |
 | | Decom | **3** | **3** | **3** | **3** |
 | **1d_fill** | Ours | **3** | **3** | **3** | **3** |
 | | Decom | **3** | **3** | **3** | **3** |
-| **1d_flip** | Ours | 0 | **3** | **3** | 0 |
+| **1d_flip** | Ours | **2** | **3** | **3** | 0 |
 | | Decom | 0 | 0 | 0 | **2** |
 | **1d_hollow** | Ours | **3** | **3** | **3** | **3** |
 | | Decom | **3** | **3** | 2 | **3** |
-| **1d_mirror** | Ours | 0 | **2** | 2 | 0 |
-| | Decom | **1** | 0 | **3** | **3** |
+| **1d_mirror** | Ours | **2** | **2** | 2 | 0 |
+| | Decom | 1 | 0 | **3** | **3** |
 | **1d_move_1p** | Ours | **3** | **3** | **3** | **3** |
 | | Decom | **3** | **3** | **3** | **3** |
 | **1d_move_2p** | Ours | **3** | **3** | **3** | **3** |
@@ -311,23 +318,23 @@ Decom @120 is the local rerun; ours @3600 is the measured `JOBS=2` run (§2d).
 | | Decom | **3** | **3** | **3** | **3** |
 | **1d_move_dp** | Ours | **1** | **1** | **1** | **1** |
 | | Decom | 0 | 0 | 0 | 0 |
-| **1d_padded_fill** | Ours | 0 | **1** | **1** | **2** |
+| **1d_padded_fill** | Ours | **2** | **1** | **1** | **2** |
 | | Decom | 0 | 0 | 0 | 0 |
 | **1d_pcopy_1c** | Ours | 0 | 0 | 0 | 0 |
 | | Decom | **3** | **3** | **3** | **3** |
 | **1d_pcopy_mc** | Ours | 0 | 0 | 1 | 0 |
 | | Decom | **3** | **3** | **3** | **3** |
-| **1d_recolor_cmp** | Ours | **2** | **3** | **3** | **1** |
+| **1d_recolor_cmp** | Ours | **3** | **3** | **3** | **1** |
 | | Decom | 0 | 0 | 0 | 0 |
-| **1d_recolor_cnt** | Ours | 0 | **2** | **2** | **1** |
+| **1d_recolor_cnt** | Ours | **2** | **2** | **2** | **1** |
 | | Decom | 0 | 0 | 0 | 0 |
-| **1d_recolor_oe** | Ours | 0 | **3** | **3** | 0 |
+| **1d_recolor_oe** | Ours | **2** | **3** | **3** | 0 |
 | | Decom | 0 | 0 | 0 | 0 |
-| **1d_scale_dp** | Ours | 0 | 2 | **3** | 1 |
+| **1d_scale_dp** | Ours | 2 | 2 | **3** | 1 |
 | | Decom | **3** | **3** | **3** | **3** |
-| **Total exact** | **Ours** | 25/54 | **39/54** | **41/54** | 30/54 |
-| | **Decom** | **32/54** | 30/54 | 34/54 | **37/54** |
-| **Perfect cats (3/3)** | **Ours** | 8 | 8 | 9 | 8 |
+| **Total exact** | **Ours** | **40/54** | **39/54** | **41/54** | 30/54 |
+| | **Decom** | 32/54 | 30/54 | 34/54 | **37/54** |
+| **Perfect cats (3/3)** | **Ours** | 9 | 8 | 9 | 8 |
 | | **Decom** | 9 | 8 | 9 | **11** |
 
 ### 3a. Head-to-head tally (categories won per budget)
@@ -338,13 +345,13 @@ Counting, for each budget, how many of the 18 categories each method wins in the
 
 | | @60 | @120 | @600 | @3600 |
 |---|---|---|---|---|
-| **O-wins / D-wins / ties** | 3 / 5 / 10 | **8 / 3 / 7** | **8 / 3 / 7** | 5 / 5 / 8 |
+| **O-wins / D-wins / ties** | **8 / 3 / 7** | **8 / 3 / 7** | **8 / 3 / 7** | 5 / 5 / 8 |
 
-Aggregate read: at 60 s Decom edges ahead (5 D vs 3 O); at **120–600 s we lead decisively
-(8 O vs 3 D)**; at **3600 s the head-to-head ties 5–5** while Decom leads on total exact
-(37 vs 30) because our long-budget collapses on `flip`/`mirror`/`recolor_oe`/`scale_dp` wipe
-earlier wins. Durable Decom wins remain `pcopy_*`; durable Decom zeros remain most of
-`recolor_*` plus `move_dp`/`padded_fill`.
+Aggregate read: **at 60 s we already lead** (8 O vs 3 D, same category tally as @120/@600);
+at **120–600 s we keep that head-to-head**; at **3600 s the head-to-head ties 5–5** while
+Decom leads on total exact (37 vs 30) because our long-budget collapses on
+`flip`/`mirror`/`recolor_oe`/`scale_dp` wipe earlier wins. Durable Decom wins remain
+`pcopy_*`; durable Decom zeros remain most of `recolor_*` plus `move_dp`/`padded_fill`.
 
 > Reconstruction note: the frozen pre-S6 baseline the S6 plan gated against is **39/54**
 > (plan-unified-arithmetic, commit `653b9d7`); the directory
@@ -376,17 +383,19 @@ indices than over runs.
 Decom's 1D bias has **no counting / comparison of block contents** (only `lt` on positions and
 unary color constants), so `recolor_cmp` (recolor by comparing runs), `recolor_cnt` (by count),
 `recolor_oe` (by odd/even length) are all 0/3 at every budget. Our block BK (`block_len`,
-`largest`, parity, `size_lt`) sees these directly.
+`largest`, parity, `size_lt`) sees these directly — and most of that family already scores at
+**60 s** (7/9 exact in §2a).
 
-`flip` and `hollow` are also faster for us: S6's bidirectional `size_add` unlocks both at 120s
-(3/3 each), where Decom needs a full hour to find flip (and then only 2/3). Caveat: our
-measured @3600s run loses `flip` again (0/3 timeouts) — a long-budget regression, not a
-representation loss (§2d).
+`flip` and `hollow` are also faster for us: at **60 s** we already have `hollow` 3/3 and
+`flip` 2/3 (trial `_1` SIGSEGV counted fail); S6 unlocks full `flip`/`hollow` 3/3 by 120 s,
+where Decom needs a full hour to find flip (and then only 2/3). Caveat: our measured @3600s
+run loses `flip` again (0/3 timeouts) — a long-budget regression, not a representation loss
+(§2d).
 
 ### 4c. Shared hard families: `move_dp` and `padded_fill`
 
-- `move_dp` — Decom 0/3 at every paper budget; ours occasionally 1/3 under S6.
-- `padded_fill` — Decom 0/3 everywhere; ours reaches 1/3 @120/@600 and **2/3 @3600**.
+- `move_dp` — Decom 0/3 at every paper budget; ours 1/3 already @60 s under S6.
+- `padded_fill` — Decom 0/3 everywhere; ours reaches **2/3 @60 s** and @3600, 1/3 @120/@600.
 
 These remain high-value targets, but they are no longer symmetric zeros on our side.
 
@@ -403,9 +412,10 @@ project constraint, not an oversight.
 
 ## 5. Conclusions for the block-ILP direction
 
-1. **The block lift is real at mid budgets**: at equal 10-min budget we beat the paper's
-   pixel-Decom on exact (**41 vs 34 @600s**) with a *uniform* block language and no
-   per-category vocabulary — the property pixel Decom lacks (`recolor` 0/9).
+1. **The block lift is real from 1 min onward**: at the paper’s 1‑min budget we beat
+   pixel-Decom on exact (**40 vs 32 @60s**), and at equal 10‑min budget **41 vs 34 @600s**,
+   with a *uniform* block language and no per-category vocabulary — the property pixel Decom
+   lacks (`recolor` 0/9).
 2. **Longer is not currently better for us**: measured @3600s is **30/54**, a clear drop vs
    39/54 @120s and 41/54 @600s. Treat that as a pipeline/search-selection regression
    (final compressed program + post-hoc paint), not as evidence that S6 bias is absent.
@@ -431,6 +441,6 @@ project constraint, not an oversight.
 | Paper headline (soft) | PDF Table 2/4: 59/63/69% @1/10/60min |
 | Our S6 @120 / @600 totals | `.cursor/plans/plan-s6-size-add-direction.md` S6d (39/54 @120) & S6e (41/54, soft 0.759 @600) |
 | Our pre-S6 baseline | `results/solver/baseline_block_primary_120/block_primary/summary.json` (37/54 stored; 39/54 frozen-baseline per `plan-unified-arithmetic.md` commit `653b9d7`) |
-| Our 60 s run | `results/eval_s6_60s/block_primary/summary.json` (25/54 exact, `JOBS=4`, run 2026-08-07) |
+| Our 60 s run | `results/eval_60s_first3_j2/block_primary/summary.json` (**40/54** exact / soft 74.1%, `JOBS=2`, run 2026-08-11; `1d_flip_1` SIGSEGV counted fail; supersedes older `results/eval_s6_60s/` 25/54 @ `JOBS=4`) |
 | Our 3600 s run | `results/eval_s6_3600s_jobs2/block_primary/summary.json` (30/54 exact, soft 0.556, `JOBS=2`, wall ~19.9 h, finished 2026-08-08; raw harness scores, no offline recovery) |
 | Our head/bias shape | `solver/encoder.py`, `solver/bias_gen.py`, `solver/predicates.py` on `cursor/s6-size-add-direction-ebb2` |
