@@ -374,7 +374,29 @@ What that program means (roles / denoising reading) →
 
 ---
 
-## 10. Troubleshooting
+## 10. Eval provenance (run tracking)
+
+Every harness / parallel eval campaign should leave:
+
+| Artifact | Contents |
+|---|---|
+| `$OUT/$MODE/run_manifest.json` | `eval-run-meta/v1`: `git_sha`, `git_branch`, `git_dirty`, host, timeout, jobs, timestamps |
+| `$OUT/$MODE/summary.json` | Aggregate exact/soft **plus** `run_meta` |
+| `$OUT/$MODE/<task>_<stem>.json` | Per-task row with slim `run_meta` |
+
+Cite a run as **directory + `git_sha` + exact n/N**. Index of local campaigns:
+[`results/RUN_REGISTRY.md`](../results/RUN_REGISTRY.md).
+
+`work/` and `results/` are **tracked** (not gitignored) so artifacts can be
+committed. Off-repo backup of the pre-tracking trees:
+`../_backups/object-based-ilp-1d-arc/work-results-20260811T134411Z.tar.gz`.
+
+Implementation: `solver/run_meta.py`.
+
+---
+
+## 11. Troubleshooting
+
 
 | Symptom | Likely cause / fix |
 |---------|-------------------|
