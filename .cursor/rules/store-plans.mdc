@@ -1,0 +1,23 @@
+---
+description: Always store plans under .cursor/plans/ by default
+alwaysApply: true
+---
+
+# Store plans under `.cursor/plans/`
+
+When proposing a **plan** (design, approach, stepwise implementation proposal):
+
+1. **Write it to disk** under `.cursor/plans/` — do not leave the plan only in chat.
+2. Use a clear filename: `plan-<short-kebab-name>.md` (e.g. `plan-indep-out-port-main-designs.md`).
+3. In the chat reply, give a short summary **and** the path to the saved file.
+4. Still follow `plan-approval-gate.mdc`: saving the plan file is part of proposing, not implementing the plan’s code steps.
+
+## Exceptions
+
+- User explicitly asks for chat-only / no file.
+- Tiny one-liner answers that are not a plan.
+
+## Do not
+
+- Put plans under `docs/` unless the user asks for a docs-facing writeup.
+- Skip the file because the plan is “short” or “temporary.”
