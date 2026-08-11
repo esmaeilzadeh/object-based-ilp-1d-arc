@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from solver.pipeline import solve
+from solver.run_meta import collect_run_meta, mark_finished, slim_meta
 
 MODES = {
     "block_primary": {},
@@ -20,7 +21,14 @@ def discover(dataset_root: Path) -> List[Path]:
     return sorted(dataset_root.glob("*/*.json"))
 
 
-def run_one(path: Path, mode: str, timeout: int, out_dir: Path) -> dict:
+def run_one(
+    path: Path,
+    mode: str,
+    timeout: int,
+    out_dir: Path,
+    *,
+    run_meta: Optional[dict] = None,
+) -> dict:
     if mode not in MODES:
         raise ValueError(f"unknown mode {mode!r}; only block_primary is supported")
     t0 = time.time()
@@ -37,7 +45,7 @@ def run_one(path: Path, mode: str, timeout: int, out_dir: Path) -> dict:
 
         gold = flatten(obj["test"][0]["output"])
     exact_ok = gold is not None and list(result.predicted_grid) == list(gold)
-    return {
+    row = {
         "file": str(path),
         "task": path.parent.name,
         "mode": mode,
@@ -55,6 +63,9 @@ def run_one(path: Path, mode: str, timeout: int, out_dir: Path) -> dict:
         "failure_detail": result.failure_detail,
         "program": result.program,
     }
+    if run_meta is not None:
+        row["run_meta"] = slim_meta(run_meta)
+    return row
 
 
 def filter_files(
@@ -118,11 +129,25 @@ def main(argv: Optional[List[str]] = None) -> None:
     out_dir = args.out / args.mode
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    run_meta = collect_run_meta(
+        mode=args.mode,
+        timeout=args.timeout,
+        jobs=1,
+        trials=args.trials or None,
+        dataset=str(args.dataset),
+        out=str(args.out),
+        extra={"entry": "harness", "one": bool(args.one)},
+    )
+    # Campaign-level manifest: sequential harness owns it. Parallel --one
+    # workers must not clobber a parent-written run_manifest.json.
+    if args.one is None or not (out_dir / "run_manifest.json").exists():
+        (out_dir / "run_manifest.json").write_text(json.dumps(run_meta, indent=2))
+
     if args.one is not None:
         path = args.one
         print(f"[1/1] {path}", flush=True)
         try:
-            row = run_one(path, args.mode, args.timeout, out_dir)
+            row = run_one(path, args.mode, args.timeout, out_dir, run_meta=run_meta)
         except Exception as e:
             row = {
                 "file": str(path),
@@ -141,6 +166,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 "error": str(e),
                 "failure_reason": "popper_error",
                 "failure_detail": {},
+                "run_meta": slim_meta(run_meta),
             }
         (out_dir / f"{path.parent.name}_{path.stem}.json").write_text(
             json.dumps(row, indent=2)
@@ -152,13 +178,17 @@ def main(argv: Optional[List[str]] = None) -> None:
     rows = []
     for i, f in enumerate(files):
         print(f"[{i+1}/{len(files)}] {f}")
-        row = run_one(f, args.mode, args.timeout, out_dir)
+        row = run_one(f, args.mode, args.timeout, out_dir, run_meta=run_meta)
         rows.append(row)
         (out_dir / f"{f.parent.name}_{f.stem}.json").write_text(
             json.dumps(row, indent=2)
         )
 
     summary = summarize(rows)
+    summary["run_meta"] = mark_finished(run_meta)
+    (out_dir / "run_manifest.json").write_text(
+        json.dumps(summary["run_meta"], indent=2)
+    )
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2))
 
