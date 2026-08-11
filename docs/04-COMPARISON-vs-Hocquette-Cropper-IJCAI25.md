@@ -109,7 +109,13 @@ Latest matched slice (`JOBS=2`, `TIMEOUT=60`, trials `0,1,2`), stored in
 `results/eval_60s_first3_j2/block_primary/summary.json`. **40/54 exact** — **ahead of**
 Decom’s **32/54** at the same budget (+8). One trial (`1d_flip_1`) SIGSEGV’d in post-ILP
 janus/SWI paint-apply (retried; still no result JSON) and is counted as **fail** so the
-denominator stays 54. Per-category (x/3):
+denominator stays 54.
+
+**Host (Cloud Agent VPS):** 4× Intel Xeon vCPU (KVM), 15 GiB RAM, 0 swap, ~252 G disk,
+Ubuntu 24.04.4 x86_64 — pinned in `.cursor/environment.json` and
+[06-RUNNING §6.0](06-RUNNING.md#60-eval-host-profile-cloud-agent-vps).
+
+Per-category (x/3):
 
 | Category | Ours @60s | Decom @60s |
 |---|---|---|
@@ -138,8 +144,8 @@ Interpretation: at 1 min the block path **wins overall**. Fast object wins hold
 `recolor_*` already fires (7/9) where Decom is 0/9. Remaining Decom edges at this budget
 are `pcopy_*` (6/6) and `scale_dp` (3 vs 2). Earlier `JOBS=4` artifact
 `results/eval_s6_60s/` (25/54, 2026-08-07) is superseded by this run. **Fairness caveat:**
-this run used `JOBS=2` on a 4-CPU host; the paper ran single-CPU — a stricter
-apples-to-apples would use `JOBS=1`.
+this run used `JOBS=2` on the 4‑CPU / 15 GiB Cloud Agent VPS (§ host above); the paper ran
+single-CPU — a stricter apples-to-apples would use `JOBS=1`.
 
 ### 2b. Decom @120 s local rerun (added 2026-08-07)
 

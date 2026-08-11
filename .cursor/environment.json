@@ -1,0 +1,4 @@
+{
+  "name": "object-based-ilp-1d-arc — Cloud Agent VPS: 4×Xeon vCPU, 15GiB RAM, 0 swap, ~252G disk, Ubuntu 24.04 x86_64 (KVM)",
+  "install": "sudo apt-get update -qq\nsudo apt-get install -y -qq parallel\npython3 -m venv .venv\n.venv/bin/pip install --upgrade pip\n.venv/bin/pip install -r requirements.txt\n.venv/bin/pip install -e ./popper\n.venv/bin/pip install pytest"
+}
