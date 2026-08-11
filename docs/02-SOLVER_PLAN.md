@@ -1,6 +1,6 @@
 # 02 — Method: Encode, Induce, Decode
 
-This document describes the complete pipeline: how a 1D-ARC JSON file becomes a solved pixel grid. It merges the design plan and the as-built snapshot into one definitive method description.
+This document describes the complete pipeline: how a 1D-ARC JSON file becomes a solved pixel grid.
 
 ## Overview
 
@@ -45,7 +45,6 @@ For each training example, the encoder writes facts that describe the blocks and
 - `non_largest(Example, BlockId)` — any other colored run.
 - `gap(Example, BlockId1, BlockId2, Size)` — the number of background cells between two colored runs.
 - `obj_succ(Example, BlockId1, BlockId2)` — BlockId2 is the next colored run after BlockId1.
-- `obj_index(Example, BlockId, Rank)` — dense ordinal among colored runs only (first colored run is rank 0, second is rank 1, …).
 
 **Arithmetic sugar** (only sizes that actually appear in this instance):
 
