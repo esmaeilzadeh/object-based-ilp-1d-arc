@@ -39,6 +39,38 @@ CLI: `python -m solver.cli path.json --timeout 60` (same object path).
 Full setup, script flags, smoke/eval/stability examples →
 [06-RUNNING.md](06-RUNNING.md).
 
+## Example induced program (`1d_denoising_1c_0`)
+
+Inspectable CLI dump (see also [06-RUNNING.md §9](06-RUNNING.md#9-suggested-first-time-path)):
+
+```bash
+python -m solver.cli \
+  raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json \
+  --timeout 60 --out pred.json --work-dir work/demo
+cat work/demo/popper_object/program.pl
+```
+
+Typical induced clause:
+
+```prolog
+out_block(V0,V1,V2,V3,V4):- largest(V0,V1),s0(V2),block(V0,V1,V3,V4).
+```
+
+Roles: `out_block(Ex, Bid, Off, Len, Color)`.
+
+| Var | Role | Bound by |
+|---|---|---|
+| `V0` | example id | shared |
+| `V1` | input block id | `largest(Ex, Bid)` |
+| `V2` | offset | `s0` → offset **0** |
+| `V3` | length | from `block(..., Len, Color)` |
+| `V4` | color | from `block(..., Len, Color)` |
+
+**Meaning:** for each example, paint exactly one output block — the **largest**
+input colored block — at the **same place** (offset 0), with the **same length
+and color**. Shorter same-color “noise” runs are dropped (single-color
+denoising). Decode paints at `start(Bid) + 0` for `Len` cells in `Color`.
+
 ## Non-goals (see block-level-only rule)
 
 - Pixel / dual / trivial induction stages
