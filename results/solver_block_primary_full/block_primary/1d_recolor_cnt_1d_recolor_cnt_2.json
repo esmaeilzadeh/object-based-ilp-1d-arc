@@ -1,0 +1,48 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_recolor_cnt/1d_recolor_cnt_2.json",
+  "task": "1d_recolor_cnt",
+  "mode": "block_primary",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "object_ilp",
+  "confidence": "low",
+  "verified_train": false,
+  "elapsed": 601.1299426555634,
+  "predicted": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "gold": [
+    0,
+    0,
+    4,
+    0,
+    3,
+    3,
+    3,
+    0,
+    7,
+    7,
+    0,
+    4,
+    0
+  ]
+}

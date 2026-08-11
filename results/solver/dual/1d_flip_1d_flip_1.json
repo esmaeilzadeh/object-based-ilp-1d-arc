@@ -1,0 +1,42 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_flip/1d_flip_1.json",
+  "task": "1d_flip",
+  "mode": "dual",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "pixel_ilp",
+  "confidence": "high",
+  "verified_train": true,
+  "elapsed": 495.36648416519165,
+  "predicted": [
+    0,
+    0,
+    6,
+    4,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0
+  ],
+  "gold": [
+    0,
+    0,
+    4,
+    4,
+    4,
+    4,
+    6,
+    0,
+    0,
+    0
+  ]
+}

@@ -8,3 +8,8 @@ logs/
 *.deb
 .DS_Store
 pred.json
+
+# Large eval log dumps (summaries/JSON still tracked)
+results/logs/
+# Nested encode/Popper dumps under result campaigns (per-task *.json still tracked)
+results/*/*/*/
