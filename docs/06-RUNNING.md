@@ -181,6 +181,25 @@ pytest solver/tests -q
 
 ## 6. Batch eval (54-task slice)
 
+### 6.0 Eval host profile (Cloud Agent VPS)
+
+Canonical machine class for comparison / gate evals on this repo’s Cloud Agent
+environment (measured 2026-08-11 on the agent VPS that produced
+`results/eval_60s_first3_j2/`):
+
+| Spec | Value |
+|------|--------|
+| CPUs | **4** × Intel Xeon (KVM virt), 1 thread/core |
+| RAM | **15 GiB** available (~15 GiB total); **0 swap** |
+| Disk | ~252 G overlay root |
+| OS | Ubuntu **24.04.4** LTS, Linux 6.12.x, x86_64 |
+| Env config | `.cursor/environment.json` (name pins this VPS profile) |
+
+**Recommended parallel settings on this host:** `JOBS=2` (≤ `nproc`, leaves headroom
+for Popper/clingo workers; matches eval-hygiene). Do **not** default to `JOBS=4`
+here — that saturates all cores. Paper Decom used single-CPU; stricter
+apples-to-apples is `JOBS=1`.
+
 ### 6.1 Sequential — `scripts/run_solver_eval.sh`
 
 Thin wrapper around `python -m solver.harness` (one process, all files in order).
@@ -213,7 +232,7 @@ Requires GNU `parallel`. Spawns one harness `--one` per JSON, then aggregates
 `summary.json`.
 
 ```bash
-JOBS=4 OUT=results/eval_demo \
+JOBS=2 OUT=results/eval_demo \
   ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
 
@@ -225,7 +244,7 @@ JOBS=4 OUT=results/eval_demo \
 
 | Env | Default | Meaning |
 |-----|---------|---------|
-| `JOBS` | `4` | Parallel workers |
+| `JOBS` | `4` (script default) | Parallel workers — **use `JOBS=2` on the 4‑CPU Cloud Agent VPS** (§6.0) |
 | `DELAY` | `5` | Seconds between job starts (breathing room) |
 | `OUT` | `results/solver` | Root; results land in `$OUT/$MODE/` |
 | `DATASET` | `raw_data/onedarcraw/dataset` | Discover root |
@@ -233,17 +252,17 @@ JOBS=4 OUT=results/eval_demo \
 
 Also writes `$OUT/$MODE/parallel.joblog`.
 
-**Example — matched Decom-style 60s campaign:**
+**Example — matched Decom-style 60s campaign (this VPS):**
 
 ```bash
-JOBS=4 OUT=results/eval_s6_60s \
+JOBS=2 OUT=results/eval_60s_first3_j2 \
   ./scripts/run_solver_eval_parallel.sh block_primary 60 0,1,2
 ```
 
 **Example — longer budget:**
 
 ```bash
-JOBS=4 OUT=results/eval_s6_120s \
+JOBS=2 OUT=results/eval_s6_120s \
   ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
 
@@ -345,7 +364,7 @@ pytest solver/tests -q
 LIMIT=3 ./scripts/run_solver_eval.sh block_primary 30 0
 
 # 6. Full 54 @ 120s (needs GNU parallel; long-running)
-JOBS=4 OUT=results/eval_local_120 \
+JOBS=2 OUT=results/eval_local_120 \
   ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
 ```
 
@@ -361,7 +380,7 @@ JOBS=4 OUT=results/eval_local_120 \
 | All `paint_verify_failed` | Program returned but closed-world paint ≠ train gold — inspect `program` + work-dir BK |
 | `popper_timeout` | Raise `--timeout` / script timeout; see [03](03-CURRENT_METHOD.md) |
 | `popper_exhausted` | Search finished under bias caps with no program — see `failure_detail` |
-| BLAS/CPU thrash in parallel | Scripts set `OMP_NUM_THREADS=1`; keep `JOBS` modest (e.g. 4) |
+| BLAS/CPU thrash in parallel | Scripts set `OMP_NUM_THREADS=1`; on the 4‑CPU Cloud Agent VPS keep `JOBS≤2` (§6.0) |
 | Wrong trial count | Ensure `--trials 0,1,2` and dataset has `*_0.json`…`*_2.json` per category |
 
 Direction constraints (no pixel rescue modes, etc.):
