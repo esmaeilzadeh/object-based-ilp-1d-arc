@@ -5,35 +5,16 @@ Popper induces `out_block/5`; decode paints pixels for scoring.
 
 Direction: [`.cursor/rules/block-level-only.mdc`](../.cursor/rules/block-level-only.mdc).
 
-**Docs (read in order):**
+**Docs:**
 
-1. **[ILP landscape](../docs/01-ILP-1D-Method.md)** — Where this work sits among ILP /
-   1D-ARC methods (pixel Decom, ILPAR, …). Explains the block-lift claim and
-   **why we induce each trial from scratch** (few-shot program synthesis), not
-   curriculum / transfer from simpler tasks.
+1. [Approach & Landscape](../docs/01-ILP-1D-Method.md) — why blocks vs pixels
+2. [Method](../docs/02-SOLVER_PLAN.md) — encode → induce → verify → decode
+3. [Tutorial](../docs/03-TUTORIAL.md) — one full example walkthrough
+4. [Evaluation](../docs/04-EVALUATION.md) — scoreboard vs pixel Decom
+5. [Repository Guide](../docs/05-REPO_STRUCTURE.md) — folder map, where to change what
+6. [Running](../docs/06-RUNNING.md) — setup, CLI, eval, troubleshooting
 
-2. **[Method plan](../docs/02-SOLVER_PLAN.md)** — Living **design** doc: thesis,
-   stages (representation → induction → paint-verify → eval), what is
-   allowed/forbidden, optional extensions (e.g. cross-task library). Use when
-   deciding *what the solver should be*; may look slightly ahead of the tip.
-
-3. **[Current method (as-built)](../docs/03-CURRENT_METHOD.md)** — Short
-   **implementation** snapshot: claim, real `block_primary` pipeline, failure
-   reasons, non-goals, how to run. Use for “what ships right now.” If plan and
-   code disagree, **trust this** for behavior.
-
-4. **[vs Decom comparison](../docs/04-COMPARISON-vs-Hocquette-Cropper-IJCAI25.md)** —
-   Exact/soft scoreboard vs pixel Relational Decomposition on the same 54-task
-   slice (protocol alignment, budgets, per-category strengths).
-
-5. **[Repo map](../docs/05-REPO_STRUCTURE.md)** — Folder/file roles, scripts table,
-   and “where do I…?” pointers into the codebase.
-
-6. **[Running guide](../docs/06-RUNNING.md)** — Practical runbook: setup, CLI/harness
-   flags, smoke scripts, sequential/parallel eval, stability protocol, result
-   layout, troubleshooting — with concrete examples.
-
-Also: [Decom paper PDF](../docs/2408.12212v3.pdf) (reference appendix; not a living doc).
+Also: [Decom paper PDF](../docs/2408.12212v3.pdf).
 
 ## Pipeline
 

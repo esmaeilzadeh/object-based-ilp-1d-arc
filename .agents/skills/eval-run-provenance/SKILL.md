@@ -66,7 +66,7 @@ alone when artifacts or SHAs are missing — say so explicitly.
 - Wired from: `solver/harness.py`, `scripts/run_solver_eval_parallel.sh`
 - Index: `results/RUN_REGISTRY.md`
 - Docs: `docs/06-RUNNING.md` § provenance
-- Comparison narrative in `docs/04-COMPARISON-…` is **not** the artifact store;
+- Comparison narrative in `docs/04-EVALUATION.md` is **not** the artifact store;
   do not silently rewrite report numbers when fixing provenance.
 
 ## Anti-patterns
