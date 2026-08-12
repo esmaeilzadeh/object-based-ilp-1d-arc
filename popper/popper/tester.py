@@ -282,6 +282,22 @@ class Tester():
         with self.using(prog):
             return bool_query('non_functional')
 
+    def is_bad_paint(self, prog):
+        """True if paint_checker says the program fails train paint.
+
+        Checker runs outside this SWI session (caller should isolate).
+        Only used when settings.paint_test is enabled.
+        """
+        checker = getattr(self.settings, 'paint_checker', None)
+        if checker is None:
+            return False
+        from .util import format_prog, order_prog
+        prog_str = format_prog(order_prog(prog))
+        try:
+            return bool(checker(prog_str))
+        except Exception:
+            return True
+
     def reduce_inconsistent(self, program):
         if len(program) < 3:
             return program
