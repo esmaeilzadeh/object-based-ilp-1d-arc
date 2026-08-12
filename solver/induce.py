@@ -62,9 +62,23 @@ def _worker(
     max_literals: int,
     out_prog: str,
     q: mp.Queue,
+    *,
+    paint_test: bool = True,
+    grids_path: Optional[str] = None,
 ) -> None:
     try:
         Settings, learn_solution = _import_popper()
+        paint_checker = None
+        if paint_test:
+            from solver.paint_check import make_paint_checker
+
+            paint_checker = make_paint_checker(bk, grids_path)
+            if paint_checker is None:
+                print(
+                    f"[induce] paint_test requested but grids missing "
+                    f"({grids_path or Path(bk).parent / 'grids.json'}); disabling"
+                )
+                paint_test = False
         settings = Settings(
             cmd_line=False,
             quiet=True,
@@ -75,6 +89,8 @@ def _worker(
             timeout=int(timeout_s),
             max_literals=int(max_literals),
             functional_test=True,
+            paint_test=bool(paint_test and paint_checker is not None),
+            paint_checker=paint_checker,
         )
         prog, _terminated = learn_solution(settings)
         if prog:
@@ -94,8 +110,14 @@ def induce(
     work_dir: Optional[PathLike] = None,
     *,
     max_literals: Optional[int] = None,
+    paint_test: bool = True,
+    grids_path: Optional[PathLike] = None,
 ) -> InduceResult:
-    """Run Popper in a child process; return program + status (honest timeout)."""
+    """Run Popper in a child process; return program + status (honest timeout).
+
+    When ``paint_test`` is True (default), complete candidates are paint-checked
+    against train gold via sibling ``grids.json`` (staged after block pos/neg).
+    """
     cleanup = False
     if work_dir is None:
         work_dir = Path(tempfile.mkdtemp(prefix="popper_"))
@@ -109,6 +131,7 @@ def induce(
     q: mp.Queue = mp.Queue()
     t0 = time.time()
     join_budget = max(int(timeout_s), 1)
+    grids = str(grids_path) if grids_path is not None else str(Path(bk_path).parent / "grids.json")
 
     proc = mp.Process(
         target=_worker,
@@ -121,6 +144,10 @@ def induce(
             str(out_prog),
             q,
         ),
+        kwargs={
+            "paint_test": paint_test,
+            "grids_path": grids,
+        },
     )
     try:
         proc.start()
