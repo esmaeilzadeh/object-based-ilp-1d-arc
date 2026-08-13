@@ -1,0 +1,41 @@
+{
+  "predicted_grid": [
+    0,
+    0,
+    0,
+    2,
+    2,
+    0,
+    4,
+    4,
+    5,
+    5,
+    5,
+    0,
+    0
+  ],
+  "program": "out_block(V0,V1,V2,V3,V4):- block(V0,V1,V5,V4),gap(V0,V6,V1,V7),size_sum3(V3,V7,V2,V8).\nout_block(V0,V1,V2,V3,V4):- block(V0,V5,V8,V4),size_add(V8,V2,V3),block(V0,V1,V6,V7),v6(V7).\nout_block(V0,V1,V2,V3,V4):- v5(V4),block(V0,V1,V8,V9),size_add(V8,V2,V7),size_sum3(V3,V7,V6,V5).\nout_block(V0,V1,V2,V3,V4):- block(V0,V5,V8,V4),gap(V0,V6,V5,V2),block(V0,V1,V3,V7),gap(V0,V1,V6,V9).\nout_block(V0,V1,V2,V3,V4):- s4(V2),s3(V3),block(V0,V1,V5,V4).\nout_block(V0,V1,V2,V3,V4):- size_even(V2),block(V0,V1,V2,V6),block(V0,V5,V3,V4),gap(V0,V1,V5,V3).\nout_block(V0,V1,V2,V3,V4):- v6(V4),size_add(V2,V3,V5),block(V0,V1,V5,V6).\nout_block(V0,V1,V2,V3,V4):- v1(V4),gap(V0,V5,V1,V2),block(V0,V1,V3,V6).",
+  "level": "fallback_identity",
+  "verified_train": false,
+  "confidence": "low",
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "soft_accuracy": 0.0,
+  "failure_reason": "paint_verify_failed",
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 684,
+    "max_vars": 10,
+    "max_body": 6,
+    "max_clauses": 3,
+    "max_literals": 21,
+    "timeout_s": 600,
+    "induce_elapsed_s": 601.97,
+    "error": null
+  }
+}

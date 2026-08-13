@@ -1,0 +1,41 @@
+{
+  "predicted_grid": [
+    0,
+    0,
+    0,
+    2,
+    2,
+    0,
+    4,
+    4,
+    5,
+    5,
+    5,
+    0,
+    0
+  ],
+  "program": "out_block(V0,V1,V2,V3,V4):- v1(V4),gap(V0,V5,V1,V2),block(V0,V1,V3,V6).\nout_block(V0,V1,V2,V3,V4):- block(V0,V1,V3,V4),s4(V2),size_odd(V3).\nout_block(V0,V1,V2,V3,V4):- block(V0,V1,V2,V4),gap(V0,V5,V8,V3),gap(V0,V6,V5,V7).\nout_block(V0,V1,V2,V3,V4):- v6(V4),size_add(V2,V3,V5),block(V0,V1,V5,V6).",
+  "level": "fallback_identity",
+  "verified_train": false,
+  "confidence": "low",
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "soft_accuracy": 0.0,
+  "failure_reason": "paint_verify_failed",
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 295,
+    "max_vars": 10,
+    "max_body": 6,
+    "max_clauses": 3,
+    "max_literals": 21,
+    "timeout_s": 120,
+    "induce_elapsed_s": 121.351,
+    "error": null
+  }
+}

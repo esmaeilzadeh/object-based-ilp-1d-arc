@@ -1,0 +1,16 @@
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:2:
+Warning:    Singleton variables: [V5,V6,V8]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:3:
+Warning:    Singleton variables: [V5,V6]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:4:
+Warning:    Singleton variables: [V9,V6,V5]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:5:
+Warning:    Singleton variables: [V8,V7,V9]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:6:
+Warning:    Singleton variables: [V5]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:7:
+Warning:    Singleton variables: [V6]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:8:
+Warning:    Singleton variables: [V6]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_flip_blocks/run_600/encode/_apply_object_prog.pl:9:
+Warning:    Singleton variables: [V5,V6]

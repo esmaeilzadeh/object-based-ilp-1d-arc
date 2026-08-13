@@ -1,0 +1,155 @@
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/_apply_object_prog.pl:2:
+Warning:    Singleton variables: [V5,V6]
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:1:
+Warning:    Redefined static procedure block/4
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:1
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:5:
+Warning:    Redefined static procedure cardinal_ordinal/2
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:12
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:9:
+Warning:    Redefined static procedure component_len/3
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:27
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:13:
+Warning:    Redefined static procedure component_start/2
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:38
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:17:
+Warning:    Redefined static procedure gap/4
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:49
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:20:
+Warning:    Redefined static procedure largest/2
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:57
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:21:
+Warning:    Redefined static procedure non_largest/2
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:61
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:24:
+Warning:    Redefined static procedure obj_pair/3
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:68
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:26:
+Warning:    Redefined static procedure obj_succ/3
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:73
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:29:
+Warning:    Redefined static procedure s0/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:81
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:30:
+Warning:    Redefined static procedure s1/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:84
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:31:
+Warning:    Redefined static procedure s10/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:87
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:32:
+Warning:    Redefined static procedure s11/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:90
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:33:
+Warning:    Redefined static procedure s12/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:93
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:34:
+Warning:    Redefined static procedure s2/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:100
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:35:
+Warning:    Redefined static procedure s3/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:103
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:36:
+Warning:    Redefined static procedure s4/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:106
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:37:
+Warning:    Redefined static procedure s5/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:109
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:38:
+Warning:    Redefined static procedure s6/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:112
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:39:
+Warning:    Redefined static procedure s7/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:115
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:40:
+Warning:    Redefined static procedure s8/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:118
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:41:
+Warning:    Redefined static procedure s9/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:121
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:42:
+Warning:    Redefined static procedure size_add/3
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:124
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:51:
+Warning:    Redefined static procedure size_even/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:148
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:53:
+Warning:    Redefined static procedure size_lt/2
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:155
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:59:
+Warning:    Redefined static procedure size_odd/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:185
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:61:
+Warning:    Redefined static procedure size_sum3/4
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:193
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:64:
+Warning:    Redefined static procedure v0/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:201
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:65:
+Warning:    Redefined static procedure v1/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:204
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:66:
+Warning:    Redefined static procedure v2/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:207
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:67:
+Warning:    Redefined static procedure v3/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:210
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:68:
+Warning:    Redefined static procedure v4/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:213
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:69:
+Warning:    Redefined static procedure v5/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:216
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:70:
+Warning:    Redefined static procedure v6/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:219
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:71:
+Warning:    Redefined static procedure v7/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:222
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:72:
+Warning:    Redefined static procedure v8/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:225
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/test_bk.pl:73:
+Warning:    Redefined static procedure v9/1
+Warning:    Previously defined at /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/bk.pl:228
+Warning: /home/mohamad/Projects/UNI/machine learning/ml-project/object-based-ilp-1d-arc/work/synth_denoise_mc/run/encode/_apply_object_prog.pl:2:
+Warning:    Singleton variables: [V5,V6]
+{
+  "predicted_grid": [
+    2,
+    2,
+    2,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    3,
+    3
+  ],
+  "program": "out_block(V0,V1,V2,V3,V4):- block(V0,V1,V3,V4),s0(V2),size_add(V5,V6,V3).",
+  "level": "object_ilp",
+  "verified_train": true,
+  "confidence": "high",
+  "soft_matrix": [
+    1,
+    0,
+    0,
+    0
+  ],
+  "soft_accuracy": 1.0,
+  "failure_reason": null,
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 73,
+    "max_vars": 10,
+    "max_body": 6,
+    "max_clauses": 3,
+    "max_literals": 21,
+    "timeout_s": 120,
+    "induce_elapsed_s": 18.435,
+    "error": null
+  }
+}
