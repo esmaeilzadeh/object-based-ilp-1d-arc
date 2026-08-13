@@ -1,0 +1,53 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_flip/1d_flip_1.json",
+  "task": "1d_flip",
+  "mode": "block_primary",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "error",
+  "confidence": "low",
+  "verified_train": false,
+  "elapsed": 120.594,
+  "predicted": null,
+  "gold": [
+    0,
+    0,
+    4,
+    4,
+    4,
+    4,
+    6,
+    0,
+    0,
+    0
+  ],
+  "failure_reason": "sigsegv",
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 190,
+    "timeout_s": 120,
+    "error": "SIGSEGV (signal 11) during janus-swi apply/paint; parallel joblog Exitval=139 Signal=11; offline recovery retried twice, both SIGSEGV",
+    "retries": 2,
+    "note": "known janus/SWI SIGSEGV flake; program.pl existed after induce"
+  },
+  "program": "out_block(V0,V1,V2,V3,V4):- block(V0,V5,V3,V4),size_sum3(V8,V2,V3,V6),block(V0,V1,V8,V7).\nout_block(V0,V1,V2,V3,V4):- block(V0,V1,V6,V8),size_add(V3,V2,V6),block(V0,V5,V3,V4),size_lt(V7,V2).",
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "git_sha": "39af98ec1bd6dc55137146be136834838b1a0ecd",
+    "git_branch": "cursor/eval-120s-first3-j2-376d",
+    "git_dirty": null,
+    "mode": "block_primary",
+    "timeout": 120,
+    "jobs": 1,
+    "started_at": "2026-08-13T18:57:08.777257+00:00",
+    "recovery": "offline_sigsegv_retry"
+  }
+}
