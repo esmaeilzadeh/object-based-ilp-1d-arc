@@ -122,12 +122,44 @@ Our measured 3600 s run scores 30/54, down from 41/54 at 600 s. This is **not** 
 
 This is a known limitation of the current pipeline (see Method doc, §2.4). A fix would retain the first train-paint-valid program instead of the final compressed one.
 
+## Ablation: functional color + staged paint-in-induction (@60 s)
+
+**Status:** separate side experiment — **not** the default headline claim above.  
+Treat **both** changes as **one** experiment (do not split into two scoreboards):
+
+1. **Functional color** — drop explicit wrong-color `neg(out_block…)` atoms; emit `non_functional/1` in train BK; Popper `functional_test=True` (color unique given `(Ex, Bid, Off, Len)`).
+2. **Staged paint-in-induction** — after a candidate is block-complete (covers all pos, consistent w.r.t. negs / functional), reject it inside Popper if train paint fails (`paint_test` + checker via `grids.json`), so search continues instead of returning a post-hoc `paint_verify_failed` program.
+
+**Branch / code:** `cursor/paint-in-induction` @ `c5bcfa9` (includes functional-color commits `603ed34` / `278cbd2` plus paint staging `a8e8d15` / `c9b8b59` / `c5bcfa9`).  
+**Protocol:** same 54-task slice, `timeout=60`, `JOBS=2`, trials `0,1,2` (Cloud Agent VPS profile matching the 40/54 baseline).  
+**Baseline “Was”:** headline Ours @60 s = **40/54** (`results/eval_60s_first3_j2/`).
+
+### Category deltas vs 40/54 baseline (@60 s)
+
+| Category | Was | Now | Δ |
+|----------|-----|-----|---|
+| `denoising_1c`, `denoising_mc`, `fill`, `hollow`, `move_*` (except `move_dp`), `recolor_*` | 3/3 or 2/3 | unchanged | 0 |
+| `mirror` | 2/3 | 3/3 | **+1** |
+| `scale_dp` | 2/3 | 3/3 | **+1** |
+| `flip` | 2/3 | 2/3 | 0 |
+| `padded_fill` | 2/3 | 1/3 | **−1** |
+| `pcopy_*`, `move_dp` | partial / 0 | unchanged | 0 |
+
+**Implied exact total:** 40 + 1 + 1 − 1 = **41/54** (+1 vs baseline at 1 minute).
+
+**Interpretation:** Net small gain at the 60 s budget: mirror and scale_dp each pick up the missing trial; padded_fill loses one. Hard families (`pcopy_*`, `move_dp`) stay flat — this experiment does not claim a pixel-duplication fix.
+
+**Provenance strength:** category table recorded from the Cloud Agent experiment report for this combined stack. Prefer citing a committed `summary.json` under `results/eval_60s_paint_induction/` (or equivalent) once pulled from the agent; until then label **`provenance: best_effort_experiment_report`**. Index: `results/RUN_REGISTRY.md`. Agent bookmark: `results/eval_60s_functional_color_cloud_agent.txt` / paint follow-up on the same VPS profile.
+
+**KEEP / REVERT:** treat as an ablation KEEP candidate for the **combined** stack at 60 s only after soft gate vs baseline on the artifact summary; do not silently replace the Decom comparison headline (40/54) until that artifact is versioned.
+
 ## Data provenance
 
 | Claim | Source |
 |-------|--------|
 | Decom results | `programs/relational/{60,600,3600}/1d/*/popper/*/results.pl` in the IJCAI 2025 artifact repo |
-| Our 60 s run | `results/eval_60s_first3_j2/block_primary/summary.json` (2026-08-11) |
+| Our 60 s run (headline) | `results/eval_60s_first3_j2/block_primary/summary.json` (2026-08-11) |
 | Our 3600 s run | `results/eval_s6_3600s_jobs2/block_primary/summary.json` (2026-08-08) |
+| Functional+paint @60 s ablation | Category deltas above; registry `results/RUN_REGISTRY.md`; target artifacts `results/eval_60s_paint_induction/` when available |
 | Paper host | Single CPU, Xeon Gold 6138 |
 | Our host | 4× Xeon vCPU (KVM), 15 GiB RAM, `JOBS=2` |
