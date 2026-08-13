@@ -1,0 +1,22 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-11T20:48:12.348668+00:00",
+  "finished_at": null,
+  "git_sha": "278cbd21877a7dba722b41f873065c77d487f182",
+  "git_branch": "cursor/functional-color-negs",
+  "git_dirty": true,
+  "git_describe": "278cbd2",
+  "hostname": "mohamad-Precision-M4600",
+  "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "mode": "block_primary",
+  "timeout": 60,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "raw_data/onedarcraw/dataset",
+  "out": "results/eval_60s_functional_color",
+  "pid": 29001,
+  "entry": "run_solver_eval_parallel",
+  "phase": "start",
+  "n_files": 54
+}
