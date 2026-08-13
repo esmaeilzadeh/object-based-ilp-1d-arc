@@ -1,0 +1,73 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_recolor_cnt/1d_recolor_cnt_2.json",
+  "task": "1d_recolor_cnt",
+  "mode": "block_primary",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "fallback_identity",
+  "confidence": "low",
+  "verified_train": false,
+  "elapsed": 120.70243573188782,
+  "predicted": [
+    0,
+    0,
+    9,
+    0,
+    9,
+    9,
+    9,
+    0,
+    9,
+    9,
+    0,
+    9,
+    0
+  ],
+  "gold": [
+    0,
+    0,
+    4,
+    0,
+    3,
+    3,
+    3,
+    0,
+    7,
+    7,
+    0,
+    4,
+    0
+  ],
+  "failure_reason": "decode_error",
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 225,
+    "max_vars": 10,
+    "max_body": 6,
+    "max_clauses": 3,
+    "max_literals": 21,
+    "timeout_s": 120,
+    "induce_elapsed_s": 120.542,
+    "error": null,
+    "decode_error": "ambiguous/overlap at 3:11 3 vs 4"
+  },
+  "program": "out_block(V0,V1,V2,V3,V4):- s0(V2),v7(V4),size_even(V3),block(V0,V1,V3,V5).\nout_block(V0,V1,V2,V3,V4):- v3(V4),s0(V2),obj_pair(V0,V5,V1),block(V0,V1,V3,V6).\nout_block(V0,V1,V2,V3,V4):- s1(V3),v4(V4),s0(V2),block(V0,V1,V3,V5).",
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "git_sha": "39af98ec1bd6dc55137146be136834838b1a0ecd",
+    "git_branch": "cursor/eval-120s-first3-j2-376d",
+    "git_dirty": true,
+    "mode": "block_primary",
+    "timeout": 120,
+    "jobs": 1,
+    "started_at": "2026-08-13T19:22:47.627526+00:00"
+  }
+}
