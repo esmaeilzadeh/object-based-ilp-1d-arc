@@ -46,9 +46,12 @@ def _collect_out_blocks(
         if bid not in geometry:
             continue
         start, _end = geometry[bid]
-        for off in range(0, width + 1):
+        for off in range(-width, width + 1):
+            paint = start + off
+            if paint < 0:
+                continue
             for L in range(1, width + 1):
-                if start + off + L > width + 1:
+                if paint + L > width:
                     break
                 for c in range(1, 10):
                     atom = (

@@ -16,7 +16,8 @@ from solver.predicates import (
 _BIAS_DIR = Path(__file__).resolve().parent / "bias"
 
 _FACT_PRED_RE = re.compile(r"^([a-z][a-z0-9_]*)\(")
-_SIZE_CONST_RE = re.compile(r"\bs(\d+)\b")
+_SIZE_POS_RE = re.compile(r"\bs(\d+)\b")
+_SIZE_NEG_RE = re.compile(r"\bsm(\d+)\b")
 _VALUE_CONST_RE = re.compile(r"\bv(\d+)\b")
 
 OBJECT_MAX_VARS = 10
@@ -56,11 +57,17 @@ def _preds_present_in_bk(bk_text: str, allow: FrozenSet[str]) -> Set[str]:
     return present
 
 
+def _size_atom(i: int) -> str:
+    return f"sm{-i}" if i < 0 else f"s{i}"
+
+
 def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int]]:
     sizes: Set[int] = set()
     values: Set[int] = set()
     blob = "\n".join(texts)
-    for m in _SIZE_CONST_RE.finditer(blob):
+    for m in _SIZE_NEG_RE.finditer(blob):
+        sizes.add(-int(m.group(1)))
+    for m in _SIZE_POS_RE.finditer(blob):
         sizes.add(int(m.group(1)))
     for m in _VALUE_CONST_RE.finditer(blob):
         values.add(int(m.group(1)))
@@ -107,7 +114,7 @@ def render_object_bias_from_bk(
     parts.append("body_pred(C,1):- constant(C,_).")
     parts.append("")
     for i in sorted(sizes):
-        parts.append(f"constant(s{i}, 'size').")
+        parts.append(f"constant({_size_atom(i)}, 'size').")
     for i in sorted(values):
         parts.append(f"constant(v{i}, 'value').")
     parts.append("")

@@ -44,35 +44,78 @@ def block_geometry_for_row(row: Sequence[int]) -> Dict[int, Tuple[int, int]]:
     return {bid: (s, e) for bid, (s, e, _c) in enumerate(segment_all_runs(row))}
 
 
-def anchor_input_block(inp: Sequence[int], out_s: int, out_e: int) -> Optional[int]:
-    """Choose input run id that anchors an output colored span (Off=0 case)."""
-    r = anchor_input_block_offset(inp, out_s, out_e)
+# Same-color first, then different-color; inside a tier prefer length match
+# over Offset (r = x_len/x_off = 3). Not family-gated.
+ANCHOR_X_LEN = 3
+ANCHOR_X_OFF = 1
+
+
+def _anchor_score(delta_len: int, abs_off: int) -> float:
+    return 1.0 / (ANCHOR_X_LEN * delta_len + ANCHOR_X_OFF * abs_off + 1)
+
+
+def anchor_input_block(
+    inp: Sequence[int],
+    out_s: int,
+    out_e: int,
+    out_c: Optional[int] = None,
+) -> Optional[int]:
+    """Choose input run id that anchors an output colored span."""
+    r = anchor_input_block_offset(inp, out_s, out_e, out_c)
     return None if r is None else r[0]
 
 
 def anchor_input_block_offset(
-    inp: Sequence[int], out_s: int, out_e: int
+    inp: Sequence[int],
+    out_s: int,
+    out_e: int,
+    out_c: Optional[int] = None,
 ) -> Optional[Tuple[int, int]]:
     """Return ``(bid, offset)`` for an output span.
 
-    Prefer a colored input run with the same start (offset 0). Otherwise use the
-    rightmost colored input start at or left of ``out_s`` so ILP can learn a
-    neutral size offset (no marker_block / reflect_* BK).
+    Unique ``(length, color)`` on this input wins at any Offset. Otherwise
+    score same-color runs first, else any colored run:
+    ``1 / (3|ΔL| + |Offset| + 1)``. Offset may be negative (grow left).
     """
-    del out_e  # length checked by caller via out span
-    runs = segment_all_runs(inp)
-    for bid, (s, _e, c) in enumerate(runs):
-        if c != 0 and s == out_s:
-            return bid, 0
-    best: Optional[Tuple[int, int]] = None  # (start, bid)
-    for bid, (s, _e, c) in enumerate(runs):
-        if c != 0 and s <= out_s:
-            if best is None or s > best[0]:
-                best = (s, bid)
-    if best is None:
+    L = out_e - out_s + 1
+    runs: List[Tuple[int, int, int, int, int]] = [
+        (bid, s, e, c, e - s + 1)
+        for bid, (s, e, c) in enumerate(segment_all_runs(inp))
+        if c != 0
+    ]
+    if not runs:
         return None
-    s, bid = best
+    if out_c is None:
+        out_c = next((c for _b, s, _e, c, _ln in runs if s == out_s), runs[0][3])
+
+    exact = [r for r in runs if r[4] == L and r[3] == out_c]
+    if len(exact) == 1:
+        bid, s, _e, _c, _ln = exact[0]
+        return bid, out_s - s
+
+    same = [r for r in runs if r[3] == out_c]
+    pool = same if same else runs
+
+    def _key(r: Tuple[int, int, int, int, int]) -> Tuple[float, int, int]:
+        bid, s, _e, _c, ln = r
+        off = out_s - s
+        return (_anchor_score(abs(ln - L), abs(off)), -abs(off), -bid)
+
+    bid, s, _e, _c, _ln = max(pool, key=_key)
     return bid, out_s - s
+
+
+def train_negative_offset_ks(train: Sequence[ExampleGrids]) -> List[int]:
+    """K such that some train Bid-parent Offset is ``-K`` (for ``smK`` unaries)."""
+    ks: set = set()
+    for eg in train:
+        if eg.out is None:
+            continue
+        for s, e, c in segment_blocks(eg.out):
+            anchored = anchor_input_block_offset(eg.inp, s, e, c)
+            if anchored is not None and anchored[1] < 0:
+                ks.add(-anchored[1])
+    return sorted(ks)
 
 
 def _bid(i: int, typed: bool) -> str:
@@ -84,7 +127,11 @@ def _pos(i: int, typed: bool) -> str:
 
 
 def _sz(i: int, typed: bool) -> str:
-    return f"s{i}" if typed else str(i)
+    if not typed:
+        return str(i)
+    if i < 0:
+        return f"sm{-i}"
+    return f"s{i}"
 
 
 def _col(i: int, typed: bool) -> str:
@@ -499,6 +546,7 @@ def _exs_out_blocks(
     max_color: int = 9,
     *,
     typed_roles: bool = False,
+    neg_offset_ks: Optional[Sequence[int]] = None,
 ) -> List[str]:
     """Object-head examples: pos/neg ``out_block(Ex, Bid, Off, Len, Color)``.
 
@@ -533,7 +581,7 @@ def _exs_out_blocks(
                 observed_sizes.add(1 + g)  # common unit+gap offset
         for s, e, c in segment_blocks(eg.out):
             L = e - s + 1
-            anchored = anchor_input_block_offset(eg.inp, s, e)
+            anchored = anchor_input_block_offset(eg.inp, s, e, c)
             if anchored is None:
                 continue
             bid, off = anchored
@@ -557,8 +605,9 @@ def _exs_out_blocks(
             w = len(eg.out)
             # Wrong lengths at true Bid/Off/Color (observed + 1..w sample).
             len_cands = sorted(set(observed_sizes) | set(range(1, min(w, 12) + 1)))
-            # Wrong offsets: full 0..w so cross-example size_add cannot sneak Offs.
-            off_cands = list(range(0, w + 1))
+            # Wrong offsets: 0..w plus observed negative smK so grow-left is supervised.
+            extra_neg = [-int(k) for k in (neg_offset_ks or []) if int(k) > 0]
+            off_cands = sorted(set(list(range(0, w + 1)) + extra_neg))
             for bid, off, L, c in true_blocks:
                 for L2 in len_cands:
                     if L2 < 1 or L2 == L:
@@ -586,6 +635,20 @@ def _exs_out_blocks(
                     if (bid, 0, L0, c) not in true_set:
                         neg.append(
                             f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(0, t)},{_sz(L0, t)},{_col(c, t)}))."
+                        )
+            # Grow-left at input length/color is not identity.
+            for k in (neg_offset_ks or []):
+                kk = int(k)
+                if kk < 1:
+                    continue
+                off_g = -kk
+                for bid, (s, e, c) in enumerate(runs):
+                    if c == 0:
+                        continue
+                    Lin = e - s + 1
+                    if (bid, off_g, Lin, c) not in true_set:
+                        neg.append(
+                            f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off_g, t)},{_sz(Lin, t)},{_col(c, t)}))."
                         )
             # Wrong Bid for a true (Off,Len,Color).
             for bid in colored_bids:
@@ -674,6 +737,10 @@ def encode_instance(
 
     train_bk = sorted(_bk_lines_for(train, max_w=max_w), key=lambda f: f.split("(", 1)[0])
     test_bk = sorted(_bk_lines_for(test, max_w=max_w), key=lambda f: f.split("(", 1)[0])
+    sm_ks = train_negative_offset_ks(train)
+    sm_unaries = [f"sm{k}(sm{k})." for k in sm_ks]
+    train_bk = train_bk + sm_unaries
+    test_bk = test_bk + sm_unaries
 
     bk_path = out_dir / "bk.pl"
     test_bk_path = out_dir / "test_bk.pl"
@@ -688,7 +755,10 @@ def encode_instance(
     test_path.write_text("\n".join(test_exs + test_bk) + "\n")
 
     exs_object_path.write_text(
-        "\n".join(_exs_out_blocks(train, typed_roles=True)) + "\n"
+        "\n".join(
+            _exs_out_blocks(train, typed_roles=True, neg_offset_ks=sm_ks)
+        )
+        + "\n"
     )
 
     from solver.bias_gen import render_object_bias_from_bk
