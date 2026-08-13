@@ -47,6 +47,32 @@ def test_object_decoder_typed_roles(tmp_path: Path):
     assert preds[0] == [7, 7, 7]
 
 
+def test_object_decoder_signed_offset(tmp_path: Path):
+    """Grow-left Off=-1 paints one cell before the input run start."""
+
+    inst = {
+        "train": [
+            {
+                "input": [[0, 0, 0, 4, 8, 8, 8, 0]],
+                "output": [[0, 0, 0, 8, 8, 8, 8, 4]],
+            }
+        ],
+        "test": [{"input": [[0, 0, 0, 4, 8, 8, 8, 0]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    assert "sm1(sm1)." in enc.bk_path.read_text()
+    # Input runs: b1 color4 at 3; b2 color8 at 4 len 3.
+    prog = "out_block(0,b2,sm1,s4,v8).\nout_block(0,b1,s4,s1,v4).\n"
+    preds = apply_object_program(
+        prog,
+        enc.bk_path,
+        enc.train,
+        typed_roles=True,
+        block_geometry=enc.block_geometry,
+    )
+    assert preds[0] == [0, 0, 0, 8, 8, 8, 8, 4]
+
+
 def test_object_decoder_rejects_overlap(tmp_path: Path):
     enc = encode_instance(
         {
