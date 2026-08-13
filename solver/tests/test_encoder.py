@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from solver.bias_gen import render_object_bias, render_object_bias_from_bk
-from solver.encoder import _block_and_derived, encode_instance
+from solver.encoder import _block_and_derived, encode_instance, train_color_sets
 
 
 def _facts(row):
@@ -87,6 +87,15 @@ def test_encode_instance_object_only(tmp_path: Path):
     bias = enc.bias_object_path.read_text()
     assert "head_pred(out_block,5)." in bias
     assert "head_pred(out,3)." not in bias
+    # Identity: no novel colors, so no unused value constants (incl. test-only 5/6).
+    assert "constant(v7, 'value')." not in bias
+    assert "constant(v5, 'value')." not in bias
+    assert "constant(v6, 'value')." not in bias
+    assert "v7(v7)." not in bk
+    assert "v5(v5)." not in bk
+    test_bk = enc.test_bk_path.read_text()
+    assert "v5(v5)." not in test_bk
+    assert "v6(v6)." not in test_bk
 
 
 def test_object_bias_size_add_bidirectional():
@@ -105,3 +114,47 @@ def test_mechanical_bias_from_bk_no_category():
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s2,v1)).")
     assert "body_pred(block,4)." in text
     assert "head_pred(out_block,5)." in text
+    # Input color binds via block/4; not a bias constant.
+    assert "constant(v1, 'value')." not in text
+
+
+def test_train_color_sets_novel_only():
+    from solver.encoder import ExampleGrids
+
+    train = [
+        ExampleGrids(0, [2, 2, 0, 2], [1, 1, 0, 1]),
+        ExampleGrids(1, [2, 0, 2, 2], [1, 0, 1, 1]),
+    ]
+    c_in, c_out, c_novel = train_color_sets(train)
+    assert c_in == {2}
+    assert c_out == {1}
+    assert c_novel == {1}
+
+
+def test_encode_recolor_novel_color_constant(tmp_path: Path):
+    """Train-out \\ train-in is the only searchable color constant."""
+    inst = {
+        "train": [
+            {"input": [[2, 2, 2, 0, 2]], "output": [[1, 1, 1, 0, 1]]},
+            {"input": [[2, 2, 0, 2, 2]], "output": [[1, 1, 0, 1, 1]]},
+        ],
+        # Test-out 9 and test-in 8 must not become constants / unaries.
+        "test": [{"input": [[2, 2, 0, 8]], "output": [[1, 1, 0, 9]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    bk = enc.bk_path.read_text()
+    test_bk = enc.test_bk_path.read_text()
+    bias = enc.bias_object_path.read_text()
+    exs = enc.exs_object_path.read_text()
+    assert "v1(v1)." in bk
+    assert "v1(v1)." in test_bk
+    assert "constant(v1, 'value')." in bias
+    assert "constant(v2, 'value')." not in bias
+    assert "constant(v8, 'value')." not in bias
+    assert "constant(v9, 'value')." not in bias
+    assert "v8(v8)." not in bk
+    assert "v9(v9)." not in bk
+    assert "v8(v8)." not in test_bk
+    assert "v9(v9)." not in test_bk
+    assert "neg(out_block(0,b0,s0,s3,v9))." not in exs
+    assert "neg(out_block(0,b0,s0,s3,v2))." in exs

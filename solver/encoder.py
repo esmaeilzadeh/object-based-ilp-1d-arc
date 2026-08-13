@@ -406,9 +406,8 @@ def _block_and_derived(
             for f in facts
             if any(f.startswith(n + "(") for n in _LEAN_EMIT_ALLOW)
         ]
-        # Typed constant unary facts so Popper can resolve body_pred(C,1).
-        for i in range(10):
-            facts.append(f"v{i}(v{i}).")
+        # Size unaries for Popper constant resolution. Color unaries are
+        # instance-palette (train-out \ train-in) emitted in encode_instance.
         for i in range(w + 1):
             facts.append(f"s{i}(s{i}).")
     return facts
@@ -494,11 +493,32 @@ def _bk_lines_for(examples: Sequence[ExampleGrids], *, max_w: int) -> List[str]:
     return lines
 
 
+def train_color_sets(
+    train: Sequence[ExampleGrids],
+) -> Tuple[set, set, set]:
+    """Train input colors, train output colors, and out\\in (novel) colors.
+
+    Nonzero only. Used for palette-limited negs and novel color constants.
+    """
+    c_in: set = set()
+    c_out: set = set()
+    for eg in train:
+        c_in.update(int(c) for c in eg.inp if int(c) != 0)
+        if eg.out is not None:
+            c_out.update(int(c) for c in eg.out if int(c) != 0)
+    return c_in, c_out, c_out - c_in
+
+
+def _color_unaries(colors: Sequence[int]) -> List[str]:
+    return [f"v{int(c)}(v{int(c)})." for c in sorted(set(colors))]
+
+
 def _exs_out_blocks(
     train: List[ExampleGrids],
     max_color: int = 9,
     *,
     typed_roles: bool = False,
+    color_palette: Optional[set] = None,
 ) -> List[str]:
     """Object-head examples: pos/neg ``out_block(Ex, Bid, Off, Len, Color)``.
 
@@ -545,8 +565,13 @@ def _exs_out_blocks(
             pos.append(
                 f"pos(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
             )
+        wrong_colors = (
+            sorted(int(v) for v in color_palette if int(v) != 0)
+            if color_palette is not None
+            else list(range(1, max_color + 1))
+        )
         for bid, off, L, c in true_blocks:
-            for v in range(1, max_color + 1):
+            for v in wrong_colors:
                 if v != c:
                     neg.append(
                         f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(v, t)}))."
@@ -612,7 +637,9 @@ def _exs_out_blocks(
                     )
             # Off=0 wrong color at each input block's own length: kills
             # ``vK(Color), s0(Off), block(_,Bid,Len,_)`` over-paints.
-            observed_colors = sorted(colors_used | {c for _b, _L, c in input_lc})
+            observed_colors = sorted(
+                (colors_used | {c for _b, _L, c in input_lc} | set(wrong_colors))
+            )
             for bid2, Lin, Cin in input_lc:
                 for C2 in observed_colors:
                     if C2 == Cin:
@@ -674,6 +701,13 @@ def encode_instance(
 
     train_bk = sorted(_bk_lines_for(train, max_w=max_w), key=lambda f: f.split("(", 1)[0])
     test_bk = sorted(_bk_lines_for(test, max_w=max_w), key=lambda f: f.split("(", 1)[0])
+    _c_in, _c_out, c_novel = train_color_sets(train)
+    c_palette = _c_in | _c_out
+    color_unaries = _color_unaries(c_novel)
+    train_bk = train_bk + color_unaries
+    # Replay train novel unaries on test BK so apply can bind those constants.
+    # Extra test-input colors stay on block/4 only; never as bias constants.
+    test_bk = test_bk + color_unaries
 
     bk_path = out_dir / "bk.pl"
     test_bk_path = out_dir / "test_bk.pl"
@@ -688,7 +722,12 @@ def encode_instance(
     test_path.write_text("\n".join(test_exs + test_bk) + "\n")
 
     exs_object_path.write_text(
-        "\n".join(_exs_out_blocks(train, typed_roles=True)) + "\n"
+        "\n".join(
+            _exs_out_blocks(
+                train, typed_roles=True, color_palette=c_palette
+            )
+        )
+        + "\n"
     )
 
     from solver.bias_gen import render_object_bias_from_bk
@@ -698,6 +737,7 @@ def encode_instance(
         render_object_bias_from_bk(
             bk_path.read_text(),
             exs_text=exs_object_path.read_text(),
+            value_constants=sorted(c_novel),
         )
     )
 

@@ -67,6 +67,37 @@ def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int]]:
     return sizes, values
 
 
+def _colors_in_block_facts(bk_text: str) -> Set[int]:
+    colors: Set[int] = set()
+    for line in bk_text.splitlines():
+        s = line.strip()
+        if not s.startswith("block("):
+            continue
+        for m in _VALUE_CONST_RE.finditer(s):
+            colors.add(int(m.group(1)))
+    return colors
+
+
+def _colors_in_pos_exs(exs_text: str) -> Set[int]:
+    colors: Set[int] = set()
+    for line in exs_text.splitlines():
+        s = line.strip()
+        if not s.startswith("pos("):
+            continue
+        for m in _VALUE_CONST_RE.finditer(s):
+            colors.add(int(m.group(1)))
+    return colors
+
+
+def novel_value_constants(bk_text: str, exs_text: str = "") -> Set[int]:
+    """Train-out colors that do not appear on input ``block/4`` facts."""
+    return {
+        c
+        for c in (_colors_in_pos_exs(exs_text) - _colors_in_block_facts(bk_text))
+        if c != 0
+    }
+
+
 def render_object_bias_from_bk(
     bk_text: str,
     *,
@@ -74,8 +105,13 @@ def render_object_bias_from_bk(
     max_vars: int = OBJECT_MAX_VARS,
     max_body: int = OBJECT_MAX_BODY,
     max_clauses: int = OBJECT_MAX_CLAUSES,
+    value_constants: Optional[Sequence[int]] = None,
 ) -> str:
-    """Mechanical object bias from one instance's BK (+ optional exs)."""
+    """Mechanical object bias from one instance's BK (+ optional exs).
+
+    Color constants are only novel values (train-out \\ train-in). Input colors
+    bind through ``block/4``; do not scrape ``vK`` from BK/exs or negs.
+    """
     present = _preds_present_in_bk(bk_text, OBJECT_BODY_ALLOWLIST)
     if "block(" in bk_text or any(
         ln.strip().startswith("block(") for ln in bk_text.splitlines()
@@ -85,9 +121,14 @@ def render_object_bias_from_bk(
     if not bodies:
         bodies = tuple(p for p in body_preds_for_level(4) if p.name == "block")
 
-    sizes, values = _constants_present_in_texts(bk_text, exs_text)
+    sizes, _scraped_values = _constants_present_in_texts(bk_text, exs_text)
+    del _scraped_values
     sizes.add(0)
     sizes.add(1)
+    if value_constants is None:
+        values = novel_value_constants(bk_text, exs_text)
+    else:
+        values = {int(c) for c in value_constants if int(c) != 0}
 
     hp = head_pred_object()
     all_typed = (hp,) + bodies

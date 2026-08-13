@@ -95,12 +95,15 @@ def solve(
     bias_path = encoded.bias_object_path
     if bias_path is None or not bias_path.exists():
         from solver.bias_gen import render_object_bias_from_bk
+        from solver.encoder import train_color_sets
 
         bias_path = work_dir / "bias_object.pl"
+        _, _, c_novel = train_color_sets(encoded.train)
         bias_path.write_text(
             render_object_bias_from_bk(
                 encoded.bk_path.read_text(),
                 exs_text=encoded.exs_object_path.read_text(),
+                value_constants=sorted(c_novel),
             )
         )
 
