@@ -58,3 +58,4 @@ Single **combined** experiment (do not score the two changes separately on the s
 | id | note |
 |----|------|
 | `eval_60s_functional_color` | Intermediate branch `cursor/functional-color-negs` only; merged into the combined ablation above — do not treat as a second headline. Local partial tree may exist under `results/eval_60s_functional_color/` (incomplete / non-citable alone). |
+| `eval_60s_instance_colors` | Branch `cursor/instance-color-constants` @ `ab523e69db7832f14e77e64361cd544e770e9d69`. **31/54** exact = soft @60 s, `JOBS=4`, trials `0,1,2`. Local artifacts: `results/eval_60s_instance_colors/block_primary/summary.json`. Not a headline; −9 vs 40/54. Recolor_cmp stays 3/3 (novel `vK`). Denoise/fill/padded_fill/mirror mostly timeout or paint-verify. Confirm at `JOBS=2` before treating as a language verdict. |
