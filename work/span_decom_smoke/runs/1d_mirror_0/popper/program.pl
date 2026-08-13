@@ -1,0 +1,1 @@
+out_block(V0,V1,V2,V3):- block(V0,V1,V2,V3),gap(V4,V5,V1,V6).

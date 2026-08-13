@@ -1,0 +1,2 @@
+:- dynamic out_block/4.
+out_block(V0,V1,V2,V3):- block(V0,V1,V2,V3),size_add(V4,V5,V2).
