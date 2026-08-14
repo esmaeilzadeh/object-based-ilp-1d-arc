@@ -9,9 +9,15 @@ When implementing an approved plan (or any multi-step feature work derived from 
 
 ## Clean tree first
 
-- **Never start implementing** if the working tree has local modifications (staged or unstaged) or untracked files that would mix into the work.
-- If dirty: stop, report `git status`, and ask the user to commit, stash, or discard before continuing.
-- Exception: only ignore unrelated dirt when the user explicitly says to leave those paths alone and proceed.
+A tree is **dirty** (do **not** start changing code) if any of these exist:
+
+- Staged or unstaged modifications
+- Untracked files that are **not** gitignored (`??` in `git status`)
+
+Untracked extras still count even if they look unrelated (eval artifacts, debug logs, smoke leftovers). Gitignored files do **not** count. Leaving them untracked after a partial commit does **not** make the tree clean.
+
+- If dirty: stop, report `git status`, and ask the user to commit, stash, discard, or gitignore before continuing.
+- Exception: only ignore those paths when the user **explicitly** says to leave them alone and proceed.
 
 ## Separate branch
 
@@ -27,6 +33,11 @@ When implementing an approved plan (or any multi-step feature work derived from 
 
 ## Before coding checklist
 
-1. `git status` — must be clean (or user-approved exceptions only).
+1. `git status` — must be clean: no modifications **and** no untracked non-ignored files (or user-approved exceptions only).
 2. Create/checkout the plan branch from the agreed base.
 3. Execute steps in order; commit after each completed step.
+
+```
+❌ BAD: Commit smoke.py, leave ?? results/eval_60s_* and ?? .cursor/debug-*.log, then start the next code change.
+✅ GOOD: Stop. Report those untracked paths. Wait until they are committed, gitignored, or discarded.
+```
