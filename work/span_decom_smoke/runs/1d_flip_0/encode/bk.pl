@@ -182,13 +182,8 @@ n1(n1).
 n10(n10).
 n11(n11).
 n12(n12).
-n13(n13).
-n14(n14).
-n17(n17).
 n2(n2).
-n20(n20).
 n3(n3).
-n4(n4).
 n6(n6).
 n7(n7).
 n8(n8).
@@ -202,9 +197,6 @@ obj_pair(2,n6,n7).
 obj_succ(0,n13,n14).
 obj_succ(1,n4,n5).
 obj_succ(2,n6,n7).
-out_succ(0,n13,n20).
-out_succ(1,n4,n14).
-out_succ(2,n6,n17).
 size_lt(n0,n1).
 size_lt(n0,n10).
 size_lt(n0,n11).
