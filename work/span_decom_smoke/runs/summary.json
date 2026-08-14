@@ -1,78 +1,19 @@
 {
   "timeout": 60,
-  "n": 7,
-  "train_ok": 2,
-  "test_ok": 2,
+  "jobs": 1,
+  "n": 1,
+  "train_ok": 0,
+  "test_ok": 0,
   "rows": [
     {
-      "task": "1d_fill_0",
-      "status": "timeout",
-      "elapsed_s": 60.77,
-      "error": null,
-      "train_exact": false,
-      "test_exact": false,
-      "failure": "timeout",
-      "program": null
-    },
-    {
-      "task": "1d_move_1p_0",
-      "status": "timeout",
-      "elapsed_s": 60.51,
-      "error": null,
-      "train_exact": false,
-      "test_exact": false,
-      "failure": "timeout",
-      "program": null
-    },
-    {
-      "task": "1d_recolor_cmp_0",
-      "status": "ok",
-      "elapsed_s": 60.53,
-      "error": null,
-      "train_exact": true,
-      "test_exact": true,
-      "failure": null,
-      "program": "out_block(V0,V1,V2,V3):- non_largest(V0,V1),block(V0,V1,V2,V3).\nout_block(V0,V1,V2,V3):- v1(V3),largest(V0,V1),block(V0,V1,V2,V4)."
-    },
-    {
-      "task": "1d_denoising_1c_0",
-      "status": "ok",
-      "elapsed_s": 24.12,
-      "error": null,
-      "train_exact": true,
-      "test_exact": true,
-      "failure": null,
-      "program": "out_block(V0,V1,V2,V3):- block(V0,V1,V2,V3),size_add(V4,V5,V2)."
-    },
-    {
       "task": "1d_flip_0",
-      "status": "ok",
-      "elapsed_s": 60.61,
+      "status": "timeout",
+      "elapsed_s": 60.49,
       "error": null,
       "train_exact": false,
       "test_exact": false,
-      "failure": "paint_verify_failed",
-      "program": "out_block(V0,V1,V2,V3):- gap(V4,V1,V5,V6),block(V0,V5,V2,V3)."
-    },
-    {
-      "task": "1d_mirror_0",
-      "status": "ok",
-      "elapsed_s": 60.6,
-      "error": null,
-      "train_exact": false,
-      "test_exact": false,
-      "failure": "paint_verify_failed",
-      "program": "out_block(V0,V1,V2,V3):- block(V0,V1,V2,V3),gap(V4,V5,V1,V6)."
-    },
-    {
-      "task": "1d_hollow_0",
-      "status": "ok",
-      "elapsed_s": 60.5,
-      "error": null,
-      "train_exact": false,
-      "test_exact": false,
-      "failure": "paint_verify_failed",
-      "program": "out_block(V0,V1,V2,V3):- block(V0,V1,V5,V3),size_add(V2,V4,V6)."
+      "failure": "timeout",
+      "program": null
     }
   ]
 }

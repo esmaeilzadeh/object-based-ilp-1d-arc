@@ -1,1 +1,1 @@
-out_block(V0,V1,V2,V3):- block(V0,V1,V2,V3),size_add(V4,V5,V2).
+out_block(V0,V1,V2,V3):- largest(V0,V1),block(V0,V1,V2,V3).

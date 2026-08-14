@@ -24,24 +24,14 @@ from solver.induce import induce
 DATASET = ROOT / "raw_data/onedarcraw/dataset"
 OUT_ROOT = Path(__file__).resolve().parent / "runs"
 
-# Easy (co-located or uniform shift) vs correspondence-critical.
+# Flip only until this encoding passes; other categories stay commented out.
 TASKS = [
-    ("1d_fill", 0),
-    ("1d_move_1p", 0),
-    ("1d_recolor_cmp", 0),
-    ("1d_denoising_1c", 0),
     ("1d_flip", 0),
-    ("1d_mirror", 0),
-    ("1d_hollow", 0),
 ]
 
 
-def _p(i: int) -> str:
-    return f"p{i}"
-
-
-def _s(i: int) -> str:
-    return f"s{i}"
+def _n(i: int) -> str:
+    return f"n{i}"
 
 
 def _v(i: int) -> str:
@@ -49,86 +39,91 @@ def _v(i: int) -> str:
 
 
 def _bk_for_row(ex: int, row: Sequence[int]) -> Tuple[List[str], Set[int], int]:
-    """Lean object BK keyed by start column (shared ruler)."""
+    """Lean object BK on one shared numeric ruler (Decom-style succ/add)."""
     facts: List[str] = []
     runs = segment_all_runs(row)
     w = len(row)
     colored = [(s, e, c) for s, e, c in runs if c != 0]
     observed: Set[int] = {0, 1}
-    lengths: List[int] = []
+    starts: Set[int] = set()
 
     for s, e, c in colored:
         L = e - s + 1
-        lengths.append(L)
         observed.add(L)
-        facts.append(f"block({ex},{_p(s)},{_s(L)},{_v(c)}).")
+        starts.add(s)
+        facts.append(f"block({ex},{_n(s)},{_n(L)},{_v(c)}).")
 
     for (s1, e1, _c1), (s2, e2, _c2) in zip(colored, colored[1:]):
         L1 = e1 - s1 + 1
         L2 = e2 - s2 + 1
         g = s2 - e1 - 1
         observed.add(g)
-        facts.append(f"obj_succ({ex},{_p(s1)},{_p(s2)}).")
-        facts.append(f"gap({ex},{_p(s1)},{_p(s2)},{_s(g)}).")
+        facts.append(f"obj_succ({ex},{_n(s1)},{_n(s2)}).")
+        facts.append(f"gap({ex},{_n(s1)},{_n(s2)},{_n(g)}).")
         total = L1 + g + L2
         if total <= w:
-            facts.append(f"size_sum3({_s(L1)},{_s(g)},{_s(L2)},{_s(total)}).")
             observed.add(total)
-        for x, y in ((L1, g), (1, g), (g, L2)):
-            sm = x + y
-            if 0 <= sm <= w:
-                facts.append(f"size_add({_s(x)},{_s(y)},{_s(sm)}).")
-                observed.add(sm)
 
     for i in range(0, len(colored) - 1, 2):
         s1 = colored[i][0]
         s2 = colored[i + 1][0]
-        facts.append(f"obj_pair({ex},{_p(s1)},{_p(s2)}).")
+        facts.append(f"obj_pair({ex},{_n(s1)},{_n(s2)}).")
 
     if colored:
         max_L = max(e - s + 1 for s, e, _c in colored)
         for s, e, _c in colored:
             L = e - s + 1
             if L == max_L:
-                facts.append(f"largest({ex},{_p(s)}).")
+                facts.append(f"largest({ex},{_n(s)}).")
             else:
-                facts.append(f"non_largest({ex},{_p(s)}).")
+                facts.append(f"non_largest({ex},{_n(s)}).")
 
     for L in list(observed):
-        if L >= 2 and L <= w:
-            facts.append(f"size_add({_s(1)},{_s(L - 1)},{_s(L)}).")
+        if 2 <= L <= w:
             observed.add(L - 1)
 
     sizes = sorted(x for x in observed if x >= 0)
     for a in sizes:
         for b in sizes:
             if a < b:
-                facts.append(f"size_lt({_s(a)},{_s(b)}).")
+                facts.append(f"size_lt({_n(a)},{_n(b)}).")
 
-    # Shared-ruler arithmetic (Decom-style translation of Start).
-    offs = sorted({1, 2, 3} | {x for x in observed if 1 <= x <= w})
+    # Decom-style functional arithmetic on the shared ruler: a succ chain
+    # plus add over observed quantities (block starts, observed sizes, small
+    # constants). Single pass, no closure, no position-by-offset product.
+    base = sorted(observed | starts | {1, 2, 3})
     for i in range(w):
-        for k in offs:
-            j = i + k
-            if j <= w:
-                facts.append(f"offset_pos({_p(i)},{_s(k)},{_p(j)}).")
-            j = i - k
-            if j >= 0:
-                facts.append(f"offset_pos({_p(i)},{_s(k)},{_p(j)}).")
-        if i < w:
-            facts.append(f"cardinal_ordinal({_s(i)},{_p(i)}).")
-
-    for sz in sizes:
-        facts.append(f"size_even({_s(sz)})." if sz % 2 == 0 else f"size_odd({_s(sz)}).")
+        facts.append(f"succ({_n(i)},{_n(i + 1)}).")
+    for a in base:
+        for b in base:
+            c = a + b
+            if c <= w:
+                facts.append(f"add({_n(a)},{_n(b)},{_n(c)}).")
 
     return facts, observed, w
 
 
-def _exs_for_train(train: List[Tuple[int, List[int], List[int]]]) -> List[str]:
+def _colored_starts(row: Sequence[int]) -> List[int]:
+    return [s for s, _e, c in segment_all_runs(row) if c != 0]
+
+
+def _start_succ_facts(ex: int, row: Sequence[int], pred: str) -> List[str]:
+    """Consecutive colored-block starts (no other colored block between)."""
+    starts = _colored_starts(row)
+    return [
+        f"{pred}({ex},{_n(s1)},{_n(s2)})."
+        for s1, s2 in zip(starts, starts[1:])
+    ]
+
+
+def _exs_for_train(
+    train: List[Tuple[int, List[int], List[int]]], novel: Set[int]
+) -> List[str]:
     pos: List[str] = []
     neg: List[str] = []
     for ex, inp, out in train:
         w = len(out)
+        palette_ex = {c for c in inp if c != 0} | novel
         in_spans = [(s, e - s + 1, c) for s, e, c in segment_blocks(inp)]
         true: Set[Tuple[int, int, int]] = set()
         colors: Set[int] = set()
@@ -141,32 +136,32 @@ def _exs_for_train(train: List[Tuple[int, List[int], List[int]]]) -> List[str]:
             colors.add(c)
             observed.add(L)
             observed.add(s)
-            pos.append(f"pos(out_block({ex},{_p(s)},{_s(L)},{_v(c)})).")
+            pos.append(f"pos(out_block({ex},{_n(s)},{_n(L)},{_v(c)})).")
         if not true:
             continue
         len_cands = sorted(set(observed) | set(range(1, min(w, 12) + 1)))
         start_cands = sorted(set(range(0, w)) | {s for s, _L, _c in in_spans})
         for s, L, c in true:
-            for v in range(1, 10):
+            for v in sorted(palette_ex):
                 if v != c:
-                    neg.append(f"neg(out_block({ex},{_p(s)},{_s(L)},{_v(v)})).")
+                    neg.append(f"neg(out_block({ex},{_n(s)},{_n(L)},{_v(v)})).")
             for L2 in len_cands:
                 if L2 < 1 or L2 == L:
                     continue
                 if (s, L2, c) in true:
                     continue
-                neg.append(f"neg(out_block({ex},{_p(s)},{_s(L2)},{_v(c)})).")
+                neg.append(f"neg(out_block({ex},{_n(s)},{_n(L2)},{_v(c)})).")
             for s2 in start_cands:
                 if s2 == s or not (0 <= s2 < w):
                     continue
                 if (s2, L, c) in true:
                     continue
-                neg.append(f"neg(out_block({ex},{_p(s2)},{_s(L)},{_v(c)})).")
+                neg.append(f"neg(out_block({ex},{_n(s2)},{_n(L)},{_v(c)})).")
         # Identity/prefix killers at each input span start.
         for s, Lin, c in in_spans:
             for L0 in range(1, Lin + 1):
                 if (s, L0, c) not in true:
-                    neg.append(f"neg(out_block({ex},{_p(s)},{_s(L0)},{_v(c)})).")
+                    neg.append(f"neg(out_block({ex},{_n(s)},{_n(L0)},{_v(c)})).")
     seen: Set[str] = set()
     out_lines: List[str] = []
     for line in pos + neg:
@@ -177,24 +172,19 @@ def _exs_for_train(train: List[Tuple[int, List[int], List[int]]]) -> List[str]:
     return out_lines
 
 
-def _bias(bk_text: str, exs_text: str) -> str:
-    sizes = sorted({int(m) for m in __import__("re").findall(r"\bs(\d+)\b", bk_text + exs_text)})
-    values = sorted({int(m) for m in __import__("re").findall(r"\bv(\d+)\b", bk_text + exs_text)})
-    sizes = sorted(set(sizes) | {0, 1})
+def _bias(bk_text: str, exs_text: str, novel: Set[int], consts: Set[int]) -> str:
+    values = sorted(novel)
     preds = [
-        ("block", 4, "('ex','position','size','value')"),
-        ("obj_succ", 3, "('ex','position','position')"),
-        ("obj_pair", 3, "('ex','position','position')"),
-        ("gap", 4, "('ex','position','position','size')"),
-        ("largest", 2, "('ex','position')"),
-        ("non_largest", 2, "('ex','position')"),
-        ("size_add", 3, "('size','size','size')"),
-        ("size_sum3", 4, "('size','size','size','size')"),
-        ("size_lt", 2, "('size','size')"),
-        ("offset_pos", 3, "('position','size','position')"),
-        ("cardinal_ordinal", 2, "('size','position')"),
-        ("size_even", 1, "('size',)"),
-        ("size_odd", 1, "('size',)"),
+        ("block", 4, "('ex','num','num','value')"),
+        ("obj_succ", 3, "('ex','num','num')"),
+        ("out_succ", 3, "('ex','num','num')"),
+        ("obj_pair", 3, "('ex','num','num')"),
+        ("gap", 4, "('ex','num','num','num')"),
+        ("largest", 2, "('ex','num')"),
+        ("non_largest", 2, "('ex','num')"),
+        ("succ", 2, "('num','num')"),
+        ("add", 3, "('num','num','num')"),
+        ("size_lt", 2, "('num','num')"),
     ]
     present = {n for n, _a, _t in preds if f"{n}(" in bk_text}
     parts = [
@@ -202,6 +192,7 @@ def _bias(bk_text: str, exs_text: str) -> str:
         "max_body(6).",
         "max_clauses(3).",
         "enable_multi_clause.",
+        "functional.",
         ":- not body_var(_,1).",
         ":- not body_var(_,2).",
         ":- not body_var(_,3).",
@@ -213,12 +204,12 @@ def _bias(bk_text: str, exs_text: str) -> str:
             parts.append(f"body_pred({n},{a}).")
     parts.append("body_pred(C,1):- constant(C,_).")
     parts.append("")
-    for i in sizes:
-        parts.append(f"constant(s{i}, 'size').")
+    for i in sorted(consts):
+        parts.append(f"constant(n{i}, 'num').")
     for i in values:
         parts.append(f"constant(v{i}, 'value').")
     parts.append("")
-    parts.append("type(out_block,('ex','position','size','value')).")
+    parts.append("type(out_block,('ex','num','num','value')).")
     for n, _a, t in preds:
         if n in present:
             parts.append(f"type({n},{t}).")
@@ -226,20 +217,55 @@ def _bias(bk_text: str, exs_text: str) -> str:
     parts.append("")
     # Require some input block in the clause; do NOT pin head Start (that kills shifts).
     parts.append(":- clause(C), not body_literal(C, block, 4, (0,_,_,_)).")
-    if "offset_pos" in present:
+    # Cut 1: head Start is copied from a block or constructed (succ/add/obj_succ/out_succ).
+    start_ok = ["body_literal(C, block, 4, (0,1,_,_))"]
+    if "succ" in present:
+        start_ok += [
+            "body_literal(C, succ, 2, (1,_))",
+            "body_literal(C, succ, 2, (_,1))",
+        ]
+    if "add" in present:
+        start_ok += [
+            "body_literal(C, add, 3, (1,_,_))",
+            "body_literal(C, add, 3, (_,_,1))",
+        ]
+    if "obj_succ" in present:
+        start_ok += [
+            "body_literal(C, obj_succ, 3, (0,1,_))",
+            "body_literal(C, obj_succ, 3, (0,_,1))",
+        ]
+    if "out_succ" in present:
+        start_ok += [
+            "body_literal(C, out_succ, 3, (0,1,_))",
+            "body_literal(C, out_succ, 3, (0,_,1))",
+        ]
+    parts.append(":- clause(C), " + ", ".join(f"not {a}" for a in start_ok) + ".")
+    # Cut 2: at most one succ/add literal per clause.
+    if "succ" in present:
         parts.append(
-            "bad_body(offset_pos, Vars):- vars(_, Vars), Vars = (A,_,R), "
-            "A != 1, R != 1."
+            ":- clause(C), body_literal(C, succ, 2, V1), "
+            "body_literal(C, succ, 2, V2), V1 != V2."
         )
-    if "size_add" in present:
+    if "add" in present:
         parts.append(
-            "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
-            "A != 2, B != 2, R != 2."
+            ":- clause(C), body_literal(C, add, 3, V1), "
+            "body_literal(C, add, 3, V2), V1 != V2."
         )
-    if "size_sum3" in present:
+    if "succ" in present and "add" in present:
         parts.append(
-            "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), "
-            "A != 2, B != 2, C != 2, R != 2."
+            ":- clause(C), body_literal(C, succ, 2, _), "
+            "body_literal(C, add, 3, _)."
+        )
+    # Tightened 5: succ/add must mention head Start (var 1) or Len (var 2).
+    if "add" in present:
+        parts.append(
+            "bad_body(add, Vars):- vars(_, Vars), Vars = (A,B,R), "
+            "A != 1, B != 1, R != 1, A != 2, B != 2, R != 2."
+        )
+    if "succ" in present:
+        parts.append(
+            "bad_body(succ, Vars):- vars(_, Vars), Vars = (A,R), "
+            "A != 1, R != 1, A != 2, R != 2."
         )
     parts.append("")
     return "\n".join(parts) + "\n"
@@ -255,30 +281,85 @@ def encode_task(src: Path, out_dir: Path) -> Dict:
     test_out = flatten(obj["test"][0]["output"])
     test_id = len(train)
 
+    # Palette policy: only novel train-output colors (train-out minus all
+    # train-in) become constants/unaries. Every other color reaches a clause
+    # only through that example's own block/4 facts, so the per-example color
+    # search space is exactly that example's own colors (+ novel).
+    # Per-example wrong-color negs use input colors + novel.
+    # Test output is never read.
+    train_in_all: Set[int] = set()
+    for _i, inp, _out in train:
+        train_in_all |= {c for c in inp if c != 0}
+    train_out_all: Set[int] = set()
+    for _i, _inp, out in train:
+        train_out_all |= {c for c in out if c != 0}
+    novel = train_out_all - train_in_all
+
     bk_lines: List[str] = []
     test_bk: List[str] = []
     max_w = max(len(r) for _i, r, o in train for r in (r, o))
     max_w = max(max_w, len(test_in), len(test_out))
-    for ex, inp, _out in train:
-        facts, _obs, _w = _bk_for_row(ex, inp)
+    observed_all: Set[int] = set()
+    for ex, inp, out in train:
+        facts, obs, _w = _bk_for_row(ex, inp)
         bk_lines.extend(facts)
-    facts, _obs, _w = _bk_for_row(test_id, test_in)
+        observed_all |= obs
+        bk_lines.extend(_start_succ_facts(ex, out, "out_succ"))
+        observed_all |= set(_colored_starts(out))
+    facts, obs, _w = _bk_for_row(test_id, test_in)
     test_bk.extend(facts)
+    observed_all |= obs
 
-    for i in range(10):
+    for i in sorted(novel):
         bk_lines.append(f"v{i}(v{i}).")
         test_bk.append(f"v{i}(v{i}).")
-    for i in range(max_w + 1):
-        bk_lines.append(f"s{i}(s{i}).")
-        test_bk.append(f"s{i}(s{i}).")
+    consts = observed_all | {0, 1, 2, 3}
+    for i in sorted(consts):
+        bk_lines.append(f"n{i}(n{i}).")
+        test_bk.append(f"n{i}(n{i}).")
+
+    # Paint checker lives in train BK only (never test_bk). Not passed to
+    # _bias, so gold/ord/need_block cannot become body preds.
+    checker: List[str] = [":- dynamic out_block/4."]
+    checker.extend(f"ord({_n(i)},{i})." for i in range(max_w + 1))
+    for ex, _inp, out in train:
+        for p, c in enumerate(out):
+            checker.append(f"gold({ex},{_n(p)},{_v(c)}).")
+    for ex, _inp, out in train:
+        for s, e, c in segment_blocks(out):
+            checker.append(
+                f"need_block({ex},{_n(s)},{_n(e - s + 1)},{_v(c)})."
+            )
+    checker.extend(
+        [
+            "cover_start(E,P,S) :- out_block(E,S,L,_C), ord(S,Si), ord(L,Li), "
+            "ord(P,Pi), Pi >= Si, Pi < Si+Li.",
+            "overlap(E,P) :- cover_start(E,P,S1), cover_start(E,P,S2), S1 \\= S2.",
+            "uncovered(E,P) :- gold(E,P,C), C \\= v0, \\+ cover_start(E,P,_).",
+            "extra(E,P) :- cover_start(E,P,_), gold(E,P,v0).",
+            "wrong(E,P) :- cover_start(E,P,S), out_block(E,S,_L,C), gold(E,P,G), G \\= C.",
+            "stray(E,P) :- cover_start(E,P,_), \\+ gold(E,P,_).",
+            "block_oob :- out_block(E,S,L,_), ord(S,Si), ord(L,Li), "
+            "End is Si+Li-1, \\+ (ord(P,End), gold(E,P,_)).",
+            "missing_head :- need_block(E,S,L,C), \\+ out_block(E,S,L,C).",
+            "non_functional(_Atom) :- \\+ missing_head, overlap(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, uncovered(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, extra(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, wrong(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, stray(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, block_oob.",
+        ]
+    )
 
     bk_lines = sorted(set(bk_lines))
     test_bk = sorted(set(test_bk))
-    exs = _exs_for_train(train)
-    (out_dir / "bk.pl").write_text("\n".join(bk_lines) + "\n")
+    exs = _exs_for_train(train, novel)
+    (out_dir / "bk.pl").write_text("\n".join(bk_lines) + "\n" + "\n".join(checker) + "\n")
     (out_dir / "test_bk.pl").write_text("\n".join(test_bk) + "\n")
     (out_dir / "exs.pl").write_text("\n".join(exs) + "\n")
-    (out_dir / "bias.pl").write_text(_bias("\n".join(bk_lines), "\n".join(exs)))
+    (out_dir / "bias.pl").write_text(
+        _bias("\n".join(bk_lines), "\n".join(exs), novel, consts)
+    )
     meta = {
         "train": [{"id": e, "input": inp, "output": out} for e, inp, out in train],
         "test": {"id": test_id, "input": test_in, "output": test_out},
@@ -294,7 +375,7 @@ def _collect(ex_id: int, width: int) -> List[Tuple[int, int, int]]:
     for s in range(0, width):
         for L in range(1, width - s + 1):
             for c in range(1, 10):
-                atom = f"out_block({ex_id},{_p(s)},{_s(L)},{_v(c)})"
+                atom = f"out_block({ex_id},{_n(s)},{_n(L)},{_v(c)})"
                 try:
                     res = query_once(atom)
                 except Exception:
@@ -393,24 +474,31 @@ def run_one(cat: str, trial: int, timeout: int) -> Dict:
 
 def main() -> None:
     timeout = int(sys.argv[1]) if len(sys.argv) > 1 else 60
-    print(f"span-decom smoke timeout={timeout}s tasks={len(TASKS)}", flush=True)
-    rows = []
+    print(
+        f"span-decom smoke timeout={timeout}s sequential tasks={len(TASKS)}",
+        flush=True,
+    )
+    rows: List[Dict] = []
     for cat, trial in TASKS:
-        print(f"--- {cat}_{trial} ---", flush=True)
         r = run_one(cat, trial, timeout)
         rows.append(r)
         prog = (r.get("program") or "").replace("\n", " | ")[:200]
         print(
+            f"--- {r['task']} ---\n"
             f"  {r['status']:10} train={r['train_exact']} test={r['test_exact']} "
             f"{r['elapsed_s']}s fail={r['failure']}\n  {prog}",
             flush=True,
         )
     summary = {
         "timeout": timeout,
+        "jobs": 1,
         "n": len(rows),
         "train_ok": sum(1 for r in rows if r["train_exact"]),
         "test_ok": sum(1 for r in rows if r["test_exact"]),
-        "rows": [{k: v for k, v in r.items() if k != "program"} | {"program": r.get("program")} for r in rows],
+        "rows": [
+            {k: v for k, v in r.items() if k != "program"} | {"program": r.get("program")}
+            for r in rows
+        ],
     }
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
     (OUT_ROOT / "summary.json").write_text(json.dumps(summary, indent=2))
