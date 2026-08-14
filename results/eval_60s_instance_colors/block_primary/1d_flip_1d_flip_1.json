@@ -1,0 +1,66 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_flip/1d_flip_1.json",
+  "task": "1d_flip",
+  "mode": "block_primary",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "fallback_identity",
+  "confidence": "low",
+  "verified_train": false,
+  "elapsed": 63.735893964767456,
+  "predicted": [
+    0,
+    0,
+    6,
+    4,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0
+  ],
+  "gold": [
+    0,
+    0,
+    4,
+    4,
+    4,
+    4,
+    6,
+    0,
+    0,
+    0
+  ],
+  "failure_reason": "paint_verify_failed",
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 179,
+    "max_vars": 10,
+    "max_body": 6,
+    "max_clauses": 3,
+    "max_literals": 21,
+    "timeout_s": 60,
+    "induce_elapsed_s": 62.961,
+    "error": null
+  },
+  "program": "out_block(V0,V1,V2,V3,V4):- block(V0,V7,V3,V4),block(V0,V1,V6,V5),size_sum3(V6,V2,V3,V8).\nout_block(V0,V1,V2,V3,V4):- block(V0,V1,V5,V8),block(V0,V7,V3,V4),size_sum3(V3,V6,V2,V5).",
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "git_sha": "ab523e69db7832f14e77e64361cd544e770e9d69",
+    "git_branch": "cursor/instance-color-constants",
+    "git_dirty": true,
+    "mode": "block_primary",
+    "timeout": 60,
+    "jobs": 1,
+    "started_at": "2026-08-13T16:19:13.650817+00:00"
+  }
+}

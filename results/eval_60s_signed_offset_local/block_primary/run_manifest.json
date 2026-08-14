@@ -1,0 +1,22 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-13T20:40:04.561941+00:00",
+  "finished_at": null,
+  "git_sha": "ae31d333cefe9ca16482b0ac3d4a7602b0a35460",
+  "git_branch": "cursor/signed-offset-anchor",
+  "git_dirty": true,
+  "git_describe": "ae31d33",
+  "hostname": "mohamad-Precision-M4600",
+  "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "mode": "block_primary",
+  "timeout": 60,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "raw_data/onedarcraw/dataset",
+  "out": "results/eval_60s_signed_offset_local",
+  "pid": 182371,
+  "entry": "run_solver_eval_parallel",
+  "phase": "start",
+  "n_files": 54
+}

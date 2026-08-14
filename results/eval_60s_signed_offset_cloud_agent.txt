@@ -1,0 +1,6 @@
+agent_id=bc-fe0528ce-0316-4319-a042-edd40a59ed37
+run_id=run-aa6b0557-5f34-44c9-9f15-d913a824a3dd
+branch=cursor/signed-offset-anchor
+sha=ae31d333cefe9ca16482b0ac3d4a7602b0a35460
+url=https://cursor.com/agents?id=bc-fe0528ce-0316-4319-a042-edd40a59ed37
+jobs=2
