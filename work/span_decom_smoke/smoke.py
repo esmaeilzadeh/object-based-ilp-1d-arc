@@ -103,19 +103,6 @@ def _bk_for_row(ex: int, row: Sequence[int]) -> Tuple[List[str], Set[int], int]:
     return facts, observed, w
 
 
-def _colored_starts(row: Sequence[int]) -> List[int]:
-    return [s for s, _e, c in segment_all_runs(row) if c != 0]
-
-
-def _start_succ_facts(ex: int, row: Sequence[int], pred: str) -> List[str]:
-    """Consecutive colored-block starts (no other colored block between)."""
-    starts = _colored_starts(row)
-    return [
-        f"{pred}({ex},{_n(s1)},{_n(s2)})."
-        for s1, s2 in zip(starts, starts[1:])
-    ]
-
-
 def _exs_for_train(
     train: List[Tuple[int, List[int], List[int]]], novel: Set[int]
 ) -> List[str]:
@@ -177,7 +164,6 @@ def _bias(bk_text: str, exs_text: str, novel: Set[int], consts: Set[int]) -> str
     preds = [
         ("block", 4, "('ex','num','num','value')"),
         ("obj_succ", 3, "('ex','num','num')"),
-        ("out_succ", 3, "('ex','num','num')"),
         ("obj_pair", 3, "('ex','num','num')"),
         ("gap", 4, "('ex','num','num','num')"),
         ("largest", 2, "('ex','num')"),
@@ -217,7 +203,7 @@ def _bias(bk_text: str, exs_text: str, novel: Set[int], consts: Set[int]) -> str
     parts.append("")
     # Require some input block in the clause; do NOT pin head Start (that kills shifts).
     parts.append(":- clause(C), not body_literal(C, block, 4, (0,_,_,_)).")
-    # Cut 1: head Start is copied from a block or constructed (succ/add/obj_succ/out_succ).
+    # Cut 1: head Start is copied from a block or constructed (succ/add/obj_succ).
     start_ok = ["body_literal(C, block, 4, (0,1,_,_))"]
     if "succ" in present:
         start_ok += [
@@ -233,11 +219,6 @@ def _bias(bk_text: str, exs_text: str, novel: Set[int], consts: Set[int]) -> str
         start_ok += [
             "body_literal(C, obj_succ, 3, (0,1,_))",
             "body_literal(C, obj_succ, 3, (0,_,1))",
-        ]
-    if "out_succ" in present:
-        start_ok += [
-            "body_literal(C, out_succ, 3, (0,1,_))",
-            "body_literal(C, out_succ, 3, (0,_,1))",
         ]
     parts.append(":- clause(C), " + ", ".join(f"not {a}" for a in start_ok) + ".")
     # Cut 2: at most one succ/add literal per clause.
@@ -304,8 +285,6 @@ def encode_task(src: Path, out_dir: Path) -> Dict:
         facts, obs, _w = _bk_for_row(ex, inp)
         bk_lines.extend(facts)
         observed_all |= obs
-        bk_lines.extend(_start_succ_facts(ex, out, "out_succ"))
-        observed_all |= set(_colored_starts(out))
     facts, obs, _w = _bk_for_row(test_id, test_in)
     test_bk.extend(facts)
     observed_all |= obs
@@ -318,8 +297,10 @@ def encode_task(src: Path, out_dir: Path) -> Dict:
         bk_lines.append(f"n{i}(n{i}).")
         test_bk.append(f"n{i}(n{i}).")
 
-    # Paint checker lives in train BK only (never test_bk). Not passed to
-    # _bias, so gold/ord/need_block cannot become body preds.
+    # Train output is checker-only: never a body pred, never in test_bk.
+    # functional. asks non_functional/1, which rejects a complete hypothesis
+    # unless each gold pixel belongs to at most one out_block (overlap) and
+    # colored pixels are covered with the gold color (uncovered/extra/wrong).
     checker: List[str] = [":- dynamic out_block/4."]
     checker.extend(f"ord({_n(i)},{i})." for i in range(max_w + 1))
     for ex, _inp, out in train:
