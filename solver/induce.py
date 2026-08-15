@@ -75,12 +75,13 @@ def _worker(
             timeout=int(timeout_s),
             max_literals=int(max_literals),
         )
-        prog, _terminated = learn_solution(settings)
+        prog, terminated = learn_solution(settings)
         if prog:
             Path(out_prog).write_text(prog if prog.endswith("\n") else prog + "\n")
-            q.put(("ok", prog, None))
+            # Popper may return a leftover hypothesis after its own timeout.
+            q.put(("timeout" if terminated else "ok", prog, None))
         else:
-            q.put(("exhausted", None, None))
+            q.put(("timeout" if terminated else "exhausted", None, None))
     except Exception as e:  # noqa: BLE001 — surface to parent
         q.put(("error", None, str(e)))
 
@@ -154,6 +155,17 @@ def induce(
                 status="error",
                 elapsed_s=elapsed,
                 error=err,
+                max_literals=lit_cap,
+            )
+        # Vendored Popper sets terminated_by_timeout=False even when it kills the
+        # search process; treat near-budget exits with a leftover as timeout.
+        if prog and (
+            status == "timeout" or elapsed >= join_budget * 0.95
+        ):
+            return InduceResult(
+                program=prog,
+                status="timeout",
+                elapsed_s=elapsed,
                 max_literals=lit_cap,
             )
         if prog:
