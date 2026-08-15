@@ -287,8 +287,8 @@ def encode_task(src: Path, out_dir: Path) -> Dict:
             "(L1 \\= L2 ; C1 \\= C2).",
             "extra_head :- out_block(E,B,L,C), \\+ need_block(E,B,L,C).",
             "missing_head :- need_block(E,B,L,C), \\+ out_block(E,B,L,C).",
-            "non_functional(_Atom) :- \\+ missing_head, dup_bid.",
-            "non_functional(_Atom) :- \\+ missing_head, extra_head.",
+            "non_functional(_Atom) :- dup_bid.",
+            "non_functional(_Atom) :- extra_head.",
         ]
     )
 
