@@ -285,34 +285,41 @@ Copies the leading empty; does not grow the object by the gap. Same root.
 - **Not** fixed by another 120s. Flip already fits; the rest are language
   limits, not a missing `largest` / `size_even` label.
 
-## Suggestions (rewritten; prior 1/3/4 retracted)
+## Suggestions (rewritten again)
 
-Bar: no pred that *is* the family decision; no checker change that
-rejects flip partials; uniform ≠ honest.
+**Not implementing** `size_even`, `size_odd`, `largest`, `non_largest`,
+or any other family-decision pred. The earlier “even is `add(K,K,L)`”
+line was wrong as a reason to skip *or* to add parity: smoke `add`/`succ`
+are pinned to head bid/len (`num` smashed together, then `bad_body` on
+V1/V2). That is not “cardinal arith on all cardinals.”
 
-### Keep
+### Do now (reporting only; no language change)
 
-1. **Report leftover as `timeout`.** Honor `_terminated` even when a
-   `prog` exists. Does not change search. Stops calling leftovers `ok`.
-2. **Leave `missing_head` out of `non_functional`.** Completeness is a
-   decode/score check only. Flip is 3 clauses; partials must stay legal.
-3. **Do not add BK.** Smoke already has `in_block`, `empty`, `in_succ`,
-   `in_col_succ`, `in_pair`, `succ`, `add`, `size_lt`. That is the
-   language under test. Failures mean this language cannot say the
-   transform, not that we forgot a label.
-4. **Optional bias experiment only (no score promise):** allow `succ`
-   and `add` in one clause, and/or raise `max_clauses`, *uniformly*.
-   This tests whether move/scale can be *said* with current BK. It will
-   not lift denoise, recolor, pcopy, or mirror. Larger leftovers are
-   likely.
+1. Report leftover as `timeout` (`_terminated`). Do not call it `ok`.
+2. Leave `missing_head` out of `non_functional` (flip partials).
 
-### Retracted (do not do)
+### Acceptable language (if later approved — not this turn)
 
-- `non_functional :- missing_head` — kills flip during search.
-- `largest` / `non_largest` — denoise decision, precomputed.
-- `size_even` / `size_odd` — recolor_oe decision; even is already
-  `add(K,K,L)`.
-- `color_lt`, `color_count`, pointer/unique-color role, named `gap`
-  as grow-to-pointer quantity — same cheat, other families.
-- Marker/mirror geometry, category-gated bias, pixel/hybrid rescue,
-  another long timeout as a capability fix.
+Simple arith only. Grounder emits the **same** arith for every domain
+of that kind. Two predicates, two kinds:
+
+| kind | domains (examples) | one arith |
+|---|---|---|
+| cardinal | length, gap width, count-as-a-number | `add/3` (and `lt` if needed) |
+| ordinal | bid, position, rank | `succ/2` (and `lt` if needed) |
+
+No `size_add` vs `count_add` vs `gap_add`. No `size_even`. No `largest`.
+Parity is whatever `add(K,K,L)` can say **after** cardinal `add` is
+actually grounded on all cardinal values, not a special pred and not
+add-restricted to “size or index head slot.” Colors stay `value`
+(categorical), not a third arith.
+
+Smoke today collapses bid (ordinal) and len (cardinal) into one `num`,
+then restricts `add`/`succ` to those head slots. That is the opposite
+of this split.
+
+### Still refuse
+
+`missing_head` in `non_functional`; `largest` / `size_even` / `color_lt`
+/ `color_count` / pointer role / marker-mirror / category-gated bias /
+pixel rescue / longer timeout as a capability result.
