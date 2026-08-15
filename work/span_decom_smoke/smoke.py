@@ -10,7 +10,6 @@ Does not modify solver/. Isolated under work/span_decom_smoke/.
 from __future__ import annotations
 
 import json
-import multiprocessing as mp
 import sys
 from pathlib import Path
 from typing import Dict, List, Sequence, Set, Tuple
@@ -61,16 +60,30 @@ def _pred_in_bk(bk_text: str, name: str) -> bool:
     )
 
 
+def _emit_my_succ_bidir(facts: List[str], values: Sequence[int]) -> None:
+    """Bidirectional my_succ on consecutive integers present in ``values``."""
+    present = {x for x in values if x >= 0}
+    for i in sorted(present):
+        if i + 1 in present:
+            facts.append(f"my_succ({_n(i)},{_n(i + 1)}).")
+            facts.append(f"my_succ({_n(i + 1)},{_n(i)}).")
+
+
 def _bk_for_row(ex: int, row: Sequence[int]) -> Tuple[List[str], Set[int], int]:
-    """Input BK: in_block + succession on run indices; add/succ on bids and lengths."""
+    """Input BK: in_block + run succession; ordinal my_succ; cardinal add/lt/gt.
+
+    Ordinal domain = bids (small). Cardinal domain = run lengths (incl. empties)
+    plus {0,1}. Mixing via shared ``nK`` is allowed; do not ground a pixel-width
+    ruler into the bid line. ``my_succ`` is bidirectional (reverse order).
+    """
     facts: List[str] = []
     runs = _runs(row)
     w = len(row)
     bids = [b for b, _L, _c in runs]
     lengths = [L for _b, L, _c in runs]
-    observed: Set[int] = {0, 1}
-    observed.update(bids)
-    observed.update(lengths)
+    ordinals: Set[int] = set(bids)
+    cardinals: Set[int] = {0, 1}
+    cardinals.update(lengths)
 
     for b, L, c in runs:
         facts.append(f"in_block({ex},{_n(b)},{_n(L)},{_v(c)}).")
@@ -89,23 +102,30 @@ def _bk_for_row(ex: int, row: Sequence[int]) -> Tuple[List[str], Set[int], int]:
         b2 = colored[i + 1][0]
         facts.append(f"in_pair({ex},{_n(b1)},{_n(b2)}).")
 
-    sizes = sorted(x for x in observed if x >= 0)
-    for a in sizes:
-        for b in sizes:
-            if a < b:
-                facts.append(f"size_lt({_n(a)},{_n(b)}).")
+    # Ordinal: small bid line only (not the pixel / length ruler).
+    _emit_my_succ_bidir(facts, sorted(ordinals))
+    # Cardinal: my_succ is meaningful (+1) but secondary to add.
+    _emit_my_succ_bidir(facts, sorted(cardinals))
 
-    # Small arithmetic on bids and lengths only (not the pixel ruler).
-    base = sorted(observed | {1, 2, 3})
-    cap = max([w, *base], default=w)
-    for i in range(max(base) if base else 0):
-        facts.append(f"succ({_n(i)},{_n(i + 1)}).")
-    for a in base:
-        for b in base:
+    card_base = sorted(cardinals | {1, 2, 3})
+    card_cap = max([max(cardinals, default=1), *card_base], default=1)
+    # Cap add results by tape width so move/scale length arith can close; do not
+    # feed that cap back into the ordinal bid line.
+    add_cap = max(w, card_cap)
+    for a in card_base:
+        for b in card_base:
             c = a + b
-            if c <= cap:
+            if c <= add_cap:
                 facts.append(f"add({_n(a)},{_n(b)},{_n(c)}).")
+                cardinals.add(c)
 
+    for a in sorted(cardinals):
+        for b in sorted(cardinals):
+            if a < b:
+                facts.append(f"lt({_n(a)},{_n(b)}).")
+                facts.append(f"gt({_n(b)},{_n(a)}).")
+
+    observed = ordinals | cardinals
     return facts, observed, w
 
 
@@ -153,9 +173,10 @@ def _bias(bk_text: str, novel: Set[int], consts: Set[int]) -> str:
         ("in_succ", 3, "('ex','num','num')"),
         ("in_col_succ", 3, "('ex','num','num')"),
         ("in_pair", 3, "('ex','num','num')"),
-        ("succ", 2, "('num','num')"),
+        ("my_succ", 2, "('num','num')"),
         ("add", 3, "('num','num','num')"),
-        ("size_lt", 2, "('num','num')"),
+        ("lt", 2, "('num','num')"),
+        ("gt", 2, "('num','num')"),
     ]
     present = {n for n, _a, _t in preds if _pred_in_bk(bk_text, n)}
     parts = [
@@ -188,10 +209,10 @@ def _bias(bk_text: str, novel: Set[int], consts: Set[int]) -> str:
     parts.append("")
     parts.append(":- clause(C), not body_literal(C, in_block, 4, (0,_,_,_)).")
     bid_ok = ["body_literal(C, in_block, 4, (0,1,_,_))"]
-    if "succ" in present:
+    if "my_succ" in present:
         bid_ok += [
-            "body_literal(C, succ, 2, (1,_))",
-            "body_literal(C, succ, 2, (_,1))",
+            "body_literal(C, my_succ, 2, (1,_))",
+            "body_literal(C, my_succ, 2, (_,1))",
         ]
     if "add" in present:
         bid_ok += [
@@ -209,29 +230,25 @@ def _bias(bk_text: str, novel: Set[int], consts: Set[int]) -> str:
             "body_literal(C, in_col_succ, 3, (0,_,1))",
         ]
     parts.append(":- clause(C), " + ", ".join(f"not {a}" for a in bid_ok) + ".")
-    if "succ" in present:
+    # At most one my_succ / one add per clause; both may appear together.
+    if "my_succ" in present:
         parts.append(
-            ":- clause(C), body_literal(C, succ, 2, V1), "
-            "body_literal(C, succ, 2, V2), V1 != V2."
+            ":- clause(C), body_literal(C, my_succ, 2, V1), "
+            "body_literal(C, my_succ, 2, V2), V1 != V2."
         )
     if "add" in present:
         parts.append(
             ":- clause(C), body_literal(C, add, 3, V1), "
             "body_literal(C, add, 3, V2), V1 != V2."
         )
-    if "succ" in present and "add" in present:
-        parts.append(
-            ":- clause(C), body_literal(C, succ, 2, _), "
-            "body_literal(C, add, 3, _)."
-        )
     if "add" in present:
         parts.append(
             "bad_body(add, Vars):- vars(_, Vars), Vars = (A,B,R), "
             "A != 1, B != 1, R != 1, A != 2, B != 2, R != 2."
         )
-    if "succ" in present:
+    if "my_succ" in present:
         parts.append(
-            "bad_body(succ, Vars):- vars(_, Vars), Vars = (A,R), "
+            "bad_body(my_succ, Vars):- vars(_, Vars), Vars = (A,R), "
             "A != 1, R != 1, A != 2, R != 2."
         )
     parts.append("")
@@ -438,11 +455,6 @@ def run_one(cat: str, trial: int, timeout: int) -> Dict:
     return result
 
 
-def _run_tuple(args: Tuple[str, int, int]) -> Dict:
-    cat, trial, timeout = args
-    return run_one(cat, trial, timeout)
-
-
 def _print_row(r: Dict) -> None:
     prog = (r.get("program") or "").replace("\n", " | ")[:200]
     print(
@@ -455,10 +467,10 @@ def _print_row(r: Dict) -> None:
 
 def main() -> None:
     timeout = int(sys.argv[1]) if len(sys.argv) > 1 else 60
-    jobs = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    jobs = 1
     tasks = _all_first3()
     print(
-        f"span-decom smoke timeout={timeout}s jobs={jobs} tasks={len(tasks)}",
+        f"span-decom smoke timeout={timeout}s jobs={jobs} (sequential) tasks={len(tasks)}",
         flush=True,
     )
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
@@ -474,20 +486,10 @@ def main() -> None:
     (OUT_ROOT / "run_manifest.json").write_text(json.dumps(meta, indent=2) + "\n")
 
     rows: List[Dict] = []
-    if jobs <= 1:
-        for cat, trial in tasks:
-            r = run_one(cat, trial, timeout)
-            rows.append(r)
-            _print_row(r)
-    else:
-        ctx = mp.get_context("spawn")
-        with ctx.Pool(jobs) as pool:
-            for r in pool.imap_unordered(
-                _run_tuple, [(c, t, timeout) for c, t in tasks]
-            ):
-                rows.append(r)
-                _print_row(r)
-        rows.sort(key=lambda r: r["task"])
+    for cat, trial in tasks:
+        r = run_one(cat, trial, timeout)
+        rows.append(r)
+        _print_row(r)
 
     finished = mark_finished(meta)
     summary = {
