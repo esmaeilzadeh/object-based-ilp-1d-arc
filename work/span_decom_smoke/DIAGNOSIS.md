@@ -14,8 +14,9 @@ Induce is running; almost every `status=ok` at ~120.3s is a **timeout leftover**
 ## Verdict in one paragraph
 
 Surface fail is almost always `decode:width` after a leftover program that
-**under-generates** `out_block` atoms. That is amplified by two machinery holes
-(leftover marked `ok`; `missing_head` not in the functional checker).
+**under-generates** `out_block` atoms. Leftover marked `ok` is a reporting
+hole. `missing_head` staying out of `non_functional` is **intentional**
+(flip partials); do not “fix” it.
 
 Under that, the language cannot say the real transform for most families:
 
@@ -45,12 +46,12 @@ If the child exits after ~120s with any `prog`, smoke prints `ok`.
 These are **not** solutions. Typical leftover: 1–3 clauses that copy
 `in_block` plus a constant (`n14(V2)`, `n0(V1)`).
 
-### 2. Functional checker allows missing heads
+### 2. Functional checker allows missing heads (keep it that way)
 
 Smoke BK defines `missing_head` but does **not** wire it into `non_functional`
-(only `dup_bid` and `extra_head`). Under-generation can pass the functional
-test. Decode then concatenates predicted runs in bid order →
-`decode:width 0 P!=W` (often `P=0`).
+(only `dup_bid` and `extra_head`). That is how flip survives: a 1- or 2-clause
+partial under-generates and must stay legal. Completeness is checked at
+decode, not inside Popper. Do not add `non_functional :- missing_head`.
 
 ### 3. Independent in/out bid numbering
 
@@ -281,19 +282,37 @@ Copies the leading empty; does not grow the object by the gap. Same root.
   Different language (index-only smoke vs object-head solver).
 - **Not** “Popper found nothing”. It found leftover fragments because
   under-generation is legal and leftovers are labeled `ok`.
-- **Not** fixed by another 120s. Flip already fits; the rest need language
-  or honest timeout / complete-head checking.
+- **Not** fixed by another 120s. Flip already fits; the rest are language
+  limits, not a missing `largest` / `size_even` label.
 
-## Allowed next levers (if later approved)
+## Suggestions (rewritten; prior 1/3/4 retracted)
 
-1. Wire `missing_head` into `non_functional` so leftovers that skip pos
-   atoms are rejected (measurement fix, not a score hack).
-2. Honor `_terminated` → `timeout` even when a leftover `prog` exists.
-3. Uniform BK that is still mechanical: `largest`/`non_largest`,
-   `size_even`/`size_odd`, `gap`/`obj_succ` — **only** if emitted for every
-   instance from observed sizes, not gated by category name.
-4. Relax “not both succ and add” / `max_clauses(3)` uniformly if search
-   cost is acceptable.
+Bar: no pred that *is* the family decision; no checker change that
+rejects flip partials; uniform ≠ honest.
 
-Do not add marker/mirror geometry or category-gated bias without an
-explicit dedicated confirm.
+### Keep
+
+1. **Report leftover as `timeout`.** Honor `_terminated` even when a
+   `prog` exists. Does not change search. Stops calling leftovers `ok`.
+2. **Leave `missing_head` out of `non_functional`.** Completeness is a
+   decode/score check only. Flip is 3 clauses; partials must stay legal.
+3. **Do not add BK.** Smoke already has `in_block`, `empty`, `in_succ`,
+   `in_col_succ`, `in_pair`, `succ`, `add`, `size_lt`. That is the
+   language under test. Failures mean this language cannot say the
+   transform, not that we forgot a label.
+4. **Optional bias experiment only (no score promise):** allow `succ`
+   and `add` in one clause, and/or raise `max_clauses`, *uniformly*.
+   This tests whether move/scale can be *said* with current BK. It will
+   not lift denoise, recolor, pcopy, or mirror. Larger leftovers are
+   likely.
+
+### Retracted (do not do)
+
+- `non_functional :- missing_head` — kills flip during search.
+- `largest` / `non_largest` — denoise decision, precomputed.
+- `size_even` / `size_odd` — recolor_oe decision; even is already
+  `add(K,K,L)`.
+- `color_lt`, `color_count`, pointer/unique-color role, named `gap`
+  as grow-to-pointer quantity — same cheat, other families.
+- Marker/mirror geometry, category-gated bias, pixel/hybrid rescue,
+  another long timeout as a capability fix.
