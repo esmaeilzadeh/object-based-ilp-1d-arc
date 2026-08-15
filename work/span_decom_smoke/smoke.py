@@ -10,6 +10,7 @@ Does not modify solver/. Isolated under work/span_decom_smoke/.
 from __future__ import annotations
 
 import json
+import multiprocessing as mp
 import sys
 from pathlib import Path
 from typing import Dict, List, Sequence, Set, Tuple
@@ -20,14 +21,23 @@ if str(ROOT) not in sys.path:
 
 from solver.grid import flatten, segment_all_runs
 from solver.induce import induce
+from solver.run_meta import collect_run_meta, mark_finished
 
 DATASET = ROOT / "raw_data/onedarcraw/dataset"
 OUT_ROOT = Path(__file__).resolve().parent / "runs"
 
-# Flip only until this encoding passes; other categories stay commented out.
-TASKS = [
-    ("1d_flip", 0),
-]
+
+def _all_first3() -> List[Tuple[str, int]]:
+    """Every category dir that has trials 0,1,2 — no name-gated skip."""
+    tasks: List[Tuple[str, int]] = []
+    for cat_dir in sorted(DATASET.iterdir()):
+        if not cat_dir.is_dir():
+            continue
+        for trial in (0, 1, 2):
+            p = cat_dir / f"{cat_dir.name}_{trial}.json"
+            if p.exists():
+                tasks.append((cat_dir.name, trial))
+    return tasks
 
 
 def _n(i: int) -> str:
@@ -428,36 +438,72 @@ def run_one(cat: str, trial: int, timeout: int) -> Dict:
     return result
 
 
-def main() -> None:
-    timeout = int(sys.argv[1]) if len(sys.argv) > 1 else 60
+def _run_tuple(args: Tuple[str, int, int]) -> Dict:
+    cat, trial, timeout = args
+    return run_one(cat, trial, timeout)
+
+
+def _print_row(r: Dict) -> None:
+    prog = (r.get("program") or "").replace("\n", " | ")[:200]
     print(
-        f"span-decom smoke timeout={timeout}s sequential tasks={len(TASKS)}",
+        f"--- {r['task']} ---\n"
+        f"  {r['status']:10} train={r['train_exact']} test={r['test_exact']} "
+        f"{r['elapsed_s']}s fail={r['failure']}\n  {prog}",
         flush=True,
     )
+
+
+def main() -> None:
+    timeout = int(sys.argv[1]) if len(sys.argv) > 1 else 60
+    jobs = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    tasks = _all_first3()
+    print(
+        f"span-decom smoke timeout={timeout}s jobs={jobs} tasks={len(tasks)}",
+        flush=True,
+    )
+    OUT_ROOT.mkdir(parents=True, exist_ok=True)
+    meta = collect_run_meta(
+        mode="span_decom_smoke",
+        timeout=timeout,
+        jobs=jobs,
+        trials="0,1,2",
+        dataset=str(DATASET),
+        out=str(OUT_ROOT),
+        repo_root=ROOT,
+    )
+    (OUT_ROOT / "run_manifest.json").write_text(json.dumps(meta, indent=2) + "\n")
+
     rows: List[Dict] = []
-    for cat, trial in TASKS:
-        r = run_one(cat, trial, timeout)
-        rows.append(r)
-        prog = (r.get("program") or "").replace("\n", " | ")[:200]
-        print(
-            f"--- {r['task']} ---\n"
-            f"  {r['status']:10} train={r['train_exact']} test={r['test_exact']} "
-            f"{r['elapsed_s']}s fail={r['failure']}\n  {prog}",
-            flush=True,
-        )
+    if jobs <= 1:
+        for cat, trial in tasks:
+            r = run_one(cat, trial, timeout)
+            rows.append(r)
+            _print_row(r)
+    else:
+        ctx = mp.get_context("spawn")
+        with ctx.Pool(jobs) as pool:
+            for r in pool.imap_unordered(
+                _run_tuple, [(c, t, timeout) for c, t in tasks]
+            ):
+                rows.append(r)
+                _print_row(r)
+        rows.sort(key=lambda r: r["task"])
+
+    finished = mark_finished(meta)
     summary = {
         "timeout": timeout,
-        "jobs": 1,
+        "jobs": jobs,
         "n": len(rows),
         "train_ok": sum(1 for r in rows if r["train_exact"]),
         "test_ok": sum(1 for r in rows if r["test_exact"]),
+        "run_meta": finished,
         "rows": [
             {k: v for k, v in r.items() if k != "program"} | {"program": r.get("program")}
             for r in rows
         ],
     }
-    OUT_ROOT.mkdir(parents=True, exist_ok=True)
-    (OUT_ROOT / "summary.json").write_text(json.dumps(summary, indent=2))
+    (OUT_ROOT / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    (OUT_ROOT / "run_manifest.json").write_text(json.dumps(finished, indent=2) + "\n")
     print(
         f"\nDONE train_exact {summary['train_ok']}/{summary['n']} "
         f"test_exact {summary['test_ok']}/{summary['n']}",
