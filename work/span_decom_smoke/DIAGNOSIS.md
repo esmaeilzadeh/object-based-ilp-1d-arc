@@ -3,10 +3,8 @@
 Live report for `.venv/bin/python work/span_decom_smoke/smoke.py 120`
 on `f2ca01f` (`cursor/index-in-out-blocks`). Sequential only (`jobs=1`).
 
-**Score so far (49/54 done, 2026-08-15 ~04:52Z):** train exact **4/49**, test exact **3/49**.
-Only `1d_flip` is 3/3 test. One near-miss: `1d_move_1p_2` train-exact, test decode miss.
-
-Remaining when this section was first written: `1d_recolor_oe_1`, `1d_recolor_oe_2`, `1d_scale_dp_{0,1,2}`.
+**Final (54/54, finished 2026-08-15 05:02Z, ~108 min):** train exact **6/54**, test exact **3/54**.
+Only `1d_flip` is 3/3 test. Train-only: `1d_move_1p_2`, `1d_recolor_oe_1`, `1d_recolor_oe_2`.
 
 This is **not** an infra 0/54 collapse (that was the earlier `jobs=2` Pool daemon bug).
 Induce is running; almost every `status=ok` at ~120.3s is a **timeout leftover**.
@@ -119,8 +117,8 @@ no new bids, no length arith, no novel color. This is the language’s sweet spo
 
 ## Family diagnoses (49 done)
 
-Surface bucket: **41 leftover-partial**, **4 leftover-undergen (0 px)**,
-**3 pass**, **1 train-ok / test-decode**.
+Surface bucket (54): **~44 leftover decode-width**, **3 pass**,
+**3 train-ok / test-fail** (`move_1p_2` decode, `oe_1` mismatch, `oe_2` decode).
 
 ### Denoise (`1d_denoising_1c`, `1d_denoising_mc`) — 0/6 test
 
@@ -183,7 +181,7 @@ and `n0(V1)`. Cannot tile a template onto new bids. Every clause must
 contain `in_block`, so you cannot *emit* a new run that is not already an
 input run. **BK + bias (tiling / new-run invention)**.
 
-### Recolor cmp / cnt / oe — 0/7 test so far (oe_0 only)
+### Recolor cmp / cnt / oe — 2/9 train, 0/9 test
 
 Same run count (geometry identity). Need a **new color** from comparison,
 count, or even/odd. Leftovers guess `v1`/`v8` with bid/len constants.
@@ -193,14 +191,87 @@ Missing: color-compare, count/agg, `size_even` / `size_odd`.
 gets which novel color. **BK gap (recolor predicates)**. Bias is secondary
 (3 clauses would be enough *if* the condition pred existed).
 
+`1d_recolor_oe_0` leftover under-generated (`width 18!=20`).
+`oe_1` / `oe_2` finished after this section was first written — see Incoming.
+
 ---
 
-## Incoming (to fill when they finish)
+## Incoming (last five, now complete)
 
-| task | expected root |
-|---|---|
-| `1d_recolor_oe_1/2` | same as oe_0: need even/odd; leftover + decode width |
-| `1d_scale_dp_*` | length `add(L,L,2L)` may be expressible; pointer/factor role missing; succ+add ban |
+### `1d_recolor_oe_1` — train exact, `test_mismatch`
+
+Gold rule is even-length blob → 9, odd-length → 7 (all input color 2).
+
+Leftover that paints train:
+
+```
+out_block(V0,V1,V2,V3):- in_block(V0,V1,V2,V4), v9(V3), n1(V1).
+out_block(V0,V1,V2,V3):- v7(V3), in_block(V0,V1,V2,V5), in_col_succ(V4,V6,V1).
+out_block(V0,V1,V2,V3):- in_block(V0,V1,V2,V3), empty(V0,V1).
+```
+
+Train always puts the even object at **bid 1**. Test’s last blob is even
+length 2 but not bid 1 → program paints 7, gold is 9. **BK gap:
+`size_even` / `size_odd`**. Not a decode hole. Proves 3 clauses are enough
+once the condition exists; the leftover overfit bid identity.
+
+### `1d_recolor_oe_2` — train exact, `test_decode:width 3 28!=29`
+
+Same even→8 / odd→5 rule. Leftover:
+
+```
+out_block(..., n1(V1), v8(V3)).      # bid 1 → 8
+out_block(..., n4(V2), v8(V3)).      # length 4 → 8
+out_block(..., v5(V3), in_col_succ(...)).
+out_block(..., n9(V1), v8(V3)).
+out_block(..., empty(V0,V1)).
+```
+
+Overfit bid/length constants. Test singleton (odd, length 1) is not
+covered → 28/29 px. Same **BK gap (even/odd)**.
+
+### `1d_scale_dp_0` — leftover undergen `width 0 0!=25`
+
+Pointer color 3; the other blob grows through the empty gap toward the
+pointer (not a uniform `*2`). Leftover: `n4(V2), in_block` and
+`succ(V1,V2), in_block` — paints nothing useful.
+
+Need: identify pointer vs object, take the empty-run length between them,
+`add(obj_len, gap, new_len)`. `add` exists but there is no pointer/role
+pred; bias also forbids `succ` and `add` in the same clause.
+**BK gap (pointer/gap) + bias.**
+
+### `1d_scale_dp_1` — leftover partial `width 2!=30`
+
+Same grow-to-pointer pattern (pointer color 2). Leftover copies bid 0
+plus a `succ`/`in_pair` fragment. Same root as `_0`.
+
+### `1d_scale_dp_2` — leftover partial `width 15!=30`
+
+```
+out_block(..., n0(V1)).
+out_block(..., in_col_succ(...), in_block(...)).
+out_block(..., add(V1,V2,V4)).
+```
+
+Copies the leading empty; does not grow the object by the gap. Same root.
+
+---
+
+## Final family table
+
+| family | train | test | root |
+|---|---|---|---|
+| `1d_flip` | 3/3 | 3/3 | language fit (`in_col_succ` swap) |
+| `1d_recolor_oe` | 2/3 | 0/3 | BK: even/odd; oe_1/2 overfit bid |
+| `1d_move_1p` | 1/3 | 0/3 | bias/arith leftover; test width |
+| `1d_denoising_*` | 0/6 | 0/6 | BK: largest / merge |
+| `1d_fill` / `hollow` / `padded_fill` | 0/9 | 0/9 | BK: interior / run-count change |
+| `1d_mirror` | 0/3 | 0/3 | BK: reflect (no marker hack) |
+| other `1d_move_*` | 0/12 | 0/12 | bias + pointer/role |
+| `1d_pcopy_*` | 0/6 | 0/6 | BK+bias: cannot invent tiled runs |
+| `1d_recolor_cmp` / `cnt` | 0/6 | 0/6 | BK: compare / count |
+| `1d_scale_dp` | 0/3 | 0/3 | BK: pointer/gap + succ+add ban |
 
 ---
 
