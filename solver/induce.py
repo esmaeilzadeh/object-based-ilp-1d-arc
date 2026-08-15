@@ -157,7 +157,11 @@ def induce(
                 error=err,
                 max_literals=lit_cap,
             )
-        if status == "timeout":
+        # Vendored Popper sets terminated_by_timeout=False even when it kills the
+        # search process; treat near-budget exits with a leftover as timeout.
+        if prog and (
+            status == "timeout" or elapsed >= join_budget * 0.95
+        ):
             return InduceResult(
                 program=prog,
                 status="timeout",
