@@ -69,6 +69,13 @@ alone when artifacts or SHAs are missing — say so explicitly.
 - Comparison narrative in `docs/04-EVALUATION.md` is **not** the artifact store;
   do not silently rewrite report numbers when fixing provenance.
 
+## Launching a Cloud / remote eval
+
+When the user asks for a **remote agent** / Cloud Agent run: load **`CURSOR_API_KEY`**
+from repo-root `.env` (`set -a; source .env; set +a`). Use
+`.cursor/environment.json` as the pre-setup env (4 vCPU VPS → `JOBS=2`). Push
+the SHA first. See skill `launch-remote-cursor-agent`.
+
 ## Anti-patterns
 
 - Reporting soft/exact from chat memory without a path + SHA

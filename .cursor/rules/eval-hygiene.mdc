@@ -75,6 +75,8 @@ machines, matching prior gates).
   launch when the run is expensive.
 - Prefer matching prior successful gate settings unless the user confirms a
   deliberate change.
+- Remote / Cloud Agent launches: load `CURSOR_API_KEY` from `.env`; use
+  `.cursor/environment.json` (4 vCPU → `JOBS=2`). See `remote-cloud-agent.mdc`.
 - Preserve per-task artifacts / joblogs long enough to diagnose crashes; note
   known janus/SWI SIGSEGV flakes and offline recovery when scoring.
 
