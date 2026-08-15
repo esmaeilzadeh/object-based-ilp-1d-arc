@@ -1,5 +1,5 @@
 {
-  "timeout": 3600,
+  "timeout": 120,
   "jobs": 1,
   "n": 1,
   "train_ok": 1,
@@ -8,33 +8,34 @@
     {
       "task": "1d_flip_0",
       "status": "ok",
-      "elapsed_s": 3601.81,
+      "elapsed_s": 120.69,
       "error": null,
       "train_exact": true,
       "test_exact": true,
       "failure": null,
-      "program": "out_block(V0,V1,V2,V3):- block(V0,V7,V2,V3),block(V5,V6,V9,V4),obj_pair(V8,V7,V6),add(V9,V7,V1).\nout_block(V0,V1,V2,V3):- block(V0,V4,V2,V3),obj_succ(V0,V1,V4)."
+      "program": "out_block(V0,V1,V2,V3):- empty(V0,V1),in_block(V0,V1,V2,V3).\nout_block(V0,V1,V2,V3):- in_col_succ(V0,V4,V1),in_block(V0,V2,V4,V3).\nout_block(V0,V1,V2,V3):- in_block(V0,V4,V2,V3),in_col_succ(V0,V1,V4)."
     }
   ],
   "run_meta": {
     "schema": "eval-run-meta/v1",
-    "started_at": "2026-08-14T17:25:42.123305+00:00",
-    "finished_at": "2026-08-14T18:27:29.601982+00:00",
-    "git_sha": "c3c90902a0756572635299f2642ae5527e6b2901",
-    "git_branch": "cursor/signed-offset-anchor",
+    "started_at": "2026-08-15T02:35:55.207937+00:00",
+    "finished_at": "2026-08-15T02:38:59.004837+00:00",
+    "git_sha": "eff8e50e93faa2eabc59bbd8182af90c15589994",
+    "git_branch": "cursor/index-in-out-blocks",
     "git_dirty": true,
-    "git_describe": "c3c9090-dirty",
+    "git_describe": "eff8e50-dirty",
     "hostname": "mohamad-Precision-M4600",
     "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
     "python": "3.10.12",
     "mode": "span_decom_smoke",
-    "timeout": 3600,
+    "timeout": 120,
     "jobs": 1,
     "trials": "1d_flip_0",
     "dataset": "raw_data/onedarcraw/dataset",
     "out": "work/span_decom_smoke/runs",
-    "pid": 30639,
+    "pid": 41635,
     "task": "1d_flip_0",
-    "note": "3600s flip-only sequential; encoding from 7e8db51; tree dirty only from prior run artifacts"
+    "note": "index-only 120s; non_functional dup/extra always-on; SHA eff8e50; dirty only leftover runs/",
+    "code_sha": "eff8e50e93faa2eabc59bbd8182af90c15589994"
   }
 }

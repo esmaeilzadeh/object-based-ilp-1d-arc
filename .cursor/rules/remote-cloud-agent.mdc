@@ -1,0 +1,21 @@
+---
+description: How to launch Cursor remote/cloud agents (API key, preset env)
+alwaysApply: true
+---
+
+# Remote / Cloud Agent launch
+
+When the user says **remote agent**, **cloud agent**, or asks to run work on
+Cursor Cloud (not the local laptop):
+
+1. **API key:** load `CURSOR_API_KEY` from the repo-root `.env` (gitignored).
+   Do not wait for it in the shell env. `set -a; source .env; set +a` or read
+   the file. Never print or commit the value.
+2. **Pre-setup env:** use `.cursor/environment.json` (named Cloud Agent VPS:
+   4 vCPU, 15 GiB, Ubuntu). Pass
+   `CloudEnvironment(type="cloud", name=<environment.json "name">)` on create.
+   Instruct the agent to follow that file's `install` if the Build is cold.
+   Known-good eval knobs on that host: `JOBS=2` (do not oversubscribe).
+3. **Push first:** cloud clones GitHub; the SHA under test must be on `origin`.
+
+`CLI agent` is local. Cloud IDs start with `bc-`.
