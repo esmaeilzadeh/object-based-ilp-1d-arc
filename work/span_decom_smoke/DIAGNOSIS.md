@@ -300,23 +300,26 @@ V1/V2). That is not “cardinal arith on all cardinals.”
 
 ### Acceptable language (if later approved — not this turn)
 
-Simple arith only. Grounder emits the **same** arith for every domain
-of that kind. Two predicates, two kinds:
+Simple arith, same ops for every domain of that kind. Mixing cardinal
+and ordinal is **allowed**, with one constraint: do not dump a large
+cardinal/pixel ruler into the **ordinal (bid) domain**. Bids are a small
+line; inflating that set makes search explode.
 
-| kind | domains (examples) | one arith |
+| kind | domains | ops |
 |---|---|---|
-| cardinal | length, gap width, count-as-a-number | `add/3` (and `lt` if needed) |
-| ordinal | bid, position, rank | `succ/2` (and `lt` if needed) |
+| ordinal | bid (keep this set small), also position/rank if used | bidirectional `my_succ` (walk either way; reverse order is this, not a reflect pred). `lt` optional |
+| cardinal | length, gap width, count-as-a-number | `add` is the useful op. `lt`/`gt` are fine. `my_succ` is meaningful (+1) but secondary to `add` |
 
-No `size_add` vs `count_add` vs `gap_add`. No `size_even`. No `largest`.
-Parity is whatever `add(K,K,L)` can say **after** cardinal `add` is
-actually grounded on all cardinal values, not a special pred and not
-add-restricted to “size or index head slot.” Colors stay `value`
-(categorical), not a third arith.
+Parity, if it exists at all, is `add(K,K,L)` on **cardinal** add after
+that add is grounded on cardinal values — not `size_even`, and not add
+locked only to a size/index head slot as a substitute for a parity pred.
 
-Smoke today collapses bid (ordinal) and len (cardinal) into one `num`,
-then restricts `add`/`succ` to those head slots. That is the opposite
-of this split.
+Colors stay `value` (categorical).
+
+Smoke today: one `num` for bid and len, then `bad_body` pinning
+`add`/`succ` to V1/V2. Mixing is not the bug; **blowing up bid** and
+**special-case head-slot arith** are. Bidirectional `my_succ` is what
+makes reverse-on-ordinal automatic; do not add `reflect_*`.
 
 ### Still refuse
 
