@@ -1,0 +1,228 @@
+# Span-decom smoke diagnosis (120s sequential)
+
+Live report for `.venv/bin/python work/span_decom_smoke/smoke.py 120`
+on `f2ca01f` (`cursor/index-in-out-blocks`). Sequential only (`jobs=1`).
+
+**Score so far (49/54 done, 2026-08-15 ~04:52Z):** train exact **4/49**, test exact **3/49**.
+Only `1d_flip` is 3/3 test. One near-miss: `1d_move_1p_2` train-exact, test decode miss.
+
+Remaining when this section was first written: `1d_recolor_oe_1`, `1d_recolor_oe_2`, `1d_scale_dp_{0,1,2}`.
+
+This is **not** an infra 0/54 collapse (that was the earlier `jobs=2` Pool daemon bug).
+Induce is running; almost every `status=ok` at ~120.3s is a **timeout leftover**.
+
+---
+
+## Verdict in one paragraph
+
+Surface fail is almost always `decode:width` after a leftover program that
+**under-generates** `out_block` atoms. That is amplified by two machinery holes
+(leftover marked `ok`; `missing_head` not in the functional checker).
+
+Under that, the language cannot say the real transform for most families:
+
+- **BK gaps** dominate when the output run *count* or *role* changes
+  (denoise / fill / hollow / padded_fill / pcopy / mirror / recolor).
+- **Bias barriers** dominate when the geometry is already in the language
+  (move / scale length arithmetic) but search cannot assemble a full, general
+  program in 3 clauses with “one `succ` **or** one `add`, not both”.
+
+More timeout alone will not lift pcopy / mirror / recolor / denoise.
+
+---
+
+## Shared machinery (every leftover fail)
+
+### 1. Timeout leftover is reported as `ok`
+
+`solver/induce.py` worker ignores Popper’s `_terminated` flag:
+
+```python
+prog, _terminated = learn_solution(settings)
+if prog:
+    q.put(("ok", prog, None))
+```
+
+If the child exits after ~120s with any `prog`, smoke prints `ok`.
+These are **not** solutions. Typical leftover: 1–3 clauses that copy
+`in_block` plus a constant (`n14(V2)`, `n0(V1)`).
+
+### 2. Functional checker allows missing heads
+
+Smoke BK defines `missing_head` but does **not** wire it into `non_functional`
+(only `dup_bid` and `extra_head`). Under-generation can pass the functional
+test. Decode then concatenates predicted runs in bid order →
+`decode:width 0 P!=W` (often `P=0`).
+
+### 3. Independent in/out bid numbering
+
+Bids are left-to-right run indices, numbered **separately** on input vs output.
+Identity `out_block(E,B,L,C) :- in_block(E,B,L,C)` is only correct when
+run **count and alignment** stay the same. Denoise / fill / hollow / pcopy
+change the number of runs; leftover “copy bid 0 / copy length 14” cannot
+rebuild the output tape.
+
+### 4. Decode is a tape concat
+
+`paint()` walks bids `0..max_bid` and concatenates lengths. Partial coverage
+is a width error, not a soft near-miss.
+
+---
+
+## Shared bias barriers (all tasks)
+
+From `work/span_decom_smoke/smoke.py` `_bias()`:
+
+| Barrier | Effect |
+|---|---|
+| `max_clauses(3)` / `max_body(6)` / `max_vars(10)` | Multi-object move, hollow (shell\|hole\|shell), pcopy tiling need more structure |
+| every clause **must** contain `in_block` | Cannot emit a brand-new out run from arith / constants alone |
+| bid (V1) must appear via `in_block` 2nd arg or `succ`/`add`/`in_succ`/`in_col_succ` | New out bids that are not an input bid or ±1 are hard |
+| **at most one** `succ`, **at most one** `add`, **not both** | Move/scale often need `succ` on one length **and** `add` on another |
+| `bad_body`: `add`/`succ` only on head vars 1 or 2 (bid/len) | Cannot arith on a helper length then copy color |
+| all of V1, V2, V3 must appear in the body | Forces every clause to mention bid, len, and color somehow |
+
+These barriers are **uniform** (not category-gated). They are still a search
+ceiling for families whose true rule needs more than 3 clauses or both
+`succ` and `add`.
+
+---
+
+## What the BK actually has
+
+Input-only: `in_block/4`, `empty/2`, `in_succ/3`, `in_col_succ/3`, `in_pair/3`,
+`succ/2`, `add/3` (bids + lengths, not a pixel ruler), `size_lt/2`.
+Novel colors `vK` from train-out − train-in. Train output is checker-only.
+
+**Not present** (main `block_primary` object BK has several of these):
+
+`largest` / `non_largest`, `size_even` / `size_odd`, `gap`, `obj_succ`,
+`component_start`, any count/compare-on-color, any interior/hole, any
+reflect/marker (and those stay refused without a dedicated confirm).
+
+---
+
+## Why `1d_flip` is 3/3
+
+Same run count. Transform is a **permutation of existing input runs**:
+
+```
+out_block(V0,V1,V2,V3):- in_block(V0,V4,V2,V3), in_col_succ(V0,V1,V4).
+out_block(V0,V1,V2,V3):- in_block(V0,V1,V2,V3), empty(V0,V1).
+out_block(V0,V1,V2,V3):- in_block(V0,V4,V2,V3), in_col_succ(V0,V4,V1).
+```
+
+Copy empties; swap adjacent colored runs via `in_col_succ`. Fits 3 clauses,
+no new bids, no length arith, no novel color. This is the language’s sweet spot.
+
+---
+
+## Family diagnoses (49 done)
+
+Surface bucket: **41 leftover-partial**, **4 leftover-undergen (0 px)**,
+**3 pass**, **1 train-ok / test-decode**.
+
+### Denoise (`1d_denoising_1c`, `1d_denoising_mc`) — 0/6 test
+
+| task | fail | leftover |
+|---|---|---|
+| `1d_denoising_1c_0` | width 0 0!=32 | `in_block, n14(V2)` |
+| `1d_denoising_1c_1` | width 0 0!=32 | `n13(V2), in_block` |
+| `1d_denoising_1c_2` | width 0 15!=32 | `in_block, n15(V2)` |
+| `1d_denoising_mc_0` | width 0 4!=32 | copy len=7 + copy empties |
+| `1d_denoising_mc_1` | width 0 5!=32 | copy bid 0 + `add` shift |
+| `1d_denoising_mc_2` | width 0 2!=32 | copy bid 0 |
+
+Train in-runs 5–13 → out-runs 2–3. Need **merge singleton noise into the
+neighbor blob**. Missing BK: `largest` / `non_largest` (or equivalent size
+role). Cannot invent fewer out bids from `in_block` identity. **BK gap
+(agg/role)**, not a missing `succ`.
+
+### Fill / hollow / padded_fill — 0/9 test
+
+Fill train is always 5 in-runs → 3 out-runs (hole disappears).
+Hollow is 3 → 5 (shell \| hole \| shell). Padded fill also changes run count.
+
+Leftovers copy bid 0 / a constant length. No interior/hole predicate; no way
+to split one colored run into three out runs without leaking the answer.
+**BK gap (interior geometry)**. `max_clauses(3)` is a second ceiling for hollow.
+
+### Mirror — 0/3 test
+
+`1d_mirror_1` even has the flip-shaped leftover (`in_col_succ` both ways +
+`succ(V2,V1)`) and still width 6!=18. Reflection is not adjacent-swap.
+No reflect-bid / opposite-side relation. **BK gap**. Do **not** add
+`marker_block` / `reflect_pos` without a dedicated confirm
+(`block-level-only.mdc`).
+
+### Move family — 1/15 train, 0/15 test
+
+Closest: `1d_move_1p_2` train-exact, test `width 3 25!=30`.
+
+```
+out_block(V0,V1,V2,V3):- in_block(V0,V1,V6,V3), add(V5,V2,V6), in_succ(V4,V5,V1).
+out_block(V0,V1,V2,V3):- in_block(V0,V1,V4,V3), n0(V1), succ(V4,V2).
+```
+
+Train is a +1 right shift (left empty grows, right empty shrinks). The
+leftover overfits train lengths / a broken `in_succ` typing
+(`in_succ(V4,V5,V1)` uses V4 as `ex`). Test grid is 30 wide; paint emits 25.
+
+`1d_move_1p_1` is the same idea (succ ±1 on bids 0 and 2, copy bid 1) but
+only paints 7/30 — leftover incomplete.
+
+Other move tasks: two/three objects or a pointer. Need per-object empty
+arith **and** both `succ` and `add`, often >3 clauses. Pointer role is
+absent. **Bias + missing pointer/role BK**, not “no `add`”.
+
+### Periodic copy — 0/6 test
+
+`1d_pcopy_1c_0` input has a motif plus singleton seeds; output expands each
+seed to the motif (more colored runs). Leftover tries `in_col_succ` copy
+and `n0(V1)`. Cannot tile a template onto new bids. Every clause must
+contain `in_block`, so you cannot *emit* a new run that is not already an
+input run. **BK + bias (tiling / new-run invention)**.
+
+### Recolor cmp / cnt / oe — 0/7 test so far (oe_0 only)
+
+Same run count (geometry identity). Need a **new color** from comparison,
+count, or even/odd. Leftovers guess `v1`/`v8` with bid/len constants.
+
+Missing: color-compare, count/agg, `size_even` / `size_odd`.
+`vK` constants exist but there is no *condition* that selects which object
+gets which novel color. **BK gap (recolor predicates)**. Bias is secondary
+(3 clauses would be enough *if* the condition pred existed).
+
+---
+
+## Incoming (to fill when they finish)
+
+| task | expected root |
+|---|---|
+| `1d_recolor_oe_1/2` | same as oe_0: need even/odd; leftover + decode width |
+| `1d_scale_dp_*` | length `add(L,L,2L)` may be expressible; pointer/factor role missing; succ+add ban |
+
+---
+
+## What this is / is not
+
+- **Not** a capability regression vs the main `block_primary` 40/54 @60s gate.
+  Different language (index-only smoke vs object-head solver).
+- **Not** “Popper found nothing”. It found leftover fragments because
+  under-generation is legal and leftovers are labeled `ok`.
+- **Not** fixed by another 120s. Flip already fits; the rest need language
+  or honest timeout / complete-head checking.
+
+## Allowed next levers (if later approved)
+
+1. Wire `missing_head` into `non_functional` so leftovers that skip pos
+   atoms are rejected (measurement fix, not a score hack).
+2. Honor `_terminated` → `timeout` even when a leftover `prog` exists.
+3. Uniform BK that is still mechanical: `largest`/`non_largest`,
+   `size_even`/`size_odd`, `gap`/`obj_succ` — **only** if emitted for every
+   instance from observed sizes, not gated by category name.
+4. Relax “not both succ and add” / `max_clauses(3)` uniformly if search
+   cost is acceptable.
+
+Do not add marker/mirror geometry or category-gated bias without an
+explicit dedicated confirm.
