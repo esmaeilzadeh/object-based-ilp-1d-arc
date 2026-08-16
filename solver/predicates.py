@@ -34,6 +34,9 @@ PREDICATES: Tuple[Predicate, ...] = (
     # Object head: anchor input block id + output length/color (pixel start is decode-only).
     Predicate("out_block", 5, ("ex", "block_id", "size", "size", "value"), "head_object", frozenset()),
     # out_block(E, Bid, Off, Len, Color): paint at start(Bid)+Off.
+    Predicate("out_pixel", 4, ("ex", "unit_id", "size", "value"), "head_unit", frozenset()),
+    # out_pixel(E, Pid, Off, Color): paint one cell at start(Pid)+Off.
+    Predicate("unit", 3, ("ex", "unit_id", "value"), "block", frozenset({4})),
     # pixel
     Predicate("in", 3, ("ex", "position", "value"), "pixel", frozenset({3})),
     Predicate("empty", 2, ("ex", "position"), "pixel", frozenset({3})),
@@ -119,6 +122,10 @@ def head_pred() -> Predicate:
 
 def head_pred_object() -> Predicate:
     return next(p for p in PREDICATES if p.layer == "head_object")
+
+
+def head_pred_unit() -> Predicate:
+    return next(p for p in PREDICATES if p.layer == "head_unit")
 
 
 # Block-primary / object-head: closed theory (no extrema / named macros).

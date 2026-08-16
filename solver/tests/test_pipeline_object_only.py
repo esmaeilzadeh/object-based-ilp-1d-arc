@@ -38,7 +38,16 @@ def test_fallback_never_verified(tmp_path: Path):
         assert r.confidence == "low"
 
 
-def test_harness_modes_block_primary_only():
+def test_harness_modes_include_hybrid():
     from solver import harness
 
-    assert list(harness.MODES.keys()) == ["block_primary"]
+    assert "block_primary" in harness.MODES
+    assert "hybrid_census" in harness.MODES
+
+
+def test_hybrid_no_leftover_budget_helper():
+    import solver.pipeline as pl
+
+    assert not hasattr(pl, "hybrid_budgets")
+    src = Path(pl.__file__).read_text()
+    assert "ThreadPoolExecutor" in src

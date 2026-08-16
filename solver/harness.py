@@ -9,11 +9,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from solver.pipeline import solve
+from solver.pipeline import solve, solve_hybrid
 from solver.run_meta import collect_run_meta, mark_finished, slim_meta
 
 MODES = {
     "block_primary": {},
+    "hybrid_census": {},
 }
 
 
@@ -30,13 +31,20 @@ def run_one(
     run_meta: Optional[dict] = None,
 ) -> dict:
     if mode not in MODES:
-        raise ValueError(f"unknown mode {mode!r}; only block_primary is supported")
+        raise ValueError(f"unknown mode {mode!r}; expected {sorted(MODES)}")
     t0 = time.time()
-    result = solve(
-        path,
-        timeout=timeout,
-        work_dir=out_dir / path.stem,
-    )
+    if mode == "hybrid_census":
+        result = solve_hybrid(
+            path,
+            timeout=timeout,
+            work_dir=out_dir / path.stem,
+        )
+    else:
+        result = solve(
+            path,
+            timeout=timeout,
+            work_dir=out_dir / path.stem,
+        )
     elapsed = time.time() - t0
     gold = None
     obj = json.loads(path.read_text())

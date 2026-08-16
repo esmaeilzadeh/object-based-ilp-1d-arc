@@ -167,3 +167,233 @@ def solve(
     if ir.status == "error":
         return _fallback("popper_error", ir)
     return _fallback("popper_exhausted", ir)
+
+
+def solve_hybrid(
+    instance: Union[PathLike, dict],
+    *,
+    timeout: int = 600,
+    work_dir: Optional[PathLike] = None,
+) -> SolveResult:
+    """Census gate → parallel two-head object road or one ``out/3``. No failure ladder."""
+    from solver.census import census_match, unit_runs
+    from solver.decode import apply_hybrid_program, apply_pixel_program
+    from solver.encoder_hybrid import encode_hybrid_block
+    from solver.pixel_encode import encode_pixel_instance
+    from solver.verify import verify_hybrid_on_train, verify_pixel_on_train
+
+    work_dir = Path(work_dir or Path("work") / "solve_hybrid")
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    from solver.encoder import _load_json
+
+    obj = instance if isinstance(instance, dict) else _load_json(instance)
+    match = census_match(obj["train"])
+    rem = max(int(timeout), 0)
+
+    def _soft_from(encoded, test0, pred):
+        if not encoded.test_path.exists() or test0.out is None:
+            return [0, 0, 0, 0], 0.0
+        score_prog = grid_to_out_program(test0.ex_id, pred)
+        return score_program_soft(
+            score_prog,
+            encoded.test_path,
+            work_dir=work_dir / "soft_score",
+        )
+
+    def _fail(reason, encoded, test0, ir, prog="", detail_extra=None):
+        pred = list(test0.inp)
+        matrix, soft = _soft_from(encoded, test0, pred)
+        detail = _bias_detail(ir, rem)
+        detail["census_match"] = match
+        if detail_extra:
+            detail.update(detail_extra)
+        return SolveResult(
+            pred,
+            prog,
+            "fallback_identity",
+            False,
+            "low",
+            matrix,
+            soft,
+            reason,
+            detail,
+        )
+
+    if rem <= 0:
+        encoded = encode_hybrid_block(instance, work_dir / "encode") if match else encode_pixel_instance(instance, work_dir / "encode")
+        test0 = encoded.test[0]
+        return _fail(
+            "popper_timeout",
+            encoded,
+            test0,
+            InduceResult(None, "timeout", 0.0, max_literals=OBJECT_MAX_LITERALS),
+        )
+
+    if not match:
+        encoded = encode_pixel_instance(instance, work_dir / "encode")
+        test0 = encoded.test[0]
+        ir = induce(
+            encoded.exs_pixel_path,
+            encoded.bk_path,
+            encoded.bias_pixel_path,
+            rem,
+            work_dir / "popper_pixel",
+        )
+        if not ir.program:
+            reason = {
+                "timeout": "popper_timeout",
+                "error": "popper_error",
+            }.get(ir.status, "popper_exhausted")
+            return _fail(reason, encoded, test0, ir)
+        if not verify_pixel_on_train(ir.program, encoded):
+            return _fail("paint_verify_failed", encoded, test0, ir, prog=ir.program)
+        try:
+            preds = apply_pixel_program(
+                ir.program, encoded.test_bk_path, encoded.test
+            )
+            pred = preds[test0.ex_id]
+        except Exception as e:
+            return _fail(
+                "decode_error",
+                encoded,
+                test0,
+                ir,
+                prog=ir.program,
+                detail_extra={"decode_error": str(e)},
+            )
+        matrix, soft = _soft_from(encoded, test0, pred)
+        detail = _bias_detail(ir, rem)
+        detail["census_match"] = False
+        detail["road"] = "pixel"
+        return SolveResult(
+            pred,
+            ir.program,
+            "pixel_ilp",
+            True,
+            "high",
+            matrix,
+            soft,
+            None,
+            detail,
+        )
+
+    encoded = encode_hybrid_block(instance, work_dir / "encode")
+    test0 = encoded.test[0]
+    n_unit = max(len(unit_runs(eg.inp)) for eg in encoded.train)
+    from concurrent.futures import ThreadPoolExecutor
+
+    if n_unit > 0:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_b = pool.submit(
+                induce,
+                encoded.exs_object_path,
+                encoded.bk_path,
+                encoded.bias_object_path,
+                rem,
+                work_dir / "popper_object",
+                max_literals=OBJECT_MAX_LITERALS,
+            )
+            fut_u = pool.submit(
+                induce,
+                encoded.exs_unit_path,
+                encoded.bk_path,
+                encoded.bias_unit_path,
+                rem,
+                work_dir / "popper_unit",
+                max_literals=OBJECT_MAX_LITERALS,
+            )
+            ir_b = fut_b.result()
+            ir_u = fut_u.result()
+    else:
+        ir_b = induce(
+            encoded.exs_object_path,
+            encoded.bk_path,
+            encoded.bias_object_path,
+            rem,
+            work_dir / "popper_object",
+            max_literals=OBJECT_MAX_LITERALS,
+        )
+        ir_u = InduceResult("", "ok", 0.0, max_literals=OBJECT_MAX_LITERALS)
+
+    if not ir_b.program:
+        reason = {
+            "timeout": "popper_timeout",
+            "error": "popper_error",
+        }.get(ir_b.status, "popper_exhausted")
+        return _fail(
+            reason,
+            encoded,
+            test0,
+            ir_b,
+            detail_extra={"head": "out_block", "parallel": n_unit > 0, "t_each": rem},
+        )
+
+    unit_prog = ""
+    if n_unit > 0:
+        if not ir_u.program:
+            reason = {
+                "timeout": "popper_timeout",
+                "error": "popper_error",
+            }.get(ir_u.status, "popper_exhausted")
+            return _fail(
+                reason,
+                encoded,
+                test0,
+                ir_u,
+                prog=ir_b.program or "",
+                detail_extra={"head": "out_pixel", "parallel": True, "t_each": rem},
+            )
+        unit_prog = ir_u.program
+
+    combined = (ir_b.program or "") + ("\n" + unit_prog if unit_prog else "")
+    if not verify_hybrid_on_train(ir_b.program or "", unit_prog, encoded):
+        return _fail(
+            "paint_verify_failed",
+            encoded,
+            test0,
+            ir_u if n_unit > 0 else ir_b,
+            prog=combined,
+            detail_extra={"head": "hybrid", "parallel": n_unit > 0, "t_each": rem},
+        )
+    try:
+        preds = apply_hybrid_program(
+            ir_b.program or "",
+            unit_prog,
+            encoded.test_bk_path,
+            encoded.test,
+            typed_roles=encoded.typed_roles,
+            block_geometry=encoded.block_geometry,
+            unit_geometry=encoded.unit_geometry,
+            extra_offs=encoded.observed_offs,
+        )
+        pred = preds[test0.ex_id]
+    except Exception as e:
+        return _fail(
+            "decode_error",
+            encoded,
+            test0,
+            ir_b,
+            prog=combined,
+            detail_extra={"decode_error": str(e)},
+        )
+    matrix, soft = _soft_from(encoded, test0, pred)
+    detail = _bias_detail(ir_b, rem)
+    detail["census_match"] = True
+    detail["road"] = "hybrid_block"
+    detail["n_unit"] = n_unit
+    detail["parallel"] = n_unit > 0
+    detail["t_each"] = rem
+    detail["unit_popper_status"] = ir_u.status if n_unit > 0 else "skipped"
+    return SolveResult(
+        pred,
+        combined,
+        "hybrid_ilp",
+        True,
+        "high",
+        matrix,
+        soft,
+        None,
+        detail,
+    )
+

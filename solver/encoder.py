@@ -37,6 +37,13 @@ class EncodeResult:
     typed_roles: bool = True
     # Python-only Bid → (start, end) for object decode; not written as searchable BK.
     block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = field(default_factory=dict)
+    unit_geometry: Dict[int, Dict[int, int]] = field(default_factory=dict)
+    observed_offs: List[int] = field(default_factory=list)
+    exs_unit_path: Optional[Path] = None
+    bias_unit_path: Optional[Path] = None
+    road: str = "object"
+    exs_pixel_path: Optional[Path] = None
+    bias_pixel_path: Optional[Path] = None
 
 
 def block_geometry_for_row(row: Sequence[int]) -> Dict[int, Tuple[int, int]]:
@@ -84,7 +91,15 @@ def _pos(i: int, typed: bool) -> str:
 
 
 def _sz(i: int, typed: bool) -> str:
-    return f"s{i}" if typed else str(i)
+    if not typed:
+        return str(i)
+    if i < 0:
+        return f"sm{abs(i)}"
+    return f"s{i}"
+
+
+def _uid(i: int, typed: bool) -> str:
+    return f"u{i}" if typed else str(i)
 
 
 def _col(i: int, typed: bool) -> str:

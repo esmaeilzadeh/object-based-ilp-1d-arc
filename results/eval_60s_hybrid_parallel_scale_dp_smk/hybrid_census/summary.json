@@ -1,0 +1,41 @@
+{
+  "mode": "hybrid_census",
+  "n": 3,
+  "exact_accuracy": 0.0,
+  "soft_accuracy": 0.0,
+  "soft_sem": 0.0,
+  "accuracy": 0.0,
+  "per_task_exact": {
+    "1d_scale_dp": 0.0
+  },
+  "per_task_soft": {
+    "1d_scale_dp": 0.0
+  },
+  "per_task": {
+    "1d_scale_dp": 0.0
+  },
+  "timeout": 60,
+  "jobs": 1,
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "started_at": "2026-08-16T19:28:05.652262+00:00",
+    "finished_at": "2026-08-16T19:31:13.096667+00:00",
+    "git_sha": "6a518fdbd4a02a75921193d9daf516ae2773446c",
+    "git_branch": "cursor/no-extrema-arith-only",
+    "git_dirty": true,
+    "git_describe": "6a518fd-dirty",
+    "hostname": "mohamad-Precision-M4600",
+    "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "mode": "hybrid_census",
+    "timeout": 60,
+    "jobs": 1,
+    "trials": "0,1,2",
+    "dataset": "raw_data/onedarcraw/dataset/1d_scale_dp",
+    "out": "results/eval_60s_hybrid_parallel_scale_dp_smk",
+    "pid": 40190,
+    "entry": "scale_dp_parallel_smoke_smk",
+    "phase": "start",
+    "n_files": 3
+  }
+}
