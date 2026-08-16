@@ -1,0 +1,26 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-16T10:23:09.756453+00:00",
+  "finished_at": "2026-08-16T11:13:47.025193+00:00",
+  "git_sha": "8d1d3bee25dd0a0a05c13890d2ef4b89ff3df621",
+  "git_branch": "cursor/no-extrema-arith-only",
+  "git_dirty": true,
+  "git_describe": "8d1d3be-dirty",
+  "hostname": "mohamad-Precision-M4600",
+  "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "mode": "block_primary",
+  "timeout": 120,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "raw_data/onedarcraw/dataset",
+  "out": "results/eval_120s_no_extrema_first3_j2",
+  "pid": 20923,
+  "entry": "offline_recover",
+  "task": "1d_flip_1",
+  "extra": {
+    "entry": "run_solver_eval_parallel",
+    "n_tasks": 54,
+    "note": "1d_flip_1 recovered offline after janus SIGSEGV; 1d_recolor_cmp_0 rerun"
+  }
+}

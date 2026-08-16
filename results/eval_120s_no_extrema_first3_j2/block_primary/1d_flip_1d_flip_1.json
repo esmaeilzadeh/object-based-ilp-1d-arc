@@ -1,0 +1,61 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_flip/1d_flip_1.json",
+  "task": "1d_flip",
+  "mode": "block_primary",
+  "ok": true,
+  "exact_ok": true,
+  "soft_accuracy": 1.0,
+  "soft_matrix": [
+    1,
+    0,
+    0,
+    0
+  ],
+  "level": "object_ilp",
+  "confidence": "high",
+  "verified_train": true,
+  "elapsed": 126.056,
+  "predicted": [
+    0,
+    0,
+    4,
+    4,
+    4,
+    4,
+    6,
+    0,
+    0,
+    0
+  ],
+  "gold": [
+    0,
+    0,
+    4,
+    4,
+    4,
+    4,
+    6,
+    0,
+    0,
+    0
+  ],
+  "failure_reason": null,
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 199,
+    "timeout_s": 120,
+    "recover": "offline_janus_segv_isolated_apply"
+  },
+  "program": "out_block(V0,V1,V2,V3,V4):- block(V0,V6,V3,V4),size_sum3(V5,V2,V3,V8),block(V0,V1,V5,V7).\nout_block(V0,V1,V2,V3,V4):- block(V0,V9,V3,V4),block(V0,V1,V5,V6),size_add(V3,V2,V5),size_sum3(V3,V8,V5,V7).\n",
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "git_sha": "8d1d3bee25dd0a0a05c13890d2ef4b89ff3df621",
+    "git_branch": "cursor/no-extrema-arith-only",
+    "git_dirty": true,
+    "mode": "block_primary",
+    "timeout": 120,
+    "jobs": 2,
+    "started_at": "2026-08-16T11:13:47.015378+00:00"
+  }
+}
