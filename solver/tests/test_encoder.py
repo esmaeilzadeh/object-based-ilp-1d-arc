@@ -105,3 +105,31 @@ def test_mechanical_bias_from_bk_no_category():
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s2,v1)).")
     assert "body_pred(block,4)." in text
     assert "head_pred(out_block,5)." in text
+
+
+def test_lean_omits_extrema_and_named_macros():
+    """Closed theory: no largest/parity/pairing/component facts."""
+    facts = _facts([2, 2, 2, 0, 5, 5, 0, 7])
+    banned = (
+        "largest(",
+        "non_largest(",
+        "smallest(",
+        "size_even(",
+        "size_odd(",
+        "obj_pair(",
+        "component_start(",
+        "component_len(",
+    )
+    for prefix in banned:
+        assert not any(f.startswith(prefix) for f in facts), prefix
+    text = render_object_bias()
+    for name in (
+        "largest",
+        "non_largest",
+        "size_even",
+        "size_odd",
+        "obj_pair",
+        "component_start",
+        "component_len",
+    ):
+        assert f"body_pred({name}," not in text

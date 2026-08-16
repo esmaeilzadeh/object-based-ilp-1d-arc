@@ -121,22 +121,16 @@ def head_pred_object() -> Predicate:
     return next(p for p in PREDICATES if p.layer == "head_object")
 
 
-# Block-primary / object-head: single lean BK emit vocabulary (no per-category sets).
+# Block-primary / object-head: closed theory (no extrema / named macros).
+# Individuals + succ/add/lt on sorts, plus measured gap and a size↔position bridge.
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
         "obj_succ",
-        "obj_pair",
         "gap",
         "size_sum3",
         "size_add",
         "size_lt",
         "cardinal_ordinal",
-        "largest",
-        "non_largest",
-        "component_start",
-        "component_len",
-        "size_even",
-        "size_odd",
     }
 )

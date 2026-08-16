@@ -11,16 +11,9 @@ body_pred(block,4).
 body_pred(gap,4).
 body_pred(obj_succ,3).
 body_pred(size_lt,2).
-body_pred(largest,2).
-body_pred(non_largest,2).
 body_pred(cardinal_ordinal,2).
 body_pred(size_add,3).
 body_pred(size_sum3,4).
-body_pred(size_even,1).
-body_pred(size_odd,1).
-body_pred(obj_pair,3).
-body_pred(component_start,2).
-body_pred(component_len,3).
 body_pred(C,1):- constant(C,_).
 
 constant(s0, 'size').
@@ -31,26 +24,14 @@ type(block,('ex', 'block_id', 'size', 'value')).
 type(gap,('ex', 'block_id', 'block_id', 'size')).
 type(obj_succ,('ex', 'block_id', 'block_id')).
 type(size_lt,('size', 'size')).
-type(largest,('ex', 'block_id')).
-type(non_largest,('ex', 'block_id')).
 type(cardinal_ordinal,('size', 'position')).
 type(size_add,('size', 'size', 'size')).
 type(size_sum3,('size', 'size', 'size', 'size')).
-type(size_even,('size',)).
-type(size_odd,('size',)).
-type(obj_pair,('ex', 'block_id', 'block_id')).
-type(component_start,('ex', 'block_id')).
-type(component_len,('ex', 'block_id', 'size')).
 type(C,(T,)):- constant(C,T).
 
 bad_body(block, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(gap, Vars):- vars(_, Vars), Vars = (V0,_,_,_), V0 != 0.
 bad_body(obj_succ, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
-bad_body(largest, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
-bad_body(non_largest, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
-bad_body(obj_pair, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
-bad_body(component_start, Vars):- vars(_, Vars), Vars = (V0,_), V0 != 0.
-bad_body(component_len, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 
 % Every clause: block must use head Bid (var 1).
 :- clause(C), not body_literal(C, block, 4, (0,1,_,_)).

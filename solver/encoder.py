@@ -223,37 +223,34 @@ def _block_and_derived(
             facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
         facts.append(f"obj_succ({ex},{_bid(a, t)},{_bid(b, t)}).")
-    # Every-other colored pair (o0-o1, o2-o3, ...): neutral pairing geometry.
-    for i in range(0, len(colored_ids) - 1, 2):
-        a, b = colored_ids[i], colored_ids[i + 1]
-        facts.append(f"obj_pair({ex},{_bid(a, t)},{_bid(b, t)}).")
-
-    # Maximal contiguous non-zero components → start block + span length.
-    # A component is a maximal sequence of consecutive colored runs with no
-    # empty run between them (pixel-adjacent colored blocks).
-    if colored_ids:
-        comp_start = colored_ids[0]
-        prev = colored_ids[0]
-        for cid in colored_ids[1:]:
-            # empty run between prev and cid?
-            if cid != prev + 1:
-                # close previous component
-                s0, _, _ = runs[comp_start]
-                _, e1, _ = runs[prev]
-                span = e1 - s0 + 1
-                facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
-                facts.append(
-                    f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)})."
-                )
-                observed_sizes.add(span)
-                comp_start = cid
-            prev = cid
-        s0, _, _ = runs[comp_start]
-        _, e1, _ = runs[prev]
-        span = e1 - s0 + 1
-        facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
-        facts.append(f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)}).")
-        observed_sizes.add(span)
+    # Pairing / component macros are not on the closed lean theory.
+    if not lean:
+        for i in range(0, len(colored_ids) - 1, 2):
+            a, b = colored_ids[i], colored_ids[i + 1]
+            facts.append(f"obj_pair({ex},{_bid(a, t)},{_bid(b, t)}).")
+        if colored_ids:
+            comp_start = colored_ids[0]
+            prev = colored_ids[0]
+            for cid in colored_ids[1:]:
+                if cid != prev + 1:
+                    s0, _, _ = runs[comp_start]
+                    _, e1, _ = runs[prev]
+                    span = e1 - s0 + 1
+                    facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
+                    facts.append(
+                        f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)})."
+                    )
+                    observed_sizes.add(span)
+                    comp_start = cid
+                prev = cid
+            s0, _, _ = runs[comp_start]
+            _, e1, _ = runs[prev]
+            span = e1 - s0 + 1
+            facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
+            facts.append(
+                f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)})."
+            )
+            observed_sizes.add(span)
 
     if not lean:
         for i in range(n_runs):
@@ -345,7 +342,7 @@ def _block_and_derived(
                             f"gap_cell({ex},{bi},{bj},{_pos(p, t)},{_col(fill_c, t)})."
                         )
 
-    if colored_lengths:
+    if colored_lengths and not lean:
         max_L = max(L for L, _ in colored_lengths)
         min_L = min(L for L, _ in colored_lengths)
         for L, bid in colored_lengths:
@@ -357,14 +354,15 @@ def _block_and_derived(
                 if cell:
                     s, e, c = runs[bid]
                     for p in range(s, e + 1):
-                        facts.append(f"solid_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
-            if not lean and L == min_L:
+                        facts.append(
+                            f"solid_cell({ex},{bb},{_pos(p, t)},{_col(c, t)})."
+                        )
+            if L == min_L:
                 facts.append(f"smallest({ex},{bb}).")
-        if not lean:
-            unique_lens = sorted({L for L, _ in colored_lengths}, reverse=True)
-            rank = {L: r + 1 for r, L in enumerate(unique_lens)}
-            for L, bid in colored_lengths:
-                facts.append(f"len_rank({ex},{_bid(bid, t)},{_rank(rank[L], t)}).")
+        unique_lens = sorted({L for L, _ in colored_lengths}, reverse=True)
+        rank = {L: r + 1 for r, L in enumerate(unique_lens)}
+        for L, bid in colored_lengths:
+            facts.append(f"len_rank({ex},{_bid(bid, t)},{_rank(rank[L], t)}).")
 
     if not lean:
         sizes = sorted(observed_sizes | {len(colored_ids), len(empty_ids)})
@@ -395,11 +393,6 @@ def _block_and_derived(
                 facts.append(f"unique_color({ex},{_col(c, t)}).")
 
     if lean:
-        for sz in sorted(observed_sizes):
-            if sz % 2 == 0:
-                facts.append(f"size_even({_sz(sz, t)}).")
-            else:
-                facts.append(f"size_odd({_sz(sz, t)}).")
         # Belt-and-suspenders: BK emit == bias allowlist (drop stray preds).
         facts = [
             f
