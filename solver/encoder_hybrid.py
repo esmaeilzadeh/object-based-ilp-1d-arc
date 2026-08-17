@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
@@ -275,6 +276,23 @@ def encode_hybrid_block(
         unit_geometry[eg.ex_id] = {
             i: s for i, (s, _e, _c) in enumerate(unit_runs(eg.inp))
         }
+
+    meta = {
+        "train": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in train],
+        "test": [{"id": e.ex_id, "input": e.inp, "output": None} for e in test],
+        "typed_roles": True,
+        "block_geometry": {
+            str(eid): {str(b): [s, e] for b, (s, e) in geo.items()}
+            for eid, geo in block_geometry.items()
+        },
+        "unit_geometry": {
+            str(eid): {str(u): s for u, s in geo.items()}
+            for eid, geo in unit_geometry.items()
+        },
+        "observed_offs": list(offs),
+        "road": "hybrid_block",
+    }
+    (out_dir / "grids.json").write_text(json.dumps(meta))
 
     return EncodeResult(
         train=train,
