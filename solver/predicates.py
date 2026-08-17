@@ -82,9 +82,6 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3, 4})),
     # Ternary size sum for object-head (typed path); not a block-merge prior.
     Predicate("size_sum3", 4, ("size", "size", "size", "size"), "arith", frozenset({4})),
-    # Parity on size values — block-neutral, no answer leak.
-    Predicate("size_even", 1, ("size",), "arith", frozenset({4})),
-    Predicate("size_odd", 1, ("size",), "arith", frozenset({4})),
     # Every-other colored succession (padded-fill pairing); input geometry only.
     Predicate("obj_pair", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({4})),
     # Maximal contiguous non-zero component: leftmost block + pixel span length.

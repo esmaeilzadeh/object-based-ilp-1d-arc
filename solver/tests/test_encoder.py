@@ -4,6 +4,7 @@ from pathlib import Path
 
 from solver.bias_gen import render_object_bias, render_object_bias_from_bk
 from solver.encoder import _block_and_derived, encode_instance
+from solver.predicates import PREDICATES
 
 
 def _facts(row):
@@ -133,3 +134,10 @@ def test_lean_omits_extrema_and_named_macros():
         "component_len",
     ):
         assert f"body_pred({name}," not in text
+
+
+def test_predicates_inventory_has_no_size_parity():
+    """size_even / size_odd must not exist even as unused inventory."""
+    names = {p.name for p in PREDICATES}
+    assert "size_even" not in names
+    assert "size_odd" not in names
