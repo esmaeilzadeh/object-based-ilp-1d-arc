@@ -119,6 +119,23 @@ Combined first-3 @120s `JOBS=2`: match 33 + fail 21. Not a single parallel invoc
 
 ---
 
+## Single-invocation two-head confirm (`eval_120s_allcats_j2`)
+
+Full 54-task `hybrid_census` @120s `JOBS=2` after removing unused `size_even`/`size_odd`. Same split as the combined 34/54 (two-head match, not single `out_block/5`).
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_allcats_j2` |
+| **metric** | **34/54** exact @120 s (`hybrid_census`) |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `21c78a59c9bb9157d7fc3b3894fdcbc98d2e24f7` |
+| **branch** | `cursor/remove-size-parity-92ee` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_allcats_j2/hybrid_census/summary.json` |
+| **notes** | All 54 GNU parallel workers exit 0. Confirms combined `eval_120s_hybrid_full54_j2`. Census-match is still bulky+unit two-head (`recolor_cnt`/`scale_dp`/`move_dp` 0 vs `block_primary`). |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
