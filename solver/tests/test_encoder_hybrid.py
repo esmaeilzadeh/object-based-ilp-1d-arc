@@ -1,5 +1,6 @@
 """Hybrid encode labels: zip-within-sort, no filenames."""
 
+import json
 from pathlib import Path
 
 from solver.census import census_match
@@ -38,6 +39,15 @@ def test_zip_labels_shifted_bar_and_seed(tmp_path: Path):
     assert "sm1(sm1)." in bk
     assert "neg(out_block(0,b0,s0,s7,v8))." in block_exs
     assert "neg(out_pixel(0,u0,s0,v4))." in unit_exs
+    grids = json.loads((tmp_path / "enc" / "grids.json").read_text())
+    assert grids["train"][0]["output"] == [0, 8, 8, 8, 8, 8, 8, 8, 4, 0]
+    assert grids["test"][0]["output"] is None
+    assert "0" in grids["block_geometry"]
+    assert "gold(" not in bk
+    assert "gold(" not in enc.test_bk_path.read_text()
+    assert "pos(out(" not in enc.test_bk_path.read_text()
+    assert "gold" not in enc.bias_object_path.read_text()
+    assert "gold" not in bias_u
 
 
 def test_bk_defines_sm_unaries_for_full_width(tmp_path: Path):
