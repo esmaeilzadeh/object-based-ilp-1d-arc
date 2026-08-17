@@ -178,21 +178,26 @@ def solve_hybrid(
     timeout: int = 600,
     work_dir: Optional[PathLike] = None,
 ) -> SolveResult:
-    """Census gate → parallel two-head object road or one ``out/3``. No failure ladder."""
-    from solver.census import census_match, unit_runs
-    from solver.decode import apply_hybrid_program, apply_pixel_program
-    from solver.encoder_hybrid import encode_hybrid_block
+    """Census gate → single ``out_block/5`` (same as ``solve``) or pixel ``out/3``."""
+    from solver.census import census_match
+    from solver.decode import apply_pixel_program
+    from solver.encoder import _load_json
     from solver.pixel_encode import encode_pixel_instance
-    from solver.verify import verify_hybrid_on_train
 
     work_dir = Path(work_dir or Path("work") / "solve_hybrid")
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    from solver.encoder import _load_json
-
     obj = instance if isinstance(instance, dict) else _load_json(instance)
     match = census_match(obj["train"])
     rem = max(int(timeout), 0)
+
+    if match:
+        result = solve(instance, timeout=timeout, work_dir=work_dir)
+        detail = dict(result.failure_detail or {})
+        detail["census_match"] = True
+        detail["road"] = "object"
+        result.failure_detail = detail
+        return result
 
     def _soft_from(encoded, test0, pred):
         if not encoded.test_path.exists() or test0.out is None:
@@ -208,7 +213,8 @@ def solve_hybrid(
         pred = list(test0.inp)
         matrix, soft = _soft_from(encoded, test0, pred)
         detail = _bias_detail(ir, rem)
-        detail["census_match"] = match
+        detail["census_match"] = False
+        detail["road"] = "pixel"
         if detail_extra:
             detail.update(detail_extra)
         return SolveResult(
@@ -223,208 +229,71 @@ def solve_hybrid(
             detail,
         )
 
+    encoded = encode_pixel_instance(instance, work_dir / "encode")
+    test0 = encoded.test[0]
     if rem <= 0:
-        encoded = encode_hybrid_block(instance, work_dir / "encode") if match else encode_pixel_instance(instance, work_dir / "encode")
-        test0 = encoded.test[0]
         return _fail(
             "popper_timeout",
             encoded,
             test0,
-            InduceResult(
-                None,
-                "timeout",
-                0.0,
-                max_literals=PIXEL_MAX_LITERALS if not match else OBJECT_MAX_LITERALS,
-            ),
+            InduceResult(None, "timeout", 0.0, max_literals=PIXEL_MAX_LITERALS),
         )
 
-    if not match:
-        encoded = encode_pixel_instance(instance, work_dir / "encode")
-        test0 = encoded.test[0]
-        ir = induce(
-            encoded.exs_pixel_path,
-            encoded.bk_path,
-            encoded.bias_pixel_path,
-            rem,
-            work_dir / "popper_pixel",
-            max_literals=PIXEL_MAX_LITERALS,
-        )
-        if not ir.program:
-            reason = {
-                "timeout": "popper_timeout",
-                "error": "popper_error",
-            }.get(ir.status, "popper_exhausted")
-            return _fail(reason, encoded, test0, ir)
-        # Decom test.py: score the program with do_test_ex. Paint-verify is
-        # not the success gate (it can reject programs 1d-arc would count).
-        matrix, soft = score_program_soft(
-            ir.program,
-            encoded.test_path,
-            work_dir=work_dir / "soft_score",
-        )
-        decom_solved = int(matrix[1]) == 0 and int(matrix[3]) == 0
-        pred = list(test0.inp)
-        decode_err = None
-        try:
-            preds = apply_pixel_program(
-                ir.program, encoded.test_bk_path, encoded.test
-            )
-            pred = preds[test0.ex_id]
-        except Exception as e:
-            decode_err = str(e)
-        detail = _bias_detail(ir, rem)
-        detail["census_match"] = False
-        detail["road"] = "pixel"
-        detail["decom_solved"] = decom_solved
-        if decode_err:
-            detail["decode_error"] = decode_err
-        if decode_err and not decom_solved:
-            return SolveResult(
-                pred,
-                ir.program,
-                "fallback_identity",
-                False,
-                "low",
-                matrix,
-                soft,
-                "decode_error",
-                detail,
-            )
-        return SolveResult(
-            pred,
-            ir.program,
-            "pixel_ilp",
-            decom_solved,
-            "high" if decom_solved else "low",
-            matrix,
-            soft,
-            None,
-            detail,
-        )
-
-    encoded = encode_hybrid_block(instance, work_dir / "encode")
-    test0 = encoded.test[0]
-    n_unit = max(len(unit_runs(eg.inp)) for eg in encoded.train)
-    from concurrent.futures import ThreadPoolExecutor
-
-    if n_unit > 0:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            grids = encoded.out_dir / "grids.json"
-            fut_b = pool.submit(
-                induce,
-                encoded.exs_object_path,
-                encoded.bk_path,
-                encoded.bias_object_path,
-                rem,
-                work_dir / "popper_object",
-                max_literals=OBJECT_MAX_LITERALS,
-                paint_test=True,
-                paint_mode="bulky",
-                grids_path=grids,
-            )
-            fut_u = pool.submit(
-                induce,
-                encoded.exs_unit_path,
-                encoded.bk_path,
-                encoded.bias_unit_path,
-                rem,
-                work_dir / "popper_unit",
-                max_literals=OBJECT_MAX_LITERALS,
-                paint_test=True,
-                paint_mode="unit",
-                grids_path=grids,
-            )
-            ir_b = fut_b.result()
-            ir_u = fut_u.result()
-    else:
-        ir_b = induce(
-            encoded.exs_object_path,
-            encoded.bk_path,
-            encoded.bias_object_path,
-            rem,
-            work_dir / "popper_object",
-            max_literals=OBJECT_MAX_LITERALS,
-            paint_test=True,
-            paint_mode="bulky",
-            grids_path=encoded.out_dir / "grids.json",
-        )
-        ir_u = InduceResult("", "ok", 0.0, max_literals=OBJECT_MAX_LITERALS)
-
-    if not ir_b.program:
+    ir = induce(
+        encoded.exs_pixel_path,
+        encoded.bk_path,
+        encoded.bias_pixel_path,
+        rem,
+        work_dir / "popper_pixel",
+        max_literals=PIXEL_MAX_LITERALS,
+    )
+    if not ir.program:
         reason = {
             "timeout": "popper_timeout",
             "error": "popper_error",
-        }.get(ir_b.status, "popper_exhausted")
-        return _fail(
-            reason,
-            encoded,
-            test0,
-            ir_b,
-            detail_extra={"head": "out_block", "parallel": n_unit > 0, "t_each": rem},
-        )
-
-    unit_prog = ""
-    if n_unit > 0:
-        if not ir_u.program:
-            reason = {
-                "timeout": "popper_timeout",
-                "error": "popper_error",
-            }.get(ir_u.status, "popper_exhausted")
-            return _fail(
-                reason,
-                encoded,
-                test0,
-                ir_u,
-                prog=ir_b.program or "",
-                detail_extra={"head": "out_pixel", "parallel": True, "t_each": rem},
-            )
-        unit_prog = ir_u.program
-
-    combined = (ir_b.program or "") + ("\n" + unit_prog if unit_prog else "")
-    if not verify_hybrid_on_train(ir_b.program or "", unit_prog, encoded):
-        return _fail(
-            "paint_verify_failed",
-            encoded,
-            test0,
-            ir_u if n_unit > 0 else ir_b,
-            prog=combined,
-            detail_extra={"head": "hybrid", "parallel": n_unit > 0, "t_each": rem},
-        )
+        }.get(ir.status, "popper_exhausted")
+        return _fail(reason, encoded, test0, ir)
+    # Decom test.py: score the program with do_test_ex. Paint-verify is
+    # not the success gate (it can reject programs 1d-arc would count).
+    matrix, soft = score_program_soft(
+        ir.program,
+        encoded.test_path,
+        work_dir=work_dir / "soft_score",
+    )
+    decom_solved = int(matrix[1]) == 0 and int(matrix[3]) == 0
+    pred = list(test0.inp)
+    decode_err = None
     try:
-        preds = apply_hybrid_program(
-            ir_b.program or "",
-            unit_prog,
-            encoded.test_bk_path,
-            encoded.test,
-            typed_roles=encoded.typed_roles,
-            block_geometry=encoded.block_geometry,
-            unit_geometry=encoded.unit_geometry,
-            extra_offs=encoded.observed_offs,
+        preds = apply_pixel_program(
+            ir.program, encoded.test_bk_path, encoded.test
         )
         pred = preds[test0.ex_id]
     except Exception as e:
-        return _fail(
+        decode_err = str(e)
+    detail = _bias_detail(ir, rem)
+    detail["census_match"] = False
+    detail["road"] = "pixel"
+    detail["decom_solved"] = decom_solved
+    if decode_err:
+        detail["decode_error"] = decode_err
+    if decode_err and not decom_solved:
+        return SolveResult(
+            pred,
+            ir.program,
+            "fallback_identity",
+            False,
+            "low",
+            matrix,
+            soft,
             "decode_error",
-            encoded,
-            test0,
-            ir_b,
-            prog=combined,
-            detail_extra={"decode_error": str(e)},
+            detail,
         )
-    matrix, soft = _soft_from(encoded, test0, pred)
-    detail = _bias_detail(ir_b, rem)
-    detail["census_match"] = True
-    detail["road"] = "hybrid_block"
-    detail["n_unit"] = n_unit
-    detail["parallel"] = n_unit > 0
-    detail["t_each"] = rem
-    detail["unit_popper_status"] = ir_u.status if n_unit > 0 else "skipped"
     return SolveResult(
         pred,
-        combined,
-        "hybrid_ilp",
-        True,
-        "high",
+        ir.program,
+        "pixel_ilp",
+        decom_solved,
+        "high" if decom_solved else "low",
         matrix,
         soft,
         None,

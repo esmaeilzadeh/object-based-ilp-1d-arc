@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from solver.census import census_match
-from solver.encoder_hybrid import encode_hybrid_block
+from solver.encoder import encode_instance
 from solver.pixel_encode import encode_pixel_instance
 
 # Width 4 identity-like pair that still fails census (output gains a bar).
@@ -77,7 +77,9 @@ def test_census_match_hybrid_has_no_out3_learning_negs(tmp_path: Path):
         ],
     }
     assert census_match(inst["train"]) is True
-    enc = encode_hybrid_block(inst, tmp_path / "enc")
-    blob = enc.exs_object_path.read_text() + enc.exs_unit_path.read_text()
+    enc = encode_instance(inst, tmp_path / "enc")
+    blob = enc.exs_object_path.read_text()
+    assert enc.exs_unit_path is None or not enc.exs_unit_path.exists()
     assert not _atoms(blob, _NEG)
     assert "head_pred(out,3)." not in enc.bias_object_path.read_text()
+    assert "head_pred(out_block,5)." in enc.bias_object_path.read_text()

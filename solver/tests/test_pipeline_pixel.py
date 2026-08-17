@@ -66,8 +66,30 @@ def test_census_match_induce_keeps_object_max_literals(tmp_path: Path, monkeypat
     solve_hybrid(_MATCH, timeout=5, work_dir=tmp_path / "w")
     from solver.bias_gen import OBJECT_MAX_LITERALS
 
-    assert captured
-    assert all(v == OBJECT_MAX_LITERALS for v in captured)
+    assert captured == [OBJECT_MAX_LITERALS]
+
+
+def test_census_match_uses_single_out_block_head(tmp_path: Path, monkeypatch):
+    def fake_induce(*_args, **kwargs):
+        return InduceResult(
+            None,
+            "exhausted",
+            0.01,
+            max_literals=int(kwargs.get("max_literals") or 0),
+        )
+
+    monkeypatch.setattr("solver.pipeline.induce", fake_induce)
+    r = solve_hybrid(_MATCH, timeout=5, work_dir=tmp_path / "w")
+    assert r.failure_detail.get("census_match") is True
+    assert r.failure_detail.get("road") == "object"
+    enc = tmp_path / "w" / "encode"
+    assert (enc / "exs_object.pl").exists()
+    assert not (enc / "exs_unit.pl").exists()
+    bias = (enc / "bias_object.pl").read_text()
+    assert "head_pred(out_block,5)." in bias
+    assert "head_pred(out_pixel,4)." not in bias
+    assert "pos(out_block(" in (enc / "exs_object.pl").read_text()
+    assert "pos(out_pixel(" not in (enc / "exs_object.pl").read_text()
 
 
 def test_mismatch_paint_verify_is_not_sole_success_gate(tmp_path: Path, monkeypatch):

@@ -136,6 +136,27 @@ Full 54-task `hybrid_census` @120s `JOBS=2` after removing unused `size_even`/`s
 
 ---
 
+## Census-match single `out_block/5` (`eval_120s_single_head_j2`)
+
+`hybrid_census` match calls `solve()` (same object head as `block_primary`). Census-fail stays pixel `out/3`.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_single_head_j2` |
+| **metric** | **42/54** exact @120 s (`hybrid_census`) |
+| **by path** | census-match object **24/33**; census-fail pixel **18/21** |
+| **soft** | 0.778 (same as exact; misses score 0) |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `ecc030a31d3237b4e3e991350a3354cab9a6b9c6` |
+| **branch** | `cursor/census-match-single-head-92ee` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_single_head_j2/hybrid_census/summary.json` |
+| **vs two-head 34/54** | +8: `recolor_cnt` 0→3, `scale_dp` 0→3, `move_dp` 0→1, `mirror` 1→2 |
+| **vs `block_primary` 32/54** | pixel recovered `denoising_mc`+`pcopy_*` (18/21); object match 24/33 vs 23/33 (`mirror` 2/3 vs 1/3) |
+| **vs paper Decom** | Pixel subset is still **18/21**. Do not report 42/54 as beating Decom. |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
