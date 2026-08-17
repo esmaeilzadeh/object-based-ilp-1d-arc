@@ -201,7 +201,9 @@ class Popper():
 
                 # if non-separable program covers all examples, stop
                 if not inconsistent and tp == num_pos and not skipped:
-                    if not settings.functional_test or not tester.is_non_functional(prog):
+                    fn_ok = (not settings.functional_test or not tester.is_non_functional(prog))
+                    paint_ok = (not getattr(settings, 'paint_test', False) or not tester.is_bad_paint(prog))
+                    if fn_ok and paint_ok:
                         settings.solution = prog
                         settings.best_prog_score = num_pos, 0, num_neg, 0, prog_size
                         settings.best_mdl = prog_size
@@ -328,6 +330,13 @@ class Popper():
                             with settings.stats.duration('explain_none_functional'):
                                 cons_ = explain_none_functional(settings, tester, prog)
                                 new_cons.extend(cons_)
+
+                    # staged paint: only on block-complete consistent programs
+                    if not inconsistent and getattr(settings, 'paint_test', False) and tp == num_pos and not pruned_more_general:
+                        if tester.is_bad_paint(prog):
+                            add_gen = True
+                            add_spec = False
+                            inconsistent = True
 
                 if settings.noisy:
                     # if a program of size k covers less than k positive examples, we can prune its specialisations
