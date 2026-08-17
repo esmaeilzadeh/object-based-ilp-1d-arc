@@ -68,3 +68,35 @@ def test_census_match_induce_keeps_object_max_literals(tmp_path: Path, monkeypat
 
     assert captured
     assert all(v == OBJECT_MAX_LITERALS for v in captured)
+
+
+def test_mismatch_paint_verify_is_not_sole_success_gate(tmp_path: Path, monkeypatch):
+    def fake_induce(*_args, **_kwargs):
+        return InduceResult(
+            "out(A,B,C) :- in(A,B,C).\n",
+            "ok",
+            0.01,
+            max_literals=40,
+        )
+
+    monkeypatch.setattr("solver.pipeline.induce", fake_induce)
+    monkeypatch.setattr(
+        "solver.verify.verify_pixel_on_train",
+        lambda *_a, **_k: False,
+    )
+    monkeypatch.setattr(
+        "solver.pipeline.score_program_soft",
+        lambda *_a, **_k: ([5, 0, 20, 0], 1.0),
+    )
+    monkeypatch.setattr(
+        "solver.decode.apply_pixel_program",
+        lambda _prog, _bk, examples: {
+            eg.ex_id: list(eg.out or eg.inp) for eg in examples
+        },
+    )
+    r = solve_hybrid(_SHORT, timeout=5, work_dir=tmp_path / "w")
+    assert r.failure_reason != "paint_verify_failed"
+    assert r.level == "pixel_ilp"
+    assert r.soft_matrix == [5, 0, 20, 0]
+    assert r.soft_accuracy == 1.0
+    assert r.failure_detail.get("decom_solved") is True
