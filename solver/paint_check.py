@@ -7,7 +7,6 @@ Gold lives in ``grids.json`` (train rows only). Not BK, not bias.
 from __future__ import annotations
 
 import json
-import multiprocessing as mp
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
@@ -109,48 +108,80 @@ def partition_paint_ok(
     return True
 
 
-def _paint_bad_worker(
-    program: str,
-    bk: str,
-    grids: str,
-    mode: str,
-    q: mp.Queue,
-) -> None:
-    try:
-        q.put(not partition_paint_ok(program, bk, grids, mode))
-    except Exception:
-        q.put(True)
-
-
 def paint_is_bad_isolated(
     program: str,
     bk_path: PathLike,
     grids_path: PathLike,
     mode: PaintMode,
     *,
-    join_s: float = 60.0,
+    join_s: float = 20.0,
 ) -> bool:
-    """True if partition paint fails. Child process avoids Popper's SWI session."""
-    q: mp.Queue = mp.Queue()
-    proc = mp.Process(
-        target=_paint_bad_worker,
-        args=(program, str(bk_path), str(grids_path), mode, q),
-    )
-    proc.start()
-    proc.join(join_s)
-    if proc.is_alive():
-        proc.terminate()
-        proc.join(5)
-        if proc.is_alive():
-            proc.kill()
-            proc.join(2)
-        return True
+    """True if partition paint fails.
+
+    Uses a fresh interpreter so this can run inside Popper's already-nested
+    ``mp.Process`` (daemon children cannot spawn another ``mp.Process``).
+    """
+    import os
+    import subprocess
+    import sys
+    import tempfile
+
+    root = Path(__file__).resolve().parents[1]
+    tmp = Path(tempfile.mkdtemp(prefix="paint_chk_"))
+    prog_path = tmp / "prog.pl"
+    prog_path.write_text(program if program.endswith("\n") else program + "\n")
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(root) + os.pathsep + env.get("PYTHONPATH", "")
     try:
-        if not q.empty():
-            return bool(q.get_nowait())
+        r = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "solver.paint_check",
+                "--bk",
+                str(bk_path),
+                "--grids",
+                str(grids_path),
+                "--mode",
+                mode,
+                "--prog",
+                str(prog_path),
+            ],
+            cwd=str(root),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=join_s,
+        )
+        return r.returncode != 0
     except Exception:
-        pass
-    return True
+        return True
+    finally:
+        try:
+            prog_path.unlink(missing_ok=True)
+            tmp.rmdir()
+        except OSError:
+            pass
+
+
+def _cli(argv: Optional[List[str]] = None) -> int:
+    import argparse
+
+    p = argparse.ArgumentParser(description="Partition paint check (exit 0 = ok)")
+    p.add_argument("--bk", required=True)
+    p.add_argument("--grids", required=True)
+    p.add_argument("--mode", required=True, choices=("bulky", "unit"))
+    p.add_argument("--prog", required=True)
+    args = p.parse_args(argv)
+    prog = Path(args.prog).read_text()
+    ok = partition_paint_ok(prog, args.bk, args.grids, args.mode)
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    import sys
+
+    raise SystemExit(_cli())
 
 
 def make_partition_paint_checker(

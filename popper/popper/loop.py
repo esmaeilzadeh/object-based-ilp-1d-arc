@@ -590,6 +590,9 @@ class Popper():
                 if add_to_combiner and not settings.noisy and not settings.solution_found and not settings.recursion_enabled:
 
                     if any_and(uncovered, pos_covered):
+                        prev_sol = settings.solution
+                        prev_uncovered = uncovered.copy()
+                        prev_best = BEST_PROG.value
 
                         if settings.solution:
                             settings.solution = frozenset(settings.solution) | frozenset(prog)
@@ -606,16 +609,22 @@ class Popper():
                         settings.print_incomplete_solution2(settings.solution, tp, fn, tn, fp, hypothesis_size)
 
                         if not uncovered.any():
-                            settings.solution_found = True
-                            settings.max_literals = hypothesis_size-1
-                            min_coverage = settings.min_coverage = 2
-                            # if we have a solution with two rules then a new rule must entail all the examples
-                            if min_coverage != num_pos and len(settings.solution) == 2:
-                                min_coverage = settings.min_coverage = num_pos
+                            paint_bad = getattr(settings, 'paint_test', False) and tester.is_bad_paint(settings.solution)
+                            if paint_bad:
+                                settings.solution = prev_sol
+                                uncovered = prev_uncovered
+                                BEST_PROG.value = prev_best
+                            else:
+                                settings.solution_found = True
+                                settings.max_literals = hypothesis_size-1
+                                min_coverage = settings.min_coverage = 2
+                                # if we have a solution with two rules then a new rule must entail all the examples
+                                if min_coverage != num_pos and len(settings.solution) == 2:
+                                    min_coverage = settings.min_coverage = num_pos
 
-                            # AC: sometimes adding these size constraints can take longer
-                            for i in range(settings.max_literals+1, max_size+1):
-                                generator.prune_size(i)
+                                # AC: sometimes adding these size constraints can take longer
+                                for i in range(settings.max_literals+1, max_size+1):
+                                    generator.prune_size(i)
 
                         call_combine = not uncovered.any()
 
@@ -639,9 +648,14 @@ class Popper():
                             # print('new_hypothesis_found', settings.best_mdl, combiner.best_cost)
                         new_hypothesis, conf_matrix = is_new_solution_found
                         tp, fn, tn, fp, hypothesis_size = conf_matrix
-                        settings.best_prog_score = conf_matrix
-                        settings.solution = new_hypothesis
-                        BEST_PROG.value = '\n'.join(format_rule(settings.order_rule(rule)) for rule in settings.solution)
+                        if (not settings.noisy and fp == 0 and fn == 0
+                                and getattr(settings, 'paint_test', False)
+                                and tester.is_bad_paint(new_hypothesis)):
+                            new_hypothesis_found = False
+                        else:
+                            settings.best_prog_score = conf_matrix
+                            settings.solution = new_hypothesis
+                            BEST_PROG.value = '\n'.join(format_rule(settings.order_rule(rule)) for rule in settings.solution)
                         best_score = mdl_score(fn, fp, hypothesis_size)
                         # if settings.noisy:
                             # print('new_hypothesis_found', settings.best_mdl, best_score)
@@ -659,22 +673,25 @@ class Popper():
                                     generator.prune_size(i)
                         # print("HERE!!!", tp, fn, tn, fp)
                         if not settings.noisy and fp == 0 and fn == 0:
-                            settings.solution_found = True
-                            settings.max_literals = hypothesis_size-1
+                            if getattr(settings, 'paint_test', False) and tester.is_bad_paint(new_hypothesis):
+                                pass
+                            else:
+                                settings.solution_found = True
+                                settings.max_literals = hypothesis_size-1
 
-                            min_coverage = settings.min_coverage = 2
-                            # if we have a solution with two rules then a new rule must entail all the examples
-                            if min_coverage != num_pos and len(settings.solution) == 2:
-                                min_coverage = settings.min_coverage = num_pos
+                                min_coverage = settings.min_coverage = 2
+                                # if we have a solution with two rules then a new rule must entail all the examples
+                                if min_coverage != num_pos and len(settings.solution) == 2:
+                                    min_coverage = settings.min_coverage = num_pos
 
-                            # if size >= settings.max_literals and not settings.order_space:
-                            if size >= settings.max_literals:
-                                print('POOPER')
-                                return
+                                # if size >= settings.max_literals and not settings.order_space:
+                                if size >= settings.max_literals:
+                                    print('POOPER')
+                                    return
 
-                            # AC: sometimes adding these size constraints can take longer
-                            for i in range(hypothesis_size, max_size+1):
-                                generator.prune_size(i)
+                                # AC: sometimes adding these size constraints can take longer
+                                for i in range(hypothesis_size, max_size+1):
+                                    generator.prune_size(i)
 
                 # BUILD CONSTRAINTS
                 if add_spec and not pruned_more_general and not add_redund2:
@@ -736,16 +753,19 @@ class Popper():
                     BEST_PROG.value = '\n'.join(format_rule(settings.order_rule(rule)) for rule in settings.solution)
 
                     if not settings.noisy and fp == 0 and fn == 0:
-                        settings.solution_found = True
-                        settings.max_literals = hypothesis_size-1
-                        min_coverage = settings.min_coverage = 2
-                        # if we have a solution with two rules then a new rule must entail all the examples
-                        if min_coverage != num_pos and len(settings.solution) == 2:
-                            min_coverage = settings.min_coverage = num_pos
+                        if getattr(settings, 'paint_test', False) and tester.is_bad_paint(new_hypothesis):
+                            pass
+                        else:
+                            settings.solution_found = True
+                            settings.max_literals = hypothesis_size-1
+                            min_coverage = settings.min_coverage = 2
+                            # if we have a solution with two rules then a new rule must entail all the examples
+                            if min_coverage != num_pos and len(settings.solution) == 2:
+                                min_coverage = settings.min_coverage = num_pos
 
-                        # if size >= settings.max_literals and not settings.order_space:
-                        if size >= settings.max_literals:
-                            assert(False)
+                            # if size >= settings.max_literals and not settings.order_space:
+                            if size >= settings.max_literals:
+                                assert(False)
             if settings.single_solve:
                 break
         assert(len(to_combine) == 0)

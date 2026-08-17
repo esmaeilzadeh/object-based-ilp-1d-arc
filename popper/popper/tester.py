@@ -288,15 +288,24 @@ class Tester():
         Checker runs outside this SWI session (caller should isolate).
         Only used when settings.paint_test is enabled.
         """
-        checker = getattr(self.settings, 'paint_checker', None)
-        if checker is None:
-            return False
         from .util import format_prog, order_prog
         prog_str = format_prog(order_prog(prog))
-        try:
-            return bool(checker(prog_str))
-        except Exception:
-            return True
+        checker = getattr(self.settings, 'paint_checker', None)
+        if checker is not None:
+            try:
+                return bool(checker(prog_str))
+            except Exception:
+                return True
+        mode = getattr(self.settings, 'paint_mode', None)
+        bk = getattr(self.settings, 'paint_bk', None)
+        grids = getattr(self.settings, 'paint_grids', None)
+        if mode in ('bulky', 'unit') and bk and grids:
+            try:
+                from solver.paint_check import paint_is_bad_isolated
+                return bool(paint_is_bad_isolated(prog_str, bk, grids, mode))
+            except Exception:
+                return True
+        return False
 
 
     def reduce_inconsistent(self, program):

@@ -100,6 +100,14 @@ def _worker(
             paint_test=bool(enabled and paint_checker is not None),
             paint_checker=paint_checker,
         )
+        if enabled and paint_checker is not None:
+            settings.paint_bk = bk
+            settings.paint_grids = grids
+            settings.paint_mode = paint_mode
+            print(
+                f"[induce] paint_test on mode={paint_mode} grids={grids}",
+                flush=True,
+            )
         prog, _terminated = learn_solution(settings)
         if prog:
             Path(out_prog).write_text(prog if prog.endswith("\n") else prog + "\n")
