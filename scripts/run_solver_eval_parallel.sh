@@ -55,9 +55,10 @@ meta = collect_run_meta(
 print(f"Wrote {out / 'run_manifest.json'} (start)")
 PY
 
+# Worker SIGSEGV (janus/SWI) must not skip summary.json.
 parallel --jobs "$JOBS" --delay "$DELAY" --joblog "${OUT}/${MODE}/parallel.joblog" \
   python -m solver.harness --mode "$MODE" --timeout "$TIMEOUT" --out "$OUT" --one {} \
-  ::: "${FILES[@]}"
+  ::: "${FILES[@]}" || true
 
 python - <<PY
 import json

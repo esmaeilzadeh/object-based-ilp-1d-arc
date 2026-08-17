@@ -81,7 +81,106 @@ def apply_object_program(
     """Paint pixels from ``out_block(Ex, Bid, Off, Len, Color)``.
 
     Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
+
+    Janus/SWI is process-global: consulting train ``bk.pl`` then ``test_bk.pl``
+    in one interpreter can SIGSEGV in ``libswipl`` GC. Each apply runs in a
+    fresh subprocess unless ``SOLVER_APPLY_INPROC=1``.
     """
+    import os
+
+    if os.environ.get("SOLVER_APPLY_INPROC") == "1":
+        return _apply_object_program_inproc(
+            program,
+            bk_path,
+            examples,
+            typed_roles=typed_roles,
+            block_geometry=block_geometry,
+        )
+    return _apply_object_program_isolated(
+        program,
+        bk_path,
+        examples,
+        typed_roles=typed_roles,
+        block_geometry=block_geometry,
+    )
+
+
+def _apply_object_program_isolated(
+    program: str,
+    bk_path: PathLike,
+    examples: Sequence[ExampleGrids],
+    *,
+    typed_roles: bool = False,
+    block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
+) -> Dict[int, List[int]]:
+    import json
+    import os
+    import subprocess
+    import sys
+    import tempfile
+
+    payload = {
+        "program": program,
+        "bk_path": str(bk_path),
+        "examples": [
+            {"ex_id": int(eg.ex_id), "inp": list(eg.inp), "out": None if eg.out is None else list(eg.out)}
+            for eg in examples
+        ],
+        "typed_roles": bool(typed_roles),
+        "block_geometry": {
+            str(eid): {str(bid): [int(span[0]), int(span[1])] for bid, span in bids.items()}
+            for eid, bids in (block_geometry or {}).items()
+        },
+    }
+    root = Path(__file__).resolve().parents[1]
+    tmp = Path(tempfile.mkdtemp(prefix="apply_obj_"))
+    req = tmp / "req.json"
+    req.write_text(json.dumps(payload))
+    env = os.environ.copy()
+    env["SOLVER_APPLY_INPROC"] = "1"
+    env["PYTHONPATH"] = str(root) + os.pathsep + env.get("PYTHONPATH", "")
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "solver.decode", "--apply-object", str(req)],
+            cwd=str(root),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError("apply_object_program subprocess timed out") from e
+    finally:
+        try:
+            req.unlink(missing_ok=True)
+            tmp.rmdir()
+        except OSError:
+            pass
+    if r.returncode < 0 or r.returncode == 139:
+        raise RuntimeError(
+            f"apply_object_program SWI/janus crashed (returncode={r.returncode})"
+        )
+    line = (r.stdout or "").strip().splitlines()
+    if not line:
+        err = (r.stderr or "").strip() or f"returncode={r.returncode}"
+        raise RuntimeError(f"apply_object_program subprocess produced no JSON: {err}")
+    data = json.loads(line[-1])
+    if data.get("ok"):
+        return {int(k): list(v) for k, v in data["preds"].items()}
+    if data.get("error_type") == "ValueError":
+        raise ValueError(data.get("error") or "apply_object_program failed")
+    raise RuntimeError(data.get("error") or "apply_object_program failed")
+
+
+def _apply_object_program_inproc(
+    program: str,
+    bk_path: PathLike,
+    examples: Sequence[ExampleGrids],
+    *,
+    typed_roles: bool = False,
+    block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
+) -> Dict[int, List[int]]:
+    """In-process janus consult. Caller must not mix train/test BK in one engine."""
     from janus_swi import consult, query_once
 
     prog = _strip_program(program)
@@ -306,4 +405,42 @@ def apply_pixel_program(
             query_once("abolish(out/3)")
         except Exception:
             pass
+
+
+def _cli(argv: Optional[List[str]] = None) -> int:
+    import argparse
+    import json
+
+    p = argparse.ArgumentParser(description="Object-program paint (subprocess helper)")
+    p.add_argument("--apply-object", type=Path, required=True)
+    args = p.parse_args(argv)
+    payload = json.loads(Path(args.apply_object).read_text())
+    examples = [
+        ExampleGrids(int(e["ex_id"]), list(e["inp"]), None if e.get("out") is None else list(e["out"]))
+        for e in payload["examples"]
+    ]
+    geo = {
+        int(eid): {int(bid): (int(span[0]), int(span[1])) for bid, span in bids.items()}
+        for eid, bids in (payload.get("block_geometry") or {}).items()
+    }
+    try:
+        preds = _apply_object_program_inproc(
+            payload["program"],
+            payload["bk_path"],
+            examples,
+            typed_roles=bool(payload.get("typed_roles")),
+            block_geometry=geo or None,
+        )
+    except ValueError as e:
+        print(json.dumps({"ok": False, "error_type": "ValueError", "error": str(e)}))
+        return 0
+    except Exception as e:  # noqa: BLE001
+        print(json.dumps({"ok": False, "error_type": type(e).__name__, "error": str(e)}))
+        return 1
+    print(json.dumps({"ok": True, "preds": {str(k): v for k, v in preds.items()}}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_cli())
 

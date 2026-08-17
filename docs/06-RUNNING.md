@@ -34,7 +34,15 @@ For a walkthrough of what those artifacts mean, see [03 — Tutorial](03-TUTORIA
 | Clingo | Popper’s ASP backend |
 | GNU `parallel` | Only needed for parallel eval |
 
-On Ubuntu/Debian: `sudo apt install swi-prolog clingo parallel`
+On Ubuntu 24.04 Cloud images the distro `swi-prolog` package is 9.0.x and cannot build `janus-swi` (needs ≥ 9.1.12). Use:
+
+```bash
+sudo apt-get install -y python3.12-venv python3-dev build-essential parallel gringo
+sudo add-apt-repository -y ppa:swi-prolog/stable
+sudo apt-get update && sudo apt-get install -y swi-prolog
+```
+
+`gringo` provides `/usr/bin/clingo`. `python3-venv` is required for `python3 -m venv` (`ensurepip`). See `.cursor/environment.json` for the Cloud Agent install script.
 
 ---
 
