@@ -53,6 +53,20 @@ Single **combined** experiment (do not score the two changes separately on the s
 
 ---
 
+## Cloud Agent 120s first-3 (`eval_120s_first3_j2`)
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_first3_j2` |
+| **metric** | **32/54** exact @120 s (`block_primary`) |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `eca83c56e1e051cd906c6976ee27df81ef4f6d34` (eval start) |
+| **host** | Cloud Agent VPS, 4 vCPU, `JOBS=2` |
+| **artifacts** | `results/eval_120s_first3_j2/block_primary/summary.json` |
+| **notes** | Two GNU parallel workers exited 139 (SIGSEGV in `libswipl` GC) on `1d_flip_1` and `1d_recolor_oe_0`. `1d_recolor_oe_0` reran clean (`decode_error`). `1d_flip_1` recovered after isolating `apply_object_program` in a subprocess (train `bk.pl` + `test_bk.pl` must not share one janus engine). Parallel summary now still writes if a worker segfaults. |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
