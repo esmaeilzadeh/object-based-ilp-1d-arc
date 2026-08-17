@@ -64,3 +64,35 @@ def test_object_decoder_rejects_overlap(tmp_path: Path):
             typed_roles=True,
             block_geometry=enc.block_geometry,
         )
+
+
+def test_train_then_test_apply_uses_fresh_engine(tmp_path: Path):
+    """Consulting train bk then test_bk in one janus engine can SIGSEGV.
+
+    Public apply_object_program must isolate each consult in a subprocess.
+    """
+    enc = encode_instance(
+        {
+            "train": [{"input": [[2, 2, 0, 9]], "output": [[2, 2, 0, 9]]}],
+            "test": [{"input": [[9, 0, 2, 2]], "output": [[9, 0, 2, 2]]}],
+        },
+        tmp_path / "enc",
+    )
+    train_prog = "out_block(0,b0,s0,s2,v2).\nout_block(0,b2,s0,s1,v9).\n"
+    test_prog = "out_block(1,b0,s0,s1,v9).\nout_block(1,b2,s0,s2,v2).\n"
+    train_preds = apply_object_program(
+        train_prog,
+        enc.bk_path,
+        enc.train,
+        typed_roles=True,
+        block_geometry=enc.block_geometry,
+    )
+    test_preds = apply_object_program(
+        test_prog,
+        enc.test_bk_path,
+        enc.test,
+        typed_roles=True,
+        block_geometry=enc.block_geometry,
+    )
+    assert train_preds[0] == [2, 2, 0, 9]
+    assert test_preds[1] == [9, 0, 2, 2]
