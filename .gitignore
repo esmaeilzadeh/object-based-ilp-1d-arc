@@ -11,6 +11,8 @@ pred.json
 
 # Large eval log dumps (summaries/JSON still tracked)
 results/logs/
+results/**/parallel.joblog
+results/**/eval_run.log
 # Nested encode/Popper dumps under result campaigns (per-task *.json still tracked)
 results/*/*/*/
 .env

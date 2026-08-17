@@ -47,23 +47,46 @@ def _example_facts(eg: ExampleGrids) -> List[str]:
     return facts
 
 
-def _pixel_exs(train: List[ExampleGrids], max_color: int = 9) -> List[str]:
-    lines: List[str] = []
-    for eg in train:
+def _pixel_exs_neg_gen(examples: List[ExampleGrids], neg_gen: str) -> str:
+    """Decom ``json2csv`` exs: nonzero gold ``pos``, clingo ``NEG_GEN`` negs.
+
+    Gold zeros go into the closed-world generator only (so they are not
+    learning positives and are not negatives). Positions are ``0..32``.
+    """
+    import clingo
+
+    learning_pos: List[str] = []
+    gen_exs: List[str] = []
+    examples_id = set()
+    for eg in examples:
         assert eg.out is not None
-        w = len(eg.out)
+        examples_id.add(eg.ex_id)
         for i, x in enumerate(eg.out):
             x = int(x)
+            line = f"pos(out({eg.ex_id},{i},{x}))."
+            gen_exs.append(line)
             if x != 0:
-                lines.append(f"pos(out({eg.ex_id},{i},{x})).")
-            for v in range(0, max_color + 1):
-                if v != x:
-                    lines.append(f"neg(out({eg.ex_id},{i},{v})).")
-        # extra width from input if longer
-        for i in range(w, len(eg.inp)):
-            for v in range(1, max_color + 1):
-                lines.append(f"neg(out({eg.ex_id},{i},{v})).")
-    return lines
+                learning_pos.append(line)
+
+    encoding = neg_gen
+    for ex in examples_id:
+        encoding += f"example({ex}).\n"
+    encoding += "\n".join(gen_exs) + "\n"
+
+    solver = clingo.Control(["-Wnone"])
+    solver.add("base", [], encoding)
+    solver.ground([("base", [])])
+    negs: List[str] = []
+    for atom in solver.symbolic_atoms.by_signature("neg", arity=1):
+        xs = atom.symbol.arguments[0].arguments
+        ex = xs[0].number
+        idx = xs[1].number
+        try:
+            val = xs[2].number
+        except Exception:
+            val = xs[2].name
+        negs.append(f"neg(out({ex},{idx},{val})).")
+    return "\n".join(learning_pos + negs) + ("\n" if learning_pos or negs else "")
 
 
 def encode_pixel_instance(src: Union[PathLike, dict], out_dir: PathLike) -> EncodeResult:
@@ -76,15 +99,15 @@ def encode_pixel_instance(src: Union[PathLike, dict], out_dir: PathLike) -> Enco
     train: List[ExampleGrids] = []
     for i, pair in enumerate(obj["train"]):
         train.append(ExampleGrids(i, flatten(pair["input"]), flatten(pair["output"])))
+    # Decom json2csv enumerates each split from 0 (train and test files are separate).
     test: List[ExampleGrids] = []
-    base = len(train)
     for j, pair in enumerate(obj["test"]):
         out = (
             flatten(pair["output"])
             if "output" in pair and pair["output"] is not None
             else None
         )
-        test.append(ExampleGrids(base + j, flatten(pair["input"]), out))
+        test.append(ExampleGrids(j, flatten(pair["input"]), out))
 
     inst_train = "\n".join(f for eg in train for f in _example_facts(eg)) + "\n"
     inst_test = "\n".join(f for eg in test for f in _example_facts(eg)) + "\n"
@@ -98,12 +121,12 @@ def encode_pixel_instance(src: Union[PathLike, dict], out_dir: PathLike) -> Enco
     test_path = out_dir / "test.pl"
     bk_path.write_text(train_bk)
     test_bk_path.write_text(test_bk)
-    exs_pixel_path.write_text("\n".join(_pixel_exs(train)) + "\n")
+    exs_pixel_path.write_text(_pixel_exs_neg_gen(train, decom.NEG_GEN))
     bias_pixel_path.write_text(decom.BIAS)
 
     labeled = [eg for eg in test if eg.out is not None]
-    test_exs = _pixel_exs(labeled) if labeled else []
-    test_path.write_text("\n".join(test_exs) + "\n" + test_bk)
+    test_exs = _pixel_exs_neg_gen(labeled, decom.NEG_GEN) if labeled else ""
+    test_path.write_text(test_exs + ("\n" if test_exs else "") + test_bk)
 
     dummy_object = out_dir / "exs_object.pl"
     dummy_object.write_text("% pixel road: no out_block\n")

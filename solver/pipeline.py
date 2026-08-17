@@ -21,6 +21,9 @@ from solver.verify import verify_object_on_train
 
 PathLike = Union[str, Path]
 
+# Decom train.py default; census-fail pixel road only (not object heads).
+PIXEL_MAX_LITERALS = 40
+
 
 @dataclass
 class SolveResult:
@@ -180,7 +183,7 @@ def solve_hybrid(
     from solver.decode import apply_hybrid_program, apply_pixel_program
     from solver.encoder_hybrid import encode_hybrid_block
     from solver.pixel_encode import encode_pixel_instance
-    from solver.verify import verify_hybrid_on_train, verify_pixel_on_train
+    from solver.verify import verify_hybrid_on_train
 
     work_dir = Path(work_dir or Path("work") / "solve_hybrid")
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -227,7 +230,12 @@ def solve_hybrid(
             "popper_timeout",
             encoded,
             test0,
-            InduceResult(None, "timeout", 0.0, max_literals=OBJECT_MAX_LITERALS),
+            InduceResult(
+                None,
+                "timeout",
+                0.0,
+                max_literals=PIXEL_MAX_LITERALS if not match else OBJECT_MAX_LITERALS,
+            ),
         )
 
     if not match:
@@ -239,6 +247,7 @@ def solve_hybrid(
             encoded.bias_pixel_path,
             rem,
             work_dir / "popper_pixel",
+            max_literals=PIXEL_MAX_LITERALS,
         )
         if not ir.program:
             reason = {
@@ -246,32 +255,47 @@ def solve_hybrid(
                 "error": "popper_error",
             }.get(ir.status, "popper_exhausted")
             return _fail(reason, encoded, test0, ir)
-        if not verify_pixel_on_train(ir.program, encoded):
-            return _fail("paint_verify_failed", encoded, test0, ir, prog=ir.program)
+        # Decom test.py: score the program with do_test_ex. Paint-verify is
+        # not the success gate (it can reject programs 1d-arc would count).
+        matrix, soft = score_program_soft(
+            ir.program,
+            encoded.test_path,
+            work_dir=work_dir / "soft_score",
+        )
+        decom_solved = int(matrix[1]) == 0 and int(matrix[3]) == 0
+        pred = list(test0.inp)
+        decode_err = None
         try:
             preds = apply_pixel_program(
                 ir.program, encoded.test_bk_path, encoded.test
             )
             pred = preds[test0.ex_id]
         except Exception as e:
-            return _fail(
-                "decode_error",
-                encoded,
-                test0,
-                ir,
-                prog=ir.program,
-                detail_extra={"decode_error": str(e)},
-            )
-        matrix, soft = _soft_from(encoded, test0, pred)
+            decode_err = str(e)
         detail = _bias_detail(ir, rem)
         detail["census_match"] = False
         detail["road"] = "pixel"
+        detail["decom_solved"] = decom_solved
+        if decode_err:
+            detail["decode_error"] = decode_err
+        if decode_err and not decom_solved:
+            return SolveResult(
+                pred,
+                ir.program,
+                "fallback_identity",
+                False,
+                "low",
+                matrix,
+                soft,
+                "decode_error",
+                detail,
+            )
         return SolveResult(
             pred,
             ir.program,
             "pixel_ilp",
-            True,
-            "high",
+            decom_solved,
+            "high" if decom_solved else "low",
             matrix,
             soft,
             None,

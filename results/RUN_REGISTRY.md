@@ -67,6 +67,25 @@ Single **combined** experiment (do not score the two changes separately on the s
 
 ---
 
+## Census-fail pixel road vs Decom (`eval_120s_mismatch21_j2`)
+
+Not a block-lift result. `hybrid_census` on the 21 first-3 tasks where `census_match` is false (pixel `out/3` fragment only).
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_mismatch21_j2` |
+| **metric** | **18/21** exact @120 s (`hybrid_census` census-fail subset) |
+| **soft** | 0.857 (same as exact; misses score 0) |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` (mismatch families only) |
+| **git_sha** | `014b89748fcd9077d1c20d66305553210af946ef` |
+| **branch** | `cursor/decom-pixel-fragment-92ee` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_mismatch21_j2/hybrid_census/summary.json` |
+| **vs paper Decom** | **18/21** — same split: `denoising_1c`/`fill`/`hollow`/`denoising_mc`/`pcopy_*` 18/18, `padded_fill` 0/3 |
+| **notes** | Closes the previous **9/21** (`block_primary` on these families). Smoke `pcopy_1c_0`, `pcopy_mc_0`, `denoising_mc_0` all exact before the 21-task sweep. `git_dirty=true` at run start because local smoke/result trees existed; code SHA is the four pixel-road commits. |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
