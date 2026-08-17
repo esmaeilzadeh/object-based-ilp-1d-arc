@@ -50,4 +50,5 @@ def test_hybrid_no_leftover_budget_helper():
 
     assert not hasattr(pl, "hybrid_budgets")
     src = Path(pl.__file__).read_text()
-    assert "ThreadPoolExecutor" in src
+    assert "ThreadPoolExecutor" not in src
+    assert "encode_hybrid_block" not in src
