@@ -21,6 +21,9 @@ from solver.verify import verify_object_on_train
 
 PathLike = Union[str, Path]
 
+# Decom train.py default; census-fail pixel road only (not object heads).
+PIXEL_MAX_LITERALS = 40
+
 
 @dataclass
 class SolveResult:
@@ -227,7 +230,12 @@ def solve_hybrid(
             "popper_timeout",
             encoded,
             test0,
-            InduceResult(None, "timeout", 0.0, max_literals=OBJECT_MAX_LITERALS),
+            InduceResult(
+                None,
+                "timeout",
+                0.0,
+                max_literals=PIXEL_MAX_LITERALS if not match else OBJECT_MAX_LITERALS,
+            ),
         )
 
     if not match:
@@ -239,6 +247,7 @@ def solve_hybrid(
             encoded.bias_pixel_path,
             rem,
             work_dir / "popper_pixel",
+            max_literals=PIXEL_MAX_LITERALS,
         )
         if not ir.program:
             reason = {
