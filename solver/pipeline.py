@@ -285,6 +285,7 @@ def solve_hybrid(
 
     if n_unit > 0:
         with ThreadPoolExecutor(max_workers=2) as pool:
+            grids = encoded.out_dir / "grids.json"
             fut_b = pool.submit(
                 induce,
                 encoded.exs_object_path,
@@ -293,6 +294,9 @@ def solve_hybrid(
                 rem,
                 work_dir / "popper_object",
                 max_literals=OBJECT_MAX_LITERALS,
+                paint_test=True,
+                paint_mode="bulky",
+                grids_path=grids,
             )
             fut_u = pool.submit(
                 induce,
@@ -302,6 +306,9 @@ def solve_hybrid(
                 rem,
                 work_dir / "popper_unit",
                 max_literals=OBJECT_MAX_LITERALS,
+                paint_test=True,
+                paint_mode="unit",
+                grids_path=grids,
             )
             ir_b = fut_b.result()
             ir_u = fut_u.result()
@@ -313,6 +320,9 @@ def solve_hybrid(
             rem,
             work_dir / "popper_object",
             max_literals=OBJECT_MAX_LITERALS,
+            paint_test=True,
+            paint_mode="bulky",
+            grids_path=encoded.out_dir / "grids.json",
         )
         ir_u = InduceResult("", "ok", 0.0, max_literals=OBJECT_MAX_LITERALS)
 

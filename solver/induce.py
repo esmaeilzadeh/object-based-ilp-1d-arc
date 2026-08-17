@@ -62,9 +62,32 @@ def _worker(
     max_literals: int,
     out_prog: str,
     q: mp.Queue,
+    paint_test: bool,
+    paint_mode: Optional[str],
+    grids_path: Optional[str],
 ) -> None:
     try:
         Settings, learn_solution = _import_popper()
+        paint_checker = None
+        enabled = bool(paint_test)
+        if enabled:
+            from solver.paint_check import make_partition_paint_checker
+
+            grids = grids_path or str(Path(bk).parent / "grids.json")
+            if paint_mode not in ("bulky", "unit"):
+                print(
+                    f"[induce] paint_test requested but mode={paint_mode!r}; disabling"
+                )
+                enabled = False
+            else:
+                paint_checker = make_partition_paint_checker(
+                    bk, grids, mode=paint_mode
+                )
+                if paint_checker is None:
+                    print(
+                        f"[induce] paint_test requested but grids missing ({grids}); disabling"
+                    )
+                    enabled = False
         settings = Settings(
             cmd_line=False,
             quiet=True,
@@ -74,6 +97,8 @@ def _worker(
             bias_file=bias,
             timeout=int(timeout_s),
             max_literals=int(max_literals),
+            paint_test=bool(enabled and paint_checker is not None),
+            paint_checker=paint_checker,
         )
         prog, _terminated = learn_solution(settings)
         if prog:
@@ -93,8 +118,15 @@ def induce(
     work_dir: Optional[PathLike] = None,
     *,
     max_literals: Optional[int] = None,
+    paint_test: bool = False,
+    paint_mode: Optional[str] = None,
+    grids_path: Optional[PathLike] = None,
 ) -> InduceResult:
-    """Run Popper in a child process; return program + status (honest timeout)."""
+    """Run Popper in a child process; return program + status (honest timeout).
+
+    When ``paint_test`` is True, complete candidates are partition-paint-checked
+    against train gold in sibling ``grids.json`` (mode ``bulky`` or ``unit``).
+    """
     cleanup = False
     if work_dir is None:
         work_dir = Path(tempfile.mkdtemp(prefix="popper_"))
@@ -119,6 +151,9 @@ def induce(
             lit_cap,
             str(out_prog),
             q,
+            bool(paint_test),
+            paint_mode,
+            str(grids_path) if grids_path is not None else None,
         ),
     )
     try:
