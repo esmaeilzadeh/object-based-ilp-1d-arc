@@ -22,8 +22,10 @@ def _facts(row):
 
 def test_lean_block_atoms_typed():
     facts = _facts([2, 2, 2, 0, 5, 5])
-    assert "block(0,b0,s0,s1,s3,v2)." in facts  # Left=0, Right=1, Len=3
-    assert "block(0,b1,s1,s0,s2,v5)." in facts  # Left=1, Right=0 trailing
+    assert "block(0,b0,s0,s3,v2)." in facts
+    assert "block(0,b1,s1,s2,v5)." in facts
+    assert "right_margin(0,b0,s1)." in facts  # next Left
+    assert "right_margin(0,b1,s0)." in facts  # trailing
     assert "obj_succ(0,b0,b1)." in facts
     assert not any(f.startswith("empty_block(") for f in facts)
     assert not any(f.startswith("gap(") for f in facts)
@@ -69,7 +71,8 @@ def test_object_bias_head_only():
     assert "max_body(6)." in text
     assert "body_pred(size_lt,2)." in text
     assert "body_pred(cardinal_ordinal,2)." in text
-    assert "body_pred(block,6)." in text
+    assert "body_pred(block,5)." in text
+    assert "body_pred(right_margin,3)." in text
     assert "body_pred(empty_block,3)." not in text
     assert "body_pred(gap,4)." not in text
 
@@ -85,8 +88,10 @@ def test_encode_instance_object_only(tmp_path: Path):
     enc = encode_instance(inst, tmp_path / "enc")
     bk = enc.bk_path.read_text()
     assert "pixel_block(" not in bk
-    assert "block(0,b0,s0,s1,s2,v1)." in bk  # Left=0, Right=1, Len=2
-    assert "block(0,b1,s1,s0,s1,v2)." in bk  # last Right = trailing 0
+    assert "block(0,b0,s0,s2,v1)." in bk  # Left=0, Len=2
+    assert "right_margin(0,b0,s1)." in bk  # Right = next Left
+    assert "block(0,b1,s1,s1,v2)." in bk
+    assert "right_margin(0,b1,s0)." in bk  # last Right = trailing 0
     assert "empty_block(" not in bk
     assert "gap(" not in bk
     assert enc.bias_object_path is not None
@@ -100,9 +105,10 @@ def test_encode_instance_object_only(tmp_path: Path):
     bias = enc.bias_object_path.read_text()
     assert "head_pred(out_block,5)." in bias
     assert "head_pred(out,3)." not in bias
-    assert "body_pred(block,6)." in bias
-    assert "not body_literal(C, block, 6, (0,1,_,_,_,_))" not in bias
-    assert "not body_literal(C, block, 6, (0,_,_,_,_,_))." in bias
+    assert "body_pred(block,5)." in bias
+    assert "body_pred(right_margin,3)." in bias
+    assert "not body_literal(C, block, 5, (0,1,_,_,_))" not in bias
+    assert "not body_literal(C, block, 5, (0,_,_,_,_))." in bias
 
 
 def test_object_bias_size_add_on_left_or_len():
@@ -113,9 +119,10 @@ def test_object_bias_size_add_on_left_or_len():
 
 
 def test_mechanical_bias_from_bk_no_category():
-    lean = "block(0,b0,s0,s1,s2,v1).\nobj_succ(0,b0,b1).\n"
+    lean = "block(0,b0,s0,s2,v1).\nright_margin(0,b0,s1).\nobj_succ(0,b0,b1).\n"
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s2,v1)).")
-    assert "body_pred(block,6)." in text
+    assert "body_pred(block,5)." in text
+    assert "body_pred(right_margin,3)." in text
     assert "head_pred(out_block,5)." in text
 
 
@@ -180,7 +187,8 @@ def test_move_shaped_left_margin_plus_one(tmp_path: Path):
     enc = encode_instance(inst, tmp_path / "enc")
     bk = enc.bk_path.read_text()
     exs = enc.exs_object_path.read_text()
-    assert "block(0,b0,s1,s2,s2,v1)." in bk  # Left=1, Right=2 trailing, Len=2
+    assert "block(0,b0,s1,s2,v1)." in bk  # Left=1, Len=2
+    assert "right_margin(0,b0,s2)." in bk  # trailing Right=2
     assert "size_add(s1,s1,s2)." in bk
     assert "size_add(s1,s2,s3)." in bk  # +2 closure
     assert "size_add(s1,s3,s4)." in bk  # +3 closure
@@ -192,6 +200,8 @@ def test_move_shaped_left_margin_plus_one(tmp_path: Path):
 def test_input_right_margin_size_add_left_plus_right():
     """Right of first object is next Left; size_add(Left, Right, Left+Right)."""
     facts = _facts([2, 2, 0, 0, 1])  # Left0=0 Right0=2; Left1=2 Right1=0
-    assert "block(0,b0,s0,s2,s2,v2)." in facts
-    assert "block(0,b1,s2,s0,s1,v1)." in facts
+    assert "block(0,b0,s0,s2,v2)." in facts
+    assert "right_margin(0,b0,s2)." in facts
+    assert "block(0,b1,s2,s1,v1)." in facts
+    assert "right_margin(0,b1,s0)." in facts
     assert "size_add(s0,s2,s2)." in facts or "size_add(s2,s0,s2)." in facts

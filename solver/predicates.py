@@ -51,12 +51,20 @@ PREDICATES: Tuple[Predicate, ...] = (
     # block / object-head core
     Predicate(
         "block",
-        6,
-        ("ex", "block_id", "size", "size", "size", "value"),
+        5,
+        ("ex", "block_id", "size", "size", "value"),
         "block",
         frozenset({2, 3, 4}),
     ),
-    # block(E, Bid, Left, Right, Len, Color): input run; Right = next Left (or trailing).
+    # block(E, Bid, Left, Len, Color): colored input run with left margin.
+    Predicate(
+        "right_margin",
+        3,
+        ("ex", "block_id", "size"),
+        "block",
+        frozenset({2, 3, 4}),
+    ),
+    # right_margin(E, Bid, Right): next object's Left, or trailing pad on the last.
     Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3, 4})),
     Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3, 4})),
@@ -145,6 +153,7 @@ def head_pred_unit() -> Predicate:
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
+        "right_margin",
         "obj_succ",
         "size_sum3",
         "size_add",

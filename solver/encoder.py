@@ -144,10 +144,9 @@ def _block_and_derived(
 ) -> List[str]:
     """Emit searchable block facts + optional cell/pixel bridges.
 
-    Lean (``typed_roles``): colored objects only,
-    ``block(E,Bid,Left,Right,Len,Color)``. Right is the next object's Left
-    (gap), or trailing pad on the last object. Head stays
-    ``out_block(E,OutBid,Left,Len,Color)``.
+    Lean (``typed_roles``): colored objects only, ``block(E,Bid,Left,Len,Color)``
+    plus input-only ``right_margin(E,Bid,Right)`` (next object's Left, or trailing
+    pad). Head stays ``out_block(E,OutBid,Left,Len,Color)``.
     Non-lean: all maximal runs (including color 0) share one left→right
     ``block_id`` space. Colored: ``block(Ex,Id,Len,Color)``. Empty:
     ``empty_block(Ex,Id,Len)``. Geometry over all run ids; aggregations over
@@ -433,10 +432,10 @@ def _block_and_derived(
 def _lean_left_margin_facts(
     ex: int, row: Sequence[int], *, typed: bool
 ) -> List[str]:
-    """Lean BK: colored ``block(E, Bid, Left, Right, Len, Color)``.
+    """Lean BK: colored ``block(E, Bid, Left, Len, Color)`` plus ``right_margin``.
 
     ``Left`` is the leading pad (first) or the gap to the previous colored run.
-    ``Right`` is the next object's Left, or trailing pad on the last object.
+    ``right_margin`` is the next object's Left, or trailing pad on the last object.
     Output examples stay ``out_block(E, OutBid, Left, Len, Color)``.
     """
     t = typed
@@ -451,8 +450,9 @@ def _lean_left_margin_facts(
     for bid, ((left, L, c, _s, _e), right) in enumerate(zip(blocks, rights)):
         bb = _bid(bid, t)
         facts.append(
-            f"block({ex},{bb},{_sz(left, t)},{_sz(right, t)},{_sz(L, t)},{_col(c, t)})."
+            f"block({ex},{bb},{_sz(left, t)},{_sz(L, t)},{_col(c, t)})."
         )
+        facts.append(f"right_margin({ex},{bb},{_sz(right, t)}).")
         observed_sizes.add(left)
         observed_sizes.add(right)
         observed_sizes.add(L)
