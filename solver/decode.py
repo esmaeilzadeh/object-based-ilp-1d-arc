@@ -24,6 +24,9 @@ first_block((A,B), Ex, InBid) :-
 first_block(block(Ex, InBid, _, _), Ex, InBid) :- nonvar(InBid).
 origin_inbid(Ex, OutBid, Off, Len, C, InBid) :-
     clause(out_block(Ex, OutBid, Off, Len, C), Body), Body \\== true,
+    call(Body), bind(Ex, OutBid, InBid).
+origin_inbid(Ex, OutBid, Off, Len, C, InBid) :-
+    clause(out_block(Ex, OutBid, Off, Len, C), Body), Body \\== true,
     call(Body), first_block(Body, Ex, InBid).
 """
 

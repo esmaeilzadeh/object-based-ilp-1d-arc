@@ -256,6 +256,11 @@ def _block_and_derived(
             facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
         facts.append(f"obj_succ({ex},{_id(a)},{_id(b)}).")
+    # Minimal ILP-native object correspondence: output object rank binds to the
+    # matching dense input object rank for the same example. This is the ground
+    # relation that lets rules learn Off/Len/Color relative to a chosen input block.
+    for i in range(len(colored_ids)):
+        facts.append(f"bind({ex},{_bid(i, t)},{_bid(i, t)}).")
     # Pairing / component macros are not on the closed lean theory.
     if not lean:
         for i in range(0, len(colored_ids) - 1, 2):
