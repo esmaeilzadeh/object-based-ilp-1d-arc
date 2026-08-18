@@ -62,7 +62,7 @@ def solve(
     timeout: int = 600,
     work_dir: Optional[PathLike] = None,
 ) -> SolveResult:
-    """Induce ``out_block/5``, paint-verify on train, decode test, soft-score."""
+    """Induce ``out_block/4``, paint-verify on train, decode test, soft-score."""
     work_dir = Path(work_dir or Path("work") / "solve")
     work_dir.mkdir(parents=True, exist_ok=True)
 
@@ -178,7 +178,7 @@ def solve_hybrid(
     timeout: int = 600,
     work_dir: Optional[PathLike] = None,
 ) -> SolveResult:
-    """Census gate → single ``out_block/5`` (same as ``solve``) or pixel ``out/3``."""
+    """Census gate → single ``out_block/4`` (same as ``solve``) or pixel ``out/3``."""
     from solver.census import census_match
     from solver.decode import apply_pixel_program
     from solver.encoder import _load_json

@@ -27,7 +27,35 @@ def _strip_program(text: str) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def _collect_out_blocks(
+def _collect_out_blocks_concat(
+    ex_id: int,
+    max_bid: int,
+    max_len: int,
+    *,
+    typed_roles: bool = False,
+) -> List[Tuple[int, int, int]]:
+    """Grounded ``out_block(Ex, OutBid, Len, Color)`` as ``(OutBid, Len, Color)``."""
+    from janus_swi import query_once
+
+    t = typed_roles
+    found: List[Tuple[int, int, int]] = []
+    for bid in range(max_bid + 1):
+        for L in range(1, max_len + 1):
+            for c in range(0, 10):
+                atom = (
+                    f"out_block({ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)})"
+                )
+                try:
+                    res = query_once(atom)
+                except Exception:
+                    continue
+                if res.get("truth"):
+                    found.append((bid, L, c))
+    found.sort(key=lambda x: x[0])
+    return found
+
+
+def _collect_out_blocks_offset(
     ex_id: int,
     width: int,
     bids: Sequence[int],
@@ -37,10 +65,7 @@ def _collect_out_blocks(
     min_len: int = 1,
     extra_offs: Sequence[int] = (),
 ) -> List[Tuple[int, int, int]]:
-    """Enumerate grounded ``out_block(Ex, Bid, Off, Len, Color)``.
-
-    Returns ``(paint_start, Len, Color)`` with ``paint_start = start(Bid)+Off``.
-    """
+    """Legacy 5-ary ``out_block(Ex, Bid, Off, Len, Color)`` → paint start (hybrid archive)."""
     from janus_swi import query_once
 
     t = typed_roles
@@ -78,9 +103,9 @@ def apply_object_program(
     typed_roles: bool = False,
     block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
 ) -> Dict[int, List[int]]:
-    """Paint pixels from ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Paint by concatenating ``out_block(Ex, OutBid, Len, Color)`` in OutBid order.
 
-    Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
+    Gaps are ``Color=0`` runs. Overlap of OutBids or empty concat raises ValueError.
 
     Janus/SWI is process-global: consulting train ``bk.pl`` then ``test_bk.pl``
     in one interpreter can SIGSEGV in ``libswipl`` GC. Each apply runs in a
@@ -88,20 +113,19 @@ def apply_object_program(
     """
     import os
 
+    del block_geometry  # concat decode does not use input paint origins
     if os.environ.get("SOLVER_APPLY_INPROC") == "1":
         return _apply_object_program_inproc(
             program,
             bk_path,
             examples,
             typed_roles=typed_roles,
-            block_geometry=block_geometry,
         )
     return _apply_object_program_isolated(
         program,
         bk_path,
         examples,
         typed_roles=typed_roles,
-        block_geometry=block_geometry,
     )
 
 
@@ -119,6 +143,7 @@ def _apply_object_program_isolated(
     import sys
     import tempfile
 
+    del block_geometry
     payload = {
         "program": program,
         "bk_path": str(bk_path),
@@ -127,10 +152,6 @@ def _apply_object_program_isolated(
             for eg in examples
         ],
         "typed_roles": bool(typed_roles),
-        "block_geometry": {
-            str(eid): {str(bid): [int(span[0]), int(span[1])] for bid, span in bids.items()}
-            for eid, bids in (block_geometry or {}).items()
-        },
     }
     root = Path(__file__).resolve().parents[1]
     tmp = Path(tempfile.mkdtemp(prefix="apply_obj_"))
@@ -183,15 +204,14 @@ def _apply_object_program_inproc(
     """In-process janus consult. Caller must not mix train/test BK in one engine."""
     from janus_swi import consult, query_once
 
+    del block_geometry
     prog = _strip_program(program)
     tmp = Path(bk_path).parent / "_apply_object_prog.pl"
-    # Dynamic so later Popper tester retractall(out_block(...)) can clean up.
-    tmp.write_text(":- dynamic out_block/5.\n" + prog)
+    tmp.write_text(":- dynamic out_block/4.\n" + prog)
 
     consult(str(bk_path))
     consult(str(tmp))
 
-    geo = block_geometry
     out: Dict[int, List[int]] = {}
     try:
         for eg in examples:
@@ -199,37 +219,36 @@ def _apply_object_program_inproc(
                 w = len(eg.out)
             else:
                 w = len(eg.inp)
-            eg_geo = (
-                geo[eg.ex_id]
-                if geo is not None and eg.ex_id in geo
-                else block_geometry_for_row(eg.inp)
+            runs = _collect_out_blocks_concat(
+                eg.ex_id,
+                max_bid=w,
+                max_len=w,
+                typed_roles=typed_roles,
             )
-            row = [0] * w
-            occupied: Dict[int, int] = {}
-            for s, L, c in _collect_out_blocks(
-                eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
-            ):
-                if L <= 0 or s < 0 or s + L > w:
-                    raise ValueError(
-                        f"out_block({eg.ex_id},paint→{s},{L},{c}) out of bounds width={w}"
-                    )
-                for p in range(s, s + L):
-                    if p in occupied and occupied[p] != c:
-                        raise ValueError(
-                            f"ambiguous/overlap at {eg.ex_id}:{p} "
-                            f"{occupied[p]} vs {c}"
-                        )
-                    occupied[p] = c
-                    row[p] = c
+            if not runs:
+                raise ValueError(f"no out_block atoms for ex {eg.ex_id}")
+            seen_bids: set = set()
+            row: List[int] = []
+            for bid, L, c in runs:
+                if bid in seen_bids:
+                    raise ValueError(f"duplicate OutBid {bid} on ex {eg.ex_id}")
+                seen_bids.add(bid)
+                if L <= 0:
+                    raise ValueError(f"non-positive Len on OutBid {bid}")
+                row.extend([int(c)] * int(L))
+            if len(row) != w:
+                raise ValueError(
+                    f"concat width {len(row)} != expected {w} for ex {eg.ex_id}"
+                )
             out[eg.ex_id] = row
         return out
     finally:
         try:
-            query_once("retractall(out_block(_,_,_,_,_))")
+            query_once("retractall(out_block(_,_,_,_))")
         except Exception:
             pass
         try:
-            query_once("abolish(out_block/5)")
+            query_once("abolish(out_block/4)")
         except Exception:
             pass
 
@@ -311,7 +330,7 @@ def apply_hybrid_program(
             )
             row = [0] * w
             occupied: Dict[int, int] = {}
-            for s, L, c in _collect_out_blocks(
+            for s, L, c in _collect_out_blocks_offset(
                 eg.ex_id,
                 w,
                 list(bgeo.keys()),
@@ -423,13 +442,13 @@ def _cli(argv: Optional[List[str]] = None) -> int:
         int(eid): {int(bid): (int(span[0]), int(span[1])) for bid, span in bids.items()}
         for eid, bids in (payload.get("block_geometry") or {}).items()
     }
+    del geo  # concat path ignores paint origins
     try:
         preds = _apply_object_program_inproc(
             payload["program"],
             payload["bk_path"],
             examples,
             typed_roles=bool(payload.get("typed_roles")),
-            block_geometry=geo or None,
         )
     except ValueError as e:
         print(json.dumps({"ok": False, "error_type": "ValueError", "error": str(e)}))
