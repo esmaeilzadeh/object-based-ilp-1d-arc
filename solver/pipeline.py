@@ -246,6 +246,7 @@ def solve_hybrid(
         rem,
         work_dir / "popper_pixel",
         max_literals=PIXEL_MAX_LITERALS,
+        functional_test=False,
     )
     if not ir.program:
         reason = {
