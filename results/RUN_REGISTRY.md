@@ -224,6 +224,24 @@ Tried first: `block/6` with Right in the atom (`eval_120s_right_margin_move_j2`,
 
 ---
 
+## Census-match left+right-margin (`eval_120s_right_margin_match33_j2`)
+
+OutBid + Left concat head; input `right_margin/3`. First-3 census-match only (33 tasks).
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_right_margin_match33_j2` |
+| **metric** | **11/33** exact @120 s |
+| **per cat** | `move_1p/2p/3p` 9/9; `flip` 1/3; `recolor_cnt` 1/3; rest 0 |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `996820e956a4edb50ac01c500f1370d8d36d3609` |
+| **branch** | `cursor/input-right-margin-ea52` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_right_margin_match33_j2/hybrid_census/summary.json` |
+| **note** | `right_margin` unused in all 11 exact-ok programs; 19× `paint_verify_failed`. Do not merge. |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
