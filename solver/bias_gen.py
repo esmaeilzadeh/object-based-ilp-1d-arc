@@ -133,30 +133,22 @@ def render_object_bias_from_bk(
     parts.append("")
     parts.append(_bad_body_for_ex_preds(bodies))
     parts.append("")
-    # Input Bid is body-only: require some block or empty_block, not pinned to OutBid.
-    has_empty = "empty_block" in {p.name for p in bodies}
-    if has_empty:
-        parts.append(
-            "% Every clause: some input run (colored or empty).\n"
-            ":- clause(C), not body_literal(C, block, 4, (0,_,_,_)), "
-            "not body_literal(C, empty_block, 3, (0,_,_))."
-        )
-    else:
-        parts.append(
-            "% Every clause: some input block.\n"
-            ":- clause(C), not body_literal(C, block, 4, (0,_,_,_))."
-        )
+    # Input Bid is body-only: require some block, not pinned to OutBid.
+    parts.append(
+        "% Every clause: some input block (Left, Len, Color).\n"
+        ":- clause(C), not body_literal(C, block, 5, (0,_,_,_,_))."
+    )
     body_names = {p.name for p in bodies}
-    # Len is head var 2.
+    # Left is head var 2; Len is head var 3.
     if "size_add" in body_names:
         parts.append(
             "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
-            "A != 2, B != 2, R != 2."
+            "A != 2, B != 2, R != 2, A != 3, B != 3, R != 3."
         )
     if "size_sum3" in body_names:
         parts.append(
             "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), "
-            "A != 2, B != 2, C != 2, R != 2."
+            "A != 2, B != 2, C != 2, R != 2, A != 3, B != 3, C != 3, R != 3."
         )
     parts.append("")
     return "\n".join(parts) + "\n"

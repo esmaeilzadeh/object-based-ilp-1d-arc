@@ -82,4 +82,4 @@ def test_census_match_hybrid_has_no_out3_learning_negs(tmp_path: Path):
     assert enc.exs_unit_path is None or not enc.exs_unit_path.exists()
     assert not _atoms(blob, _NEG)
     assert "head_pred(out,3)." not in enc.bias_object_path.read_text()
-    assert "head_pred(out_block,4)." in enc.bias_object_path.read_text()
+    assert "head_pred(out_block,5)." in enc.bias_object_path.read_text()

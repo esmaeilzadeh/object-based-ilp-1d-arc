@@ -86,7 +86,7 @@ def test_census_match_uses_single_out_block_head(tmp_path: Path, monkeypatch):
     assert (enc / "exs_object.pl").exists()
     assert not (enc / "exs_unit.pl").exists()
     bias = (enc / "bias_object.pl").read_text()
-    assert "head_pred(out_block,4)." in bias
+    assert "head_pred(out_block,5)." in bias
     assert "head_pred(out_pixel,4)." not in bias
     assert "pos(out_block(" in (enc / "exs_object.pl").read_text()
     assert "pos(out_pixel(" not in (enc / "exs_object.pl").read_text()

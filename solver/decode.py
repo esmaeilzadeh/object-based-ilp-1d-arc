@@ -13,6 +13,7 @@ from solver.encoder import (
     _uid,
     block_geometry_for_row,
 )
+from solver.grid import segment_blocks
 
 PathLike = Union[str, Path]
 
@@ -30,27 +31,31 @@ def _strip_program(text: str) -> str:
 def _collect_out_blocks_concat(
     ex_id: int,
     max_bid: int,
-    max_len: int,
+    width: int,
     *,
     typed_roles: bool = False,
-) -> List[Tuple[int, int, int]]:
-    """Grounded ``out_block(Ex, OutBid, Len, Color)`` as ``(OutBid, Len, Color)``."""
+) -> List[Tuple[int, int, int, int]]:
+    """Grounded ``out_block(Ex, OutBid, Left, Len, Color)`` as tuples."""
     from janus_swi import query_once
 
     t = typed_roles
-    found: List[Tuple[int, int, int]] = []
+    found: List[Tuple[int, int, int, int]] = []
     for bid in range(max_bid + 1):
-        for L in range(1, max_len + 1):
-            for c in range(0, 10):
-                atom = (
-                    f"out_block({ex_id},{_bid(bid, t)},{_sz(L, t)},{_col(c, t)})"
-                )
-                try:
-                    res = query_once(atom)
-                except Exception:
+        for left in range(0, width + 1):
+            for L in range(1, width + 1):
+                if left + L > width:
                     continue
-                if res.get("truth"):
-                    found.append((bid, L, c))
+                for c in range(1, 10):
+                    atom = (
+                        f"out_block({ex_id},{_bid(bid, t)},"
+                        f"{_sz(left, t)},{_sz(L, t)},{_col(c, t)})"
+                    )
+                    try:
+                        res = query_once(atom)
+                    except Exception:
+                        continue
+                    if res.get("truth"):
+                        found.append((bid, left, L, c))
     found.sort(key=lambda x: x[0])
     return found
 
@@ -103,9 +108,10 @@ def apply_object_program(
     typed_roles: bool = False,
     block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
 ) -> Dict[int, List[int]]:
-    """Paint by concatenating ``out_block(Ex, OutBid, Len, Color)`` in OutBid order.
+    """Paint by concatenating ``out_block(Ex, OutBid, Left, Len, Color)`` L→R.
 
-    Gaps are ``Color=0`` runs. Overlap of OutBids or empty concat raises ValueError.
+    Each atom emits ``Left`` zeros then ``Len`` cells of ``Color``. Trailing
+    canvas cells stay 0. Overshoot or duplicate OutBid raises ValueError.
 
     Janus/SWI is process-global: consulting train ``bk.pl`` then ``test_bk.pl``
     in one interpreter can SIGSEGV in ``libswipl`` GC. Each apply runs in a
@@ -207,7 +213,7 @@ def _apply_object_program_inproc(
     del block_geometry
     prog = _strip_program(program)
     tmp = Path(bk_path).parent / "_apply_object_prog.pl"
-    tmp.write_text(":- dynamic out_block/4.\n" + prog)
+    tmp.write_text(":- dynamic out_block/5.\n" + prog)
 
     consult(str(bk_path))
     consult(str(tmp))
@@ -219,36 +225,41 @@ def _apply_object_program_inproc(
                 w = len(eg.out)
             else:
                 w = len(eg.inp)
+            n_in = len(segment_blocks(eg.inp))
+            max_bid = min(w - 1, max(n_in + 2, 4))
             runs = _collect_out_blocks_concat(
                 eg.ex_id,
-                max_bid=w,
-                max_len=w,
+                max_bid=max_bid,
+                width=w,
                 typed_roles=typed_roles,
             )
             if not runs:
                 raise ValueError(f"no out_block atoms for ex {eg.ex_id}")
             seen_bids: set = set()
             row: List[int] = []
-            for bid, L, c in runs:
+            for bid, left, L, c in runs:
                 if bid in seen_bids:
                     raise ValueError(f"duplicate OutBid {bid} on ex {eg.ex_id}")
                 seen_bids.add(bid)
-                if L <= 0:
-                    raise ValueError(f"non-positive Len on OutBid {bid}")
+                if L <= 0 or left < 0:
+                    raise ValueError(f"bad Left/Len on OutBid {bid}")
+                row.extend([0] * int(left))
                 row.extend([int(c)] * int(L))
-            if len(row) != w:
+            if len(row) > w:
                 raise ValueError(
-                    f"concat width {len(row)} != expected {w} for ex {eg.ex_id}"
+                    f"concat width {len(row)} > expected {w} for ex {eg.ex_id}"
                 )
+            if len(row) < w:
+                row.extend([0] * (w - len(row)))
             out[eg.ex_id] = row
         return out
     finally:
         try:
-            query_once("retractall(out_block(_,_,_,_))")
+            query_once("retractall(out_block(_,_,_,_,_))")
         except Exception:
             pass
         try:
-            query_once("abolish(out_block/4)")
+            query_once("abolish(out_block/5)")
         except Exception:
             pass
 

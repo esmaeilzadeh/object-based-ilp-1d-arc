@@ -1,6 +1,11 @@
 """Unit tests for grid flatten and block segmentation."""
 
-from solver.grid import flatten, segment_all_runs, segment_blocks
+from solver.grid import (
+    colored_blocks_with_left_margin,
+    flatten,
+    segment_all_runs,
+    segment_blocks,
+)
 
 
 def test_flatten_nested_and_flat():
@@ -50,3 +55,19 @@ def test_background_gaps():
 def test_full_width_block():
     assert segment_blocks([7, 7, 7, 7]) == [(0, 3, 7)]
     assert segment_all_runs([7, 7, 7, 7]) == [(0, 3, 7)]
+
+
+def test_colored_blocks_with_left_margin():
+    assert colored_blocks_with_left_margin([2, 2, 2, 0, 5, 5]) == [
+        (0, 3, 2, 0, 2),
+        (1, 2, 5, 4, 5),
+    ]
+    assert colored_blocks_with_left_margin([0, 1, 1, 0, 0]) == [
+        (1, 2, 1, 1, 2),
+    ]
+    assert colored_blocks_with_left_margin([0, 0, 0]) == []
+    assert colored_blocks_with_left_margin([8, 8, 8, 4]) == [
+        (0, 3, 8, 0, 2),
+        (0, 1, 4, 3, 3),
+    ]
+

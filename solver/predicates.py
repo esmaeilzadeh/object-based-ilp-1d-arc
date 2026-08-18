@@ -31,9 +31,16 @@ class Predicate:
 PREDICATES: Tuple[Predicate, ...] = (
     # heads
     Predicate("out", 3, ("ex", "position", "value"), "head", frozenset()),
-    # Object head: output-run id + length/color; decode concatenates runs (gaps = v0).
-    Predicate("out_block", 4, ("ex", "block_id", "size", "value"), "head_object", frozenset()),
-    # out_block(E, OutBid, Len, Color): emit Len cells of Color in OutBid order.
+    # Object head: output object id + left margin + length/color.
+    # Decode concatenates (Left zeros, then Len of Color); trailing canvas stays 0.
+    Predicate(
+        "out_block",
+        5,
+        ("ex", "block_id", "size", "size", "value"),
+        "head_object",
+        frozenset(),
+    ),
+    # out_block(E, OutBid, Left, Len, Color): emit Left zeros then Len of Color.
     Predicate("out_pixel", 4, ("ex", "unit_id", "size", "value"), "head_unit", frozenset()),
     # out_pixel(E, Pid, Off, Color): paint one cell at start(Pid)+Off.
     Predicate("unit", 3, ("ex", "unit_id", "value"), "block", frozenset({4})),
@@ -42,7 +49,14 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("empty", 2, ("ex", "position"), "pixel", frozenset({3})),
     Predicate("width", 2, ("ex", "position"), "pixel", frozenset({3})),
     # block / object-head core
-    Predicate("block", 4, ("ex", "block_id", "size", "value"), "block", frozenset({2, 3, 4})),
+    Predicate(
+        "block",
+        5,
+        ("ex", "block_id", "size", "size", "value"),
+        "block",
+        frozenset({2, 3, 4}),
+    ),
+    # block(E, Bid, Left, Len, Color): colored input run with left margin (not gap/4).
     Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3, 4})),
     Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3, 4})),
@@ -126,15 +140,12 @@ def head_pred_unit() -> Predicate:
 
 
 # Block-primary / object-head: closed theory (no extrema / named macros).
-# Individuals + succ/add/lt on sorts, empties as first-class runs, measured gap,
-# and a size↔position bridge. Input Bid is body-only; head indexes output runs.
+# Colored blocks carry a left margin on both in and out (no empty runs / gap/4).
+# Input Bid is body-only; head indexes output objects L→R.
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
-        "empty_block",
-        "block_succ",
         "obj_succ",
-        "gap",
         "size_sum3",
         "size_add",
         "size_lt",

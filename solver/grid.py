@@ -49,3 +49,25 @@ def segment_blocks(row: Sequence[int]) -> List[Block]:
     Returns list of ``(start, end, color)`` with inclusive indices, ordered left→right.
     """
     return [b for b in segment_all_runs(row) if b[2] != 0]
+
+
+# left_margin, length, color, start, end (inclusive)
+MarginBlock = Tuple[int, int, int, int, int]
+
+
+def colored_blocks_with_left_margin(row: Sequence[int]) -> List[MarginBlock]:
+    """Colored runs as ``(left_margin, length, color, start, end)``, L→R.
+
+    ``left_margin`` is the number of background cells immediately to the left of
+    the run: the leading pad for the first object, otherwise the gap to the
+    previous colored run. Trailing zeros are not stored; they are the unpainted
+    canvas remainder at decode time.
+    """
+    out: List[MarginBlock] = []
+    prev_end = -1
+    for s, e, c in segment_blocks(row):
+        left = s - prev_end - 1
+        length = e - s + 1
+        out.append((left, length, int(c), s, e))
+        prev_end = e
+    return out
