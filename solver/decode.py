@@ -11,7 +11,7 @@ from solver.encoder import (
     _col,
     _sz,
     _uid,
-    block_geometry_for_row,
+    colored_block_geometry_for_row,
 )
 from solver.grid import segment_all_runs
 
@@ -52,13 +52,13 @@ def _int_bid(val: object) -> Optional[int]:
 
 
 def _rank_origin_bids(row: Sequence[int]) -> Dict[int, int]:
-    """OutBid rank → all-run input bid of the k-th colored run."""
+    """OutBid rank → dense colored input bid (same 0..n-1 space)."""
     mapping: Dict[int, int] = {}
     k = 0
-    for bid, (_s, _e, c) in enumerate(segment_all_runs(row)):
+    for _s, _e, c in segment_all_runs(row):
         if c == 0:
             continue
-        mapping[k] = bid
+        mapping[k] = k
         k += 1
     return mapping
 
@@ -278,7 +278,7 @@ def _apply_object_program_inproc(
             eg_geo = (
                 geo[eg.ex_id]
                 if geo is not None and eg.ex_id in geo
-                else block_geometry_for_row(eg.inp)
+                else colored_block_geometry_for_row(eg.inp)
             )
             row = [0] * w
             occupied: Dict[int, int] = {}

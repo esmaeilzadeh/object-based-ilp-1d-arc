@@ -22,8 +22,8 @@ def _facts(row):
 def test_lean_block_atoms_typed():
     facts = _facts([2, 2, 2, 0, 5, 5])
     assert "block(0,b0,s3,v2)." in facts
-    assert "block(0,b2,s2,v5)." in facts
-    assert "obj_succ(0,b0,b2)." in facts
+    assert "block(0,b1,s2,v5)." in facts
+    assert "obj_succ(0,b0,b1)." in facts
     assert not any(f.startswith("pixel_block(") for f in facts)
     assert not any(f.startswith("empty_block(") for f in facts)
     assert not any(f.startswith("in(") for f in facts)
@@ -130,7 +130,7 @@ def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
     assert "pos(out_block(0,b1,s0,s1,v2))." in exs
     assert "pos(out_block(0,b2," not in exs
     assert "need_block(0,b1,s0,s1,v2)." in exs
-    assert "rank_origin(0,b1,b2)." in exs
+    assert "rank_origin(0,b1,b1)." in exs
 
 
 def test_non_functional_rejects_dup_bid(tmp_path: Path):

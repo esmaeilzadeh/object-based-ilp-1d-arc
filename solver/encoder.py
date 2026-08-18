@@ -47,8 +47,20 @@ class EncodeResult:
 
 
 def block_geometry_for_row(row: Sequence[int]) -> Dict[int, Tuple[int, int]]:
-    """Map input run id → inclusive (start, end)."""
+    """Map all-run id → inclusive (start, end)."""
     return {bid: (s, e) for bid, (s, e, _c) in enumerate(segment_all_runs(row))}
+
+
+def colored_block_geometry_for_row(row: Sequence[int]) -> Dict[int, Tuple[int, int]]:
+    """Map dense colored rank → inclusive (start, end). Matches lean ``block/4`` ids."""
+    geo: Dict[int, Tuple[int, int]] = {}
+    k = 0
+    for s, e, c in segment_all_runs(row):
+        if c == 0:
+            continue
+        geo[k] = (s, e)
+        k += 1
+    return geo
 
 
 def anchor_input_block(inp: Sequence[int], out_s: int, out_e: int) -> Optional[int]:
@@ -139,10 +151,9 @@ def _block_and_derived(
 ) -> List[str]:
     """Emit searchable block facts + optional cell/pixel bridges.
 
-    All maximal runs (including color 0) share one left→right ``block_id`` space.
-    Colored: ``block(Ex,Id,Len,Color)`` + ``obj_index(Ex,Bid,K)`` (dense nonempty ordinal).
-    Empty: ``empty_block(Ex,Id,Len)`` — not ``block(...,0)``.
-    Geometry over all run ids; aggregations over colored only.
+    All maximal runs (including color 0) share one left→right ``block_id``
+    space on the non-lean path. Lean (``typed_roles``): colored objects only,
+    dense ranks ``0..n-1`` so ``OutBid`` can unify with ``InBid``.
 
     When ``typed_roles`` is True (block-primary), numeric roles are distinct atoms
     ``b*`` / ``p*`` / ``s*`` / ``v*`` so block_id cannot unify with position/size/value.
@@ -181,7 +192,14 @@ def _block_and_derived(
             facts.append(f"from_right({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
             facts.append(f"mirror_index({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
 
-    lengths: List[int] = [0] * n_runs  # bid -> length
+    dense_of: Dict[int, int] = {rid: k for k, rid in enumerate(colored_ids)}
+
+    def _id(all_run: int) -> str:
+        if lean and all_run in dense_of:
+            return _bid(dense_of[all_run], t)
+        return _bid(all_run, t)
+
+    lengths: List[int] = [0] * n_runs  # all-run bid -> length
     colored_lengths: List[Tuple[int, int]] = []  # (len, id) for aggregations
     color_counts: Dict[int, int] = {}
     observed_sizes: set = set()
@@ -191,7 +209,7 @@ def _block_and_derived(
         L = e - s + 1
         lengths[bid] = L
         observed_sizes.add(L)
-        bb = _bid(bid, t)
+        bb = _id(bid) if c != 0 else _bid(bid, t)
         if not lean:
             if s == 0:
                 facts.append(f"touches_edge({ex},{bb},left).")
@@ -237,7 +255,7 @@ def _block_and_derived(
         for i in range(n_runs - 1):
             facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
-        facts.append(f"obj_succ({ex},{_bid(a, t)},{_bid(b, t)}).")
+        facts.append(f"obj_succ({ex},{_id(a)},{_id(b)}).")
     # Pairing / component macros are not on the closed lean theory.
     if not lean:
         for i in range(0, len(colored_ids) - 1, 2):
@@ -286,7 +304,7 @@ def _block_and_derived(
         for a, b in zip(colored_ids, colored_ids[1:]):
             _s1, e1, _c1 = runs[a]
             s2, _e2, _c2 = runs[b]
-            bi, bj = _bid(a, t), _bid(b, t)
+            bi, bj = _id(a), _id(b)
             g = s2 - e1 - 1
             facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
             observed_sizes.add(g)
@@ -507,7 +525,8 @@ def _colored_input_starts(inp: Sequence[int]) -> List[int]:
 
 
 def _colored_input_bids(inp: Sequence[int]) -> List[int]:
-    return [bid for bid, (_s, _e, c) in enumerate(segment_all_runs(inp)) if c != 0]
+    """Dense colored ranks ``0..n-1`` (same space as lean ``block/4`` and OutBid)."""
+    return list(range(len(_colored_input_starts(inp))))
 
 
 def _out_block_gold(
@@ -693,13 +712,13 @@ def _paint_constraint_bk(
     for eg in train:
         assert eg.out is not None
         k = 0
-        for bid, (s, _e, c) in enumerate(segment_all_runs(eg.inp)):
+        for s, _e, c in segment_all_runs(eg.inp):
             if c == 0:
                 continue
             # Integer canvas start for start(InBid)+Off cover (checker-only).
-            paint_starts.append(f"paint_start({eg.ex_id},{_bid(bid, t)},{int(s)}).")
+            paint_starts.append(f"paint_start({eg.ex_id},{_bid(k, t)},{int(s)}).")
             rank_origins.append(
-                f"rank_origin({eg.ex_id},{_bid(k, t)},{_bid(bid, t)})."
+                f"rank_origin({eg.ex_id},{_bid(k, t)},{_bid(k, t)})."
             )
             k += 1
         for p, c in enumerate(eg.out):
@@ -819,7 +838,7 @@ def encode_instance(
 
     block_geometry: Dict[int, Dict[int, Tuple[int, int]]] = {}
     for eg in train + test:
-        block_geometry[eg.ex_id] = block_geometry_for_row(eg.inp)
+        block_geometry[eg.ex_id] = colored_block_geometry_for_row(eg.inp)
 
     meta = {
         "train": [{"id": e.ex_id, "input": e.inp, "output": e.out} for e in train],

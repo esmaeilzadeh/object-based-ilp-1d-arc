@@ -107,8 +107,8 @@ def test_object_decoder_uses_body_inbid(tmp_path: Path):
         },
         tmp_path / "enc",
     )
-    # OutBid b0, Off=0, copy the 9 from input b2 → paint at start(b2)=3.
-    prog = "out_block(A,b0,s0,s1,v9) :- block(A,b2,s1,v9).\n"
+    # OutBid b0, Off=0, copy the 9 from input b1 (dense rank of the second colored).
+    prog = "out_block(A,b0,s0,s1,v9) :- block(A,b1,s1,v9).\n"
     preds = apply_object_program(
         prog,
         enc.bk_path,
