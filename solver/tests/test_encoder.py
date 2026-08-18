@@ -141,6 +141,46 @@ def test_exs_use_outbid_absolute_start_no_argmax(tmp_path: Path):
     assert "pos(out_block(0,b0,s0,s2,v1))." not in exs
 
 
+def test_non_functional_rejects_missing_head(tmp_path: Path):
+    """Incomplete covers must be non_functional (not only dup/extra)."""
+    from janus_swi import consult, query_once
+
+    inst = {
+        "train": [
+            {"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]},
+        ],
+        "test": [{"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    prog = tmp_path / "partial.pl"
+    # Only one of two need_blocks — classic timeout leftover.
+    prog.write_text(":- dynamic out_block/5.\nout_block(0,b0,s1,s2,v1).\n")
+    consult(str(enc.exs_object_path))
+    consult(str(enc.bk_path))
+    consult(str(prog))
+    assert query_once("missing_head")["truth"] is True
+    assert query_once("non_functional(x)")["truth"] is True
+
+
+def test_start_shift_size_add_and_block_id_constants(tmp_path: Path):
+    """Absolute Start needs InStart+k and bK(OutBid) distinct from InBid."""
+    inst = {
+        "train": [
+            {"input": [[0, 1, 1, 1]], "output": [[0, 0, 1, 1, 1]]},
+        ],
+        "test": [{"input": [[0, 2, 2]], "output": [[0, 0, 2, 2]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    bk = enc.bk_path.read_text()
+    bias = enc.bias_object_path.read_text()
+    assert "size_add(s1,s1,s2)." in bk  # colored start 1 + shift 1
+    assert "size_add(s0,s1,s1)." in bk  # empty/left start 0 + 1
+    assert "b0(b0)." in bk
+    assert "b1(b1)." in bk
+    assert "constant(b0, 'block_id')." in bias
+    assert "constant(b1, 'block_id')." in bias
+
+
 def test_non_functional_rejects_dup_bid(tmp_path: Path):
     """Dup OutBid strokes are non_functional even if need_block is incomplete."""
     from janus_swi import consult, query_once

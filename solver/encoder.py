@@ -318,6 +318,19 @@ def _block_and_derived(
                     f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
                 )
                 observed_sizes.add(L - 1)
+        # Absolute-Start head needs InStart+k → OutStart. Include every run start
+        # (empty + colored) and close under +k for k=0..w-S (uniform from geometry).
+        if anchors:
+            run_starts = sorted({s for s, _e, _c in runs})
+            for S in run_starts:
+                observed_sizes.add(S)
+            for S in run_starts:
+                for k in range(0, w - S + 1):
+                    tot = S + k
+                    facts.append(
+                        f"size_add({_sz(S, t)},{_sz(k, t)},{_sz(tot, t)})."
+                    )
+                    observed_sizes.add(tot)
         # Within-type cardinal comparison over observed sizes (lean).
         sizes = sorted(s for s in observed_sizes if s >= 0)
         for a in sizes:
@@ -422,6 +435,9 @@ def _block_and_derived(
             facts.append(f"v{i}(v{i}).")
         for i in range(w + 1):
             facts.append(f"s{i}(s{i}).")
+        # OutBid is output rank — may differ from input InBid (margins). Allow bK(OutBid).
+        for bid in range(n_runs):
+            facts.append(f"b{bid}(b{bid}).")
     return facts
 
 
@@ -665,6 +681,9 @@ def _paint_constraint_bk(
             "missing_head :- need_block(E,B,O,L,C), \\+ out_block(E,B,O,L,C).",
             "non_functional(_Atom) :- dup_bid.",
             "non_functional(_Atom) :- extra_head.",
+            # Incomplete covers must fail functional_test (otherwise timeout leftovers
+            # pass when missing_head short-circuits the paint checks below).
+            "non_functional(_Atom) :- missing_head.",
             "non_functional(_Atom) :- \\+ missing_head, overlap(_,_).",
             "non_functional(_Atom) :- \\+ missing_head, uncovered(_,_).",
             "non_functional(_Atom) :- \\+ missing_head, extra(_,_).",
