@@ -343,6 +343,7 @@ def run_one(cat: str, trial: int, timeout: int) -> Dict:
         work / "encode" / "bias.pl",
         timeout,
         work / "popper",
+        functional_test=False,
     )
     result = {
         "task": f"{cat}_{trial}",

@@ -90,6 +90,86 @@ def test_encode_instance_object_only(tmp_path: Path):
     assert "head_pred(out,3)." not in bias
 
 
+def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
+    """Gold paint checker is train-BK only; never body preds / test_bk."""
+    inst = {
+        "train": [
+            {"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]},
+            {"input": [[3, 3, 0, 4]], "output": [[0, 3, 3, 4]]},
+        ],
+        "test": [{"input": [[5, 0, 6]], "output": [[5, 0, 6]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    bk = enc.bk_path.read_text()
+    test_bk = enc.test_bk_path.read_text()
+    bias = enc.bias_object_path.read_text()
+    assert "non_functional(_Atom) :- dup_bid." in bk
+    assert "need_block(" in bk
+    assert "gold(" in bk
+    assert "paint_start(" in bk
+    assert "gold(" not in test_bk
+    assert "need_block(" not in test_bk
+    assert "non_functional(" not in test_bk
+    assert "body_pred(gold" not in bias
+    assert "body_pred(need_block" not in bias
+    assert "body_pred(paint_start" not in bias
+    assert "body_pred(non_functional" not in bias
+
+
+def test_non_functional_rejects_dup_bid(tmp_path: Path):
+    """Dup OutBid strokes are non_functional even if need_block is incomplete."""
+    from janus_swi import consult, query_once
+
+    inst = {
+        "train": [
+            {"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]},
+        ],
+        "test": [{"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    prog = tmp_path / "bad.pl"
+    # Two conflicting strokes for the same Bid — classic over-paint leftover.
+    prog.write_text(
+        ":- dynamic out_block/5.\n"
+        "out_block(0,b0,s1,s2,v1).\n"
+        "out_block(0,b0,s0,s2,v1).\n"
+    )
+    consult(str(enc.bk_path))
+    consult(str(prog))
+    assert query_once("dup_bid")["truth"] is True
+    assert query_once("non_functional(x)")["truth"] is True
+
+
+def test_non_functional_accepts_exact_need_blocks(tmp_path: Path):
+    """Gold strokes alone are not non_functional."""
+    from janus_swi import consult, query_once
+
+    inst = {
+        "train": [
+            {"input": [[1, 1, 0, 2]], "output": [[1, 1, 0, 2]]},
+        ],
+        "test": [{"input": [[1, 1, 0, 2]], "output": [[1, 1, 0, 2]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    needs = [
+        line
+        for line in enc.bk_path.read_text().splitlines()
+        if line.startswith("need_block(")
+    ]
+    assert needs
+    prog = tmp_path / "good.pl"
+    clauses = [":- dynamic out_block/5."]
+    for n in needs:
+        clauses.append(n.replace("need_block(", "out_block(", 1))
+    prog.write_text("\n".join(clauses) + "\n")
+    consult(str(enc.bk_path))
+    consult(str(prog))
+    assert query_once("missing_head")["truth"] is False
+    assert query_once("dup_bid")["truth"] is False
+    assert query_once("extra_head")["truth"] is False
+    assert query_once("non_functional(x)")["truth"] is False
+
+
 def test_object_bias_size_add_bidirectional():
     """S6: size_add legal if any arg is head Off/Len (compute or check)."""
     text = render_object_bias()

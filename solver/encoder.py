@@ -652,6 +652,78 @@ def _exs_out_blocks(
     return out
 
 
+def _paint_constraint_bk(
+    train: List[ExampleGrids],
+    *,
+    typed_roles: bool = True,
+) -> List[str]:
+    """Train-only paint checker for stock Popper ``functional_test``.
+
+    Not bias body preds: ``gold`` / ``need_block`` / ``paint_start`` / ``sz_int``
+    and the ``non_functional/1`` clauses. Never emitted into ``test_bk``.
+    Dup/extra fire even when the hypothesis is still incomplete (``eff8e50``).
+    """
+    t = typed_roles
+    lines: List[str] = [":- dynamic out_block/5."]
+    max_w = 1
+    for eg in train:
+        max_w = max(max_w, len(eg.inp))
+        if eg.out is not None:
+            max_w = max(max_w, len(eg.out))
+    for i in range(max_w + 1):
+        lines.append(f"sz_int({_sz(i, t)},{i}).")
+
+    for eg in train:
+        assert eg.out is not None
+        runs = segment_all_runs(eg.inp)
+        for bid, (s, _e, c) in enumerate(runs):
+            if c == 0:
+                continue
+            # Integer canvas start for start(Bid)+Off cover (checker-only).
+            lines.append(f"paint_start({eg.ex_id},{_bid(bid, t)},{int(s)}).")
+        for p, c in enumerate(eg.out):
+            lines.append(f"gold({eg.ex_id},{int(p)},{_col(int(c), t)}).")
+        for s, e, c in segment_blocks(eg.out):
+            L = e - s + 1
+            anchored = anchor_input_block_offset(eg.inp, s, e)
+            if anchored is None:
+                continue
+            bid, off = anchored
+            lines.append(
+                f"need_block({eg.ex_id},{_bid(bid, t)},"
+                f"{_sz(off, t)},{_sz(L, t)},{_col(int(c), t)})."
+            )
+
+    lines.extend(
+        [
+            "painted(E,P,Bid,C) :- out_block(E,Bid,Off,Len,C), paint_start(E,Bid,S), "
+            "sz_int(Off,Oi), sz_int(Len,Li), Start is S+Oi, End is Start+Li-1, "
+            "between(Start, End, P).",
+            "overlap(E,P) :- painted(E,P,B1,_), painted(E,P,B2,_), B1 \\= B2.",
+            "uncovered(E,P) :- gold(E,P,C), C \\= v0, \\+ painted(E,P,_,_).",
+            "extra(E,P) :- painted(E,P,_,_), gold(E,P,v0).",
+            "wrong(E,P) :- painted(E,P,_,C), gold(E,P,G), G \\= C.",
+            "block_oob :- out_block(E,Bid,Off,Len,_), paint_start(E,Bid,S), "
+            "sz_int(Off,Oi), sz_int(Len,Li), End is S+Oi+Li-1, "
+            "(S+Oi < 0 ; \\+ gold(E,End,_)).",
+            "dup_bid :- out_block(E,B,O1,L1,C1), out_block(E,B,O2,L2,C2), "
+            "(O1 \\= O2 ; L1 \\= L2 ; C1 \\= C2).",
+            "extra_head :- out_block(E,B,O,L,C), \\+ need_block(E,B,O,L,C).",
+            "missing_head :- need_block(E,B,O,L,C), \\+ out_block(E,B,O,L,C).",
+            # Dup/extra always reject (timeout leftovers that double-paint a Bid).
+            "non_functional(_Atom) :- dup_bid.",
+            "non_functional(_Atom) :- extra_head.",
+            # Full paint once every gold need_block is proved.
+            "non_functional(_Atom) :- \\+ missing_head, overlap(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, uncovered(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, extra(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, wrong(_,_).",
+            "non_functional(_Atom) :- \\+ missing_head, block_oob.",
+        ]
+    )
+    return lines
+
+
 def encode_instance(
     src: Union[PathLike, dict],
     out_dir: PathLike,
@@ -682,13 +754,16 @@ def encode_instance(
 
     train_bk = sorted(_bk_lines_for(train, max_w=max_w), key=lambda f: f.split("(", 1)[0])
     test_bk = sorted(_bk_lines_for(test, max_w=max_w), key=lambda f: f.split("(", 1)[0])
+    # Bias from input BK only — paint checker must not become body preds.
+    input_bk_text = "\n".join(train_bk) + "\n"
+    paint_bk = _paint_constraint_bk(train, typed_roles=True)
 
     bk_path = out_dir / "bk.pl"
     test_bk_path = out_dir / "test_bk.pl"
     test_path = out_dir / "test.pl"
     exs_object_path = out_dir / "exs_object.pl"
 
-    bk_path.write_text("\n".join(train_bk) + "\n")
+    bk_path.write_text(input_bk_text + "\n".join(paint_bk) + "\n")
     test_bk_path.write_text("\n".join(test_bk) + "\n")
 
     labeled_test = [eg for eg in test if eg.out is not None]
@@ -704,7 +779,7 @@ def encode_instance(
     bias_object_path = out_dir / "bias_object.pl"
     bias_object_path.write_text(
         render_object_bias_from_bk(
-            bk_path.read_text(),
+            input_bk_text,
             exs_text=exs_object_path.read_text(),
         )
     )
