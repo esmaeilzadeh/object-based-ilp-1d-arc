@@ -107,7 +107,8 @@ def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
     assert "non_functional(_Atom) :- dup_bid." in exs
     assert "need_block(" in exs
     assert "gold(" in exs
-    assert "paint_start(" in exs
+    assert "paint_start(" not in exs  # absolute Start head; no input paint_start
+    assert "block_start(" in bk  # body can bind InBid start without π in pos
     assert "non_functional(" not in bk
     assert "need_block(" not in bk
     assert "gold(" not in bk
@@ -116,8 +117,28 @@ def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
     assert "non_functional(" not in test_bk
     assert "body_pred(gold" not in bias
     assert "body_pred(need_block" not in bias
-    assert "body_pred(paint_start" not in bias
     assert "body_pred(non_functional" not in bias
+    assert "body_pred(block_start,3)." in bias
+    # InBid not pinned to OutBid (head var 1).
+    assert "body_literal(C, block, 4, (0,_,_,_))" in bias
+    assert "body_literal(C, block, 4, (0,1,_,_))" not in bias
+
+
+def test_exs_use_outbid_absolute_start_no_argmax(tmp_path: Path):
+    """Positives name output rank + absolute start; no spatial argmax Bid."""
+    inst = {
+        "train": [
+            {"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]},
+        ],
+        "test": [{"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    exs = enc.exs_object_path.read_text()
+    # Output: gap then [1,1] then [2] → OutBid0 start=1 len=2; OutBid1 start=3 len=1
+    assert "pos(out_block(0,b0,s1,s2,v1))." in exs
+    assert "pos(out_block(0,b1,s3,s1,v2))." in exs
+    # Must not look like old argmax identity Off=0 on input b0 for the unit at col 3
+    assert "pos(out_block(0,b0,s0,s2,v1))." not in exs
 
 
 def test_non_functional_rejects_dup_bid(tmp_path: Path):

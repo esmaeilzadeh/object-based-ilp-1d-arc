@@ -125,8 +125,8 @@ def render_object_bias_from_bk(
     parts.append(_bad_body_for_ex_preds(bodies))
     parts.append("")
     parts.append(
-        "% Every clause: block must use head Bid (var 1).\n"
-        ":- clause(C), not body_literal(C, block, 4, (0,1,_,_))."
+        "% Every clause: some input block (InBid free — OutBid is output rank).\n"
+        ":- clause(C), not body_literal(C, block, 4, (0,_,_,_))."
     )
     body_names = {p.name for p in bodies}
     # Legal iff at least one arg is head Off (var 2) or Len (var 3).

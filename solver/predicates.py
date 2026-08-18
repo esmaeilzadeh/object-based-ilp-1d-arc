@@ -130,6 +130,7 @@ def head_pred_unit() -> Predicate:
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
+        "block_start",
         "obj_succ",
         "gap",
         "size_sum3",
