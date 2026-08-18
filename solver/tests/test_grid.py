@@ -3,6 +3,7 @@
 from solver.grid import (
     colored_blocks_with_left_margin,
     flatten,
+    right_margins_from_left,
     segment_all_runs,
     segment_blocks,
 )
@@ -70,4 +71,15 @@ def test_colored_blocks_with_left_margin():
         (0, 3, 8, 0, 2),
         (0, 1, 4, 3, 3),
     ]
+
+
+def test_right_margin_equals_next_left():
+    row = [2, 2, 2, 0, 5, 5]
+    blocks = colored_blocks_with_left_margin(row)
+    rights = right_margins_from_left(blocks, len(row))
+    assert rights == [1, 0]  # next Left; trailing 0
+    adj = colored_blocks_with_left_margin([8, 8, 8, 4])
+    assert right_margins_from_left(adj, 4) == [0, 0]
+    one = colored_blocks_with_left_margin([0, 1, 1, 0, 0])
+    assert right_margins_from_left(one, 5) == [2]
 

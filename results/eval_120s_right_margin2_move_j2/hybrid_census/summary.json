@@ -1,0 +1,52 @@
+{
+  "mode": "hybrid_census",
+  "n": 15,
+  "exact_accuracy": 0.6,
+  "soft_accuracy": 0.6,
+  "soft_sem": 0.13093073414159542,
+  "accuracy": 0.6,
+  "per_task_exact": {
+    "1d_move_1p": 1.0,
+    "1d_move_2p": 1.0,
+    "1d_move_2p_dp": 0.0,
+    "1d_move_3p": 1.0,
+    "1d_move_dp": 0.0
+  },
+  "per_task_soft": {
+    "1d_move_1p": 1.0,
+    "1d_move_2p": 1.0,
+    "1d_move_2p_dp": 0.0,
+    "1d_move_3p": 1.0,
+    "1d_move_dp": 0.0
+  },
+  "per_task": {
+    "1d_move_1p": 1.0,
+    "1d_move_2p": 1.0,
+    "1d_move_2p_dp": 0.0,
+    "1d_move_3p": 1.0,
+    "1d_move_dp": 0.0
+  },
+  "timeout": 120,
+  "jobs": 2,
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "started_at": "2026-08-18T08:19:39.314852+00:00",
+    "finished_at": "2026-08-18T08:27:30.466883+00:00",
+    "git_sha": "e97f57916b023ff64fd0875cf7550c6df0f77d01",
+    "git_branch": "cursor/input-right-margin-ea52",
+    "git_dirty": true,
+    "git_describe": "e97f579",
+    "hostname": "cursor",
+    "platform": "Linux-6.12.94+-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "mode": "hybrid_census",
+    "timeout": 120,
+    "jobs": 2,
+    "trials": "0,1,2",
+    "dataset": "work/move_ds",
+    "out": "results/eval_120s_right_margin2_move_j2",
+    "pid": 46310,
+    "entry": "run_solver_eval_parallel",
+    "n_tasks": 15
+  }
+}

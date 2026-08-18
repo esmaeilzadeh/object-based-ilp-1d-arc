@@ -71,3 +71,19 @@ def colored_blocks_with_left_margin(row: Sequence[int]) -> List[MarginBlock]:
         out.append((left, length, int(c), s, e))
         prev_end = e
     return out
+
+
+def right_margins_from_left(blocks: Sequence[MarginBlock], width: int) -> List[int]:
+    """Right margin of each colored block, L→R.
+
+    Interior: equal to the next object's left margin (the gap between them).
+    Last object: trailing background (``width - end - 1``).
+    """
+    n = len(blocks)
+    rights: List[int] = []
+    for i, (_left, _length, _c, _s, e) in enumerate(blocks):
+        if i + 1 < n:
+            rights.append(int(blocks[i + 1][0]))
+        else:
+            rights.append(max(0, int(width) - int(e) - 1))
+    return rights

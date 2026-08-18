@@ -203,6 +203,45 @@ Earlier probes on the same branch (not the citable encoding):
 
 ---
 
+## Input `right_margin/3` (`eval_120s_right_margin2_move_j2`) — move* probe
+
+Input-only `right_margin(E, Bid, Right)` with `Right` = next object's Left (or trailing pad). `out_block/5` unchanged. `block` stays 5-ary.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_right_margin2_move_j2` |
+| **metric** | **9/15** exact @120 s (`hybrid_census`, move* first-3) |
+| **per cat** | `move_1p` 3/3, `move_2p` 3/3, `move_3p` 3/3, `move_2p_dp` 0/3, `move_dp` 0/3 |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `e97f57916b023ff64fd0875cf7550c6df0f77d01` |
+| **branch** | `cursor/input-right-margin-ea52` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_right_margin2_move_j2/hybrid_census/summary.json` |
+| **vs left-margin 9/15** | same split; `2p_dp`/`dp` still paint-verify-fail (programs did not use `right_margin`) |
+| **note** | Did not continue other cats. Do not merge as default. |
+
+Tried first: `block/6` with Right in the atom (`eval_120s_right_margin_move_j2`, SHA `d4de759`) **7/15** — `2p` 1/3, `2p_dp` timeouts. Reverted that shape.
+
+---
+
+## Census-match left+right-margin (`eval_120s_right_margin_match33_j2`)
+
+OutBid + Left concat head; input `right_margin/3`. First-3 census-match only (33 tasks).
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_right_margin_match33_j2` |
+| **metric** | **11/33** exact @120 s |
+| **per cat** | `move_1p/2p/3p` 9/9; `flip` 1/3; `recolor_cnt` 1/3; rest 0 |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `996820e956a4edb50ac01c500f1370d8d36d3609` |
+| **branch** | `cursor/input-right-margin-ea52` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_right_margin_match33_j2/hybrid_census/summary.json` |
+| **note** | `right_margin` unused in all 11 exact-ok programs; 19× `paint_verify_failed`. Do not merge. |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |

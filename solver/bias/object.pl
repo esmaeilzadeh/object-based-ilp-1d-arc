@@ -7,6 +7,7 @@ enable_multi_clause.
 
 head_pred(out_block,5).
 body_pred(block,5).
+body_pred(right_margin,3).
 body_pred(obj_succ,3).
 body_pred(size_lt,2).
 body_pred(cardinal_ordinal,2).
@@ -20,6 +21,7 @@ constant(v0, 'value').
 
 type(out_block,('ex', 'block_id', 'size', 'size', 'value')).
 type(block,('ex', 'block_id', 'size', 'size', 'value')).
+type(right_margin,('ex', 'block_id', 'size')).
 type(obj_succ,('ex', 'block_id', 'block_id')).
 type(size_lt,('size', 'size')).
 type(cardinal_ordinal,('size', 'position')).
@@ -28,6 +30,7 @@ type(size_sum3,('size', 'size', 'size', 'size')).
 type(C,(T,)):- constant(C,T).
 
 bad_body(block, Vars):- vars(_, Vars), Vars = (V0,_,_,_,_), V0 != 0.
+bad_body(right_margin, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 bad_body(obj_succ, Vars):- vars(_, Vars), Vars = (V0,_,_), V0 != 0.
 
 % Every clause: some input block (Left, Len, Color).
