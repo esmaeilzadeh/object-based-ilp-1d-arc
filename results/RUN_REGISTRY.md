@@ -157,6 +157,25 @@ Full 54-task `hybrid_census` @120s `JOBS=2` after removing unused `size_even`/`s
 
 ---
 
+## Concat `out_block/4` retry (`eval_120s_concat_j2`) — **REVERT**
+
+Start-free concat head (`OutBid, Len, Color`; gaps = `v0`). Popper binds input runs in the body.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_concat_j2` |
+| **metric** | **24/54** exact @120 s (`hybrid_census`) |
+| **by path** | census-match object **6/33**; census-fail pixel **18/21** |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `af1d6574cf8c8c32600bd7a150cd7150acb8e529` |
+| **branch** | `cursor/concat-out-block-ea52` |
+| **vs baseline** | `eval_120s_single_head_j2` **42/54** → **24/54** (**−18**) |
+| **soft-gate** | **REVERT** — wipe of previously perfect `move_*` (12→0) and `scale_dp` (3→0); `mirror` 2→0; pixel unchanged 18/21; `flip`/`recolor_cnt` held at 3/3 |
+| **artifacts** | `results/eval_120s_concat_j2/hybrid_census/summary.json` |
+| **note** | Confirms absolute-Start-free concat underfits shift/scale; do not merge as default object head |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
