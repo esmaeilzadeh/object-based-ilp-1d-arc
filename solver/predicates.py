@@ -31,9 +31,9 @@ class Predicate:
 PREDICATES: Tuple[Predicate, ...] = (
     # heads
     Predicate("out", 3, ("ex", "position", "value"), "head", frozenset()),
-    # Object head: anchor input block id + output length/color (pixel start is decode-only).
-    Predicate("out_block", 5, ("ex", "block_id", "size", "size", "value"), "head_object", frozenset()),
-    # out_block(E, Bid, Off, Len, Color): paint at start(Bid)+Off.
+    # Object head: output-run id + length/color; decode concatenates runs (gaps = v0).
+    Predicate("out_block", 4, ("ex", "block_id", "size", "value"), "head_object", frozenset()),
+    # out_block(E, OutBid, Len, Color): emit Len cells of Color in OutBid order.
     Predicate("out_pixel", 4, ("ex", "unit_id", "size", "value"), "head_unit", frozenset()),
     # out_pixel(E, Pid, Off, Color): paint one cell at start(Pid)+Off.
     Predicate("unit", 3, ("ex", "unit_id", "value"), "block", frozenset({4})),
@@ -126,10 +126,13 @@ def head_pred_unit() -> Predicate:
 
 
 # Block-primary / object-head: closed theory (no extrema / named macros).
-# Individuals + succ/add/lt on sorts, plus measured gap and a size↔position bridge.
+# Individuals + succ/add/lt on sorts, empties as first-class runs, measured gap,
+# and a size↔position bridge. Input Bid is body-only; head indexes output runs.
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
+        "empty_block",
+        "block_succ",
         "obj_succ",
         "gap",
         "size_sum3",
