@@ -36,37 +36,39 @@ def _collect_out_blocks(
     typed_roles: bool = False,
     min_len: int = 1,
     extra_offs: Sequence[int] = (),
-) -> List[Tuple[int, int, int]]:
-    """Enumerate grounded ``out_block(Ex, Bid, Off, Len, Color)``.
+) -> List[Tuple[int, int, int, int]]:
+    """Enumerate grounded ``out_block(Ex, OutBid, Start, Len, Color)``.
 
-    Returns ``(paint_start, Len, Color)`` with ``paint_start = start(Bid)+Off``.
+    ``Start`` is an absolute canvas index. Returns ``(OutBid, paint_start, Len, Color)``.
+    ``bids`` / ``geometry`` are unused (kept for call-site compatibility).
     """
     from janus_swi import query_once
 
+    del bids, geometry, extra_offs
     t = typed_roles
-    offs = set(range(0, width + 1))
-    offs.update(int(x) for x in extra_offs)
-    blocks: List[Tuple[int, int, int]] = []
-    for bid in bids:
-        if bid not in geometry:
-            continue
-        start, _end = geometry[bid]
-        for off in sorted(offs):
+    blocks: List[Tuple[int, int, int, int]] = []
+    max_out = width  # safe upper bound on OutBid
+    seen: set = set()
+    for out_bid in range(max_out + 1):
+        for start in range(0, width + 1):
             for L in range(max(min_len, 1), width + 1):
-                paint = start + off
-                if L < min_len or paint < 0 or paint + L > width:
+                if start + L > width:
                     continue
                 for c in range(1, 10):
                     atom = (
-                        f"out_block({ex_id},{_bid(bid, t)},"
-                        f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)})"
+                        f"out_block({ex_id},{_bid(out_bid, t)},"
+                        f"{_sz(start, t)},{_sz(L, t)},{_col(c, t)})"
                     )
                     try:
                         res = query_once(atom)
                     except Exception:
                         continue
                     if res.get("truth"):
-                        blocks.append((paint, L, c))
+                        key = (out_bid, start, L, c)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        blocks.append((out_bid, start, L, c))
     return blocks
 
 
@@ -206,9 +208,13 @@ def _apply_object_program_inproc(
             )
             row = [0] * w
             occupied: Dict[int, int] = {}
-            for s, L, c in _collect_out_blocks(
+            seen_bids: set = set()
+            for out_bid, s, L, c in _collect_out_blocks(
                 eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
             ):
+                if out_bid in seen_bids:
+                    raise ValueError(f"duplicate OutBid {out_bid} on ex {eg.ex_id}")
+                seen_bids.add(out_bid)
                 if L <= 0 or s < 0 or s + L > w:
                     raise ValueError(
                         f"out_block({eg.ex_id},paint→{s},{L},{c}) out of bounds width={w}"
