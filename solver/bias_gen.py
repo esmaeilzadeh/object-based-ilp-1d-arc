@@ -21,6 +21,8 @@ _FACT_PRED_RE = re.compile(r"^([a-z][a-z0-9_]*)\(")
 _SIZE_CONST_RE = re.compile(r"\bs(\d+)\b")
 _SM_CONST_RE = re.compile(r"\bsm(\d+)\b")
 _VALUE_CONST_RE = re.compile(r"\bv(\d+)\b")
+_BID_CONST_RE = re.compile(r"\bb(\d+)\b")
+
 
 OBJECT_MAX_VARS = 10
 OBJECT_MAX_BODY = 6
@@ -59,10 +61,13 @@ def _preds_present_in_bk(bk_text: str, allow: FrozenSet[str]) -> Set[str]:
     return present
 
 
-def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int], Set[int]]:
+def _constants_present_in_texts(
+    *texts: str,
+) -> tuple[Set[int], Set[int], Set[int], Set[int]]:
     sizes: Set[int] = set()
     sm_sizes: Set[int] = set()
     values: Set[int] = set()
+    bids: Set[int] = set()
     blob = "\n".join(texts)
     for m in _SIZE_CONST_RE.finditer(blob):
         sizes.add(int(m.group(1)))
@@ -70,7 +75,9 @@ def _constants_present_in_texts(*texts: str) -> tuple[Set[int], Set[int], Set[in
         sm_sizes.add(int(m.group(1)))
     for m in _VALUE_CONST_RE.finditer(blob):
         values.add(int(m.group(1)))
-    return sizes, sm_sizes, values
+    for m in _BID_CONST_RE.finditer(blob):
+        bids.add(int(m.group(1)))
+    return sizes, sm_sizes, values, bids
 
 
 def render_object_bias_from_bk(
@@ -91,9 +98,10 @@ def render_object_bias_from_bk(
     if not bodies:
         bodies = tuple(p for p in body_preds_for_level(4) if p.name == "block")
 
-    sizes, sm_sizes, values = _constants_present_in_texts(bk_text, exs_text)
+    sizes, sm_sizes, values, bids = _constants_present_in_texts(bk_text, exs_text)
     sizes.add(0)
     sizes.add(1)
+    values.add(0)
 
     hp = head_pred_object()
     all_typed = (hp,) + bodies
@@ -104,7 +112,6 @@ def render_object_bias_from_bk(
         "enable_multi_clause.",
         ":- not body_var(_,1).",
         ":- not body_var(_,2).",
-        ":- not body_var(_,3).",
         "",
         f"head_pred({hp.name},{hp.arity}).",
     ]
@@ -116,6 +123,8 @@ def render_object_bias_from_bk(
         parts.append(f"constant(s{i}, 'size').")
     for i in sorted(sm_sizes):
         parts.append(f"constant(sm{i}, 'size').")
+    for i in sorted(bids):
+        parts.append(f"constant(b{i}, 'block_id').")
     for i in sorted(values):
         parts.append(f"constant(v{i}, 'value').")
     parts.append("")
@@ -124,22 +133,22 @@ def render_object_bias_from_bk(
     parts.append("")
     parts.append(_bad_body_for_ex_preds(bodies))
     parts.append("")
+    # Input Bid is body-only: require some block, not pinned to OutBid.
     parts.append(
-        "% Every clause: block must use head Bid (var 1).\n"
-        ":- clause(C), not body_literal(C, block, 4, (0,1,_,_))."
+        "% Every clause: some input block (Left, Len, Color).\n"
+        ":- clause(C), not body_literal(C, block, 5, (0,_,_,_,_))."
     )
     body_names = {p.name for p in bodies}
-    # Legal iff at least one arg is head Off (var 2) or Len (var 3).
-    # Allows compute (result ∈ {2,3}) and check (an input ∈ {2,3}) directions.
+    # Left is head var 2; Len is head var 3.
     if "size_add" in body_names:
         parts.append(
             "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
-            "A != 2, A != 3, B != 2, B != 3, R != 2, R != 3."
+            "A != 2, B != 2, R != 2, A != 3, B != 3, R != 3."
         )
     if "size_sum3" in body_names:
         parts.append(
             "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), "
-            "A != 2, A != 3, B != 2, B != 3, C != 2, C != 3, R != 2, R != 3."
+            "A != 2, B != 2, C != 2, R != 2, A != 3, B != 3, C != 3, R != 3."
         )
     parts.append("")
     return "\n".join(parts) + "\n"
@@ -170,7 +179,7 @@ def render_unit_bias_from_bk(
     if unit_p not in bodies:
         bodies = bodies + (unit_p,)
 
-    sizes, sm_sizes, values = _constants_present_in_texts(bk_text, exs_text)
+    sizes, sm_sizes, values, _bids = _constants_present_in_texts(bk_text, exs_text)
     sizes.add(0)
     sizes.add(1)
     hp = head_pred_unit()

@@ -62,7 +62,7 @@ def solve(
     timeout: int = 600,
     work_dir: Optional[PathLike] = None,
 ) -> SolveResult:
-    """Induce ``out_block/5``, paint-verify on train, decode test, soft-score."""
+    """Induce ``out_block/5`` (Left, Len, Color), paint-verify on train, decode test, soft-score."""
     work_dir = Path(work_dir or Path("work") / "solve")
     work_dir.mkdir(parents=True, exist_ok=True)
 

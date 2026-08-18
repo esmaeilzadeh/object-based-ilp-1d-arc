@@ -1,0 +1,22 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-18T05:18:21.610776+00:00",
+  "finished_at": "2026-08-18T05:27:54.846262+00:00",
+  "git_sha": "b57a718418b468b4ab90244aede9d16c3a76b688",
+  "git_branch": "cursor/left-margin-blocks-ea52",
+  "git_dirty": true,
+  "git_describe": "b57a718",
+  "hostname": "cursor",
+  "platform": "Linux-6.12.94+-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "mode": "hybrid_census",
+  "timeout": 120,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "work/move_ds",
+  "out": "results/eval_120s_left_margin_kadd_j2",
+  "pid": 41274,
+  "entry": "run_solver_eval_parallel",
+  "n_tasks": 15,
+  "note": "reran 1d_move_1p_1 after kadd sweep"
+}

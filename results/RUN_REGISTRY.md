@@ -157,6 +157,52 @@ Full 54-task `hybrid_census` @120s `JOBS=2` after removing unused `size_even`/`s
 
 ---
 
+## Concat `out_block/4` retry (`eval_120s_concat_j2`) — **REVERT**
+
+Start-free concat head (`OutBid, Len, Color`; gaps = `v0`). Popper binds input runs in the body.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_concat_j2` |
+| **metric** | **24/54** exact @120 s (`hybrid_census`) |
+| **by path** | census-match object **6/33**; census-fail pixel **18/21** |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `af1d6574cf8c8c32600bd7a150cd7150acb8e529` |
+| **branch** | `cursor/concat-out-block-ea52` |
+| **vs baseline** | `eval_120s_single_head_j2` **42/54** → **24/54** (**−18**) |
+| **soft-gate** | **REVERT** — wipe of previously perfect `move_*` (12→0) and `scale_dp` (3→0); `mirror` 2→0; pixel unchanged 18/21; `flip`/`recolor_cnt` held at 3/3 |
+| **artifacts** | `results/eval_120s_concat_j2/hybrid_census/summary.json` |
+| **note** | Confirms absolute-Start-free concat underfits shift/scale; do not merge as default object head |
+
+---
+
+## Left-margin blocks (`eval_120s_left_margin_move3_j2`) — move* probe only
+
+Concat empty-run gaps replaced by colored `block`/`out_block(E, Bid, Left, Len, Color)`. Decode concatenates `(Left zeros + Len of Color)`. Uniform `size_add(s,k,s+k)` for `k∈{1,2,3}`. First-3 **move* only** (15 tasks), not the 54-task gate.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_left_margin_move3_j2` |
+| **metric** | **9/15** exact @120 s (`hybrid_census`, move* first-3) |
+| **per cat** | `move_1p` 3/3, `move_2p` 3/3, `move_3p` 3/3, `move_2p_dp` 0/3, `move_dp` 0/3 |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `798b41d7189a1df82a3e3ae49c9ba847fd1523cf` |
+| **branch** | `cursor/left-margin-blocks-ea52` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_left_margin_move3_j2/hybrid_census/summary.json` |
+| **vs concat** | recovered `1p`/`2p`/`3p` from 0/9 to 9/9; `2p_dp`/`dp` still 0/6 (concat also 0) |
+| **vs Bid/Off 42/54** | those families were 12/12 + 1/3 dp; this probe did **not** continue other cats |
+| **note** | Winning programs pin `s1`/`s2`/`s3` and `size_add` on Left. `2p_dp`/`dp` need two different object rules and still paint-verify-fail @120s. Do not merge as default. |
+
+Earlier probes on the same branch (not the citable encoding):
+
+| id | SHA | exact | note |
+|----|-----|-------|------|
+| `eval_120s_left_margin_move_j2` | `59d60b4` | 3/15 | +1 `size_add` only |
+| `eval_120s_left_margin_kadd_j2` | `b57a718` | 8/15 | +k closure; Left negs only to s12 |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |
