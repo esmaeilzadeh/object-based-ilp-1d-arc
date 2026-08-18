@@ -502,16 +502,44 @@ def _bk_lines_for(examples: Sequence[ExampleGrids], *, max_w: int) -> List[str]:
     return lines
 
 
+def _colored_input_starts(inp: Sequence[int]) -> List[int]:
+    return [s for s, _e, c in segment_all_runs(inp) if c != 0]
+
+
+def _colored_input_bids(inp: Sequence[int]) -> List[int]:
+    return [bid for bid, (_s, _e, c) in enumerate(segment_all_runs(inp)) if c != 0]
+
+
+def _out_block_gold(
+    inp: Sequence[int], out: Sequence[int]
+) -> List[Tuple[int, int, int, int]]:
+    """``(OutBid, Off, Len, Color)`` for each gold colored output object.
+
+    ``OutBid`` is L→R output colored rank (mechanical). ``Off`` is ``out_s``
+    minus the start of the same-rank colored *input* (zip for the displacement
+    number only — not spatial argmax, and the input id is not in the tuple).
+    Decode paints at ``start(InBid)+Off`` for the ``InBid`` the clause binds.
+    """
+    in_starts = _colored_input_starts(inp)
+    labels: List[Tuple[int, int, int, int]] = []
+    for out_bid, (s, e, c) in enumerate(segment_blocks(out)):
+        L = e - s + 1
+        if out_bid >= len(in_starts):
+            continue
+        off = int(s) - int(in_starts[out_bid])
+        labels.append((out_bid, off, L, int(c)))
+    return labels
+
+
 def _exs_out_blocks(
     train: List[ExampleGrids],
     max_color: int = 9,
     *,
     typed_roles: bool = False,
 ) -> List[str]:
-    """Object-head examples: pos/neg ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Object-head examples: pos/neg ``out_block(Ex, OutBid, Off, Len, Color)``.
 
-    ``Bid`` is an input run id; ``Off`` is pixels from that run's start.
-    Decode paints at ``start(Bid)+Off``.
+    ``OutBid`` is output colored rank. No input Bid in the positive.
     """
     t = typed_roles
     pos: List[str] = []
@@ -519,10 +547,10 @@ def _exs_out_blocks(
     for eg in train:
         assert eg.out is not None
         runs = segment_all_runs(eg.inp)
-        colored_bids = [bid for bid, (_s, _e, c) in enumerate(runs) if c != 0]
-        true_blocks: List[Tuple[int, int, int, int]] = []  # bid, off, L, c
-        true_set: set = set()
-        colors_used: set = set()
+        colored_bids = _colored_input_bids(eg.inp)
+        true_blocks = _out_block_gold(eg.inp, eg.out)
+        true_set: set = set(true_blocks)
+        colors_used: set = {c for _b, _o, _L, c in true_blocks}
         observed_sizes: set = set([0])
         for bid, (s, e, c) in enumerate(runs):
             if c == 0:
@@ -539,19 +567,12 @@ def _exs_out_blocks(
             observed_sizes.add(g + Lb)
             if g >= 0:
                 observed_sizes.add(1 + g)  # common unit+gap offset
-        for s, e, c in segment_blocks(eg.out):
-            L = e - s + 1
-            anchored = anchor_input_block_offset(eg.inp, s, e)
-            if anchored is None:
-                continue
-            bid, off = anchored
-            true_blocks.append((bid, off, L, c))
-            true_set.add((bid, off, L, c))
-            colors_used.add(c)
+        for bid, off, L, c in true_blocks:
             observed_sizes.add(L)
-            observed_sizes.add(off)
+            observed_sizes.add(abs(off))
             pos.append(
-                f"pos(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
+                f"pos(out_block({eg.ex_id},{_bid(bid, t)},"
+                f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
             )
         for bid, off, L, c in true_blocks:
             for v in range(1, max_color + 1):
@@ -559,14 +580,14 @@ def _exs_out_blocks(
                     neg.append(
                         f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(v, t)}))."
                     )
-        if not colors_used or not colored_bids:
+        if not colors_used or not true_blocks:
             continue
+        n_out = len(true_blocks)
         if typed_roles:
             w = len(eg.out)
-            # Wrong lengths at true Bid/Off/Color (observed + 1..w sample).
             len_cands = sorted(set(observed_sizes) | set(range(1, min(w, 12) + 1)))
-            # Wrong offsets: full 0..w so cross-example size_add cannot sneak Offs.
-            off_cands = list(range(0, w + 1))
+            # Wrong offsets: full -w..w (zip Off can be negative).
+            off_cands = list(range(-w, w + 1))
             for bid, off, L, c in true_blocks:
                 for L2 in len_cands:
                     if L2 < 1 or L2 == L:
@@ -574,7 +595,8 @@ def _exs_out_blocks(
                     if (bid, off, L2, c) in true_set:
                         continue
                     neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L2, t)},{_col(c, t)}))."
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},"
+                        f"{_sz(off, t)},{_sz(L2, t)},{_col(c, t)}))."
                     )
                 for off2 in off_cands:
                     if off2 == off:
@@ -582,65 +604,52 @@ def _exs_out_blocks(
                     if (bid, off2, L, c) in true_set:
                         continue
                     neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off2, t)},{_sz(L, t)},{_col(c, t)}))."
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},"
+                        f"{_sz(off2, t)},{_sz(L, t)},{_col(c, t)}))."
                     )
-            # Off=0 prefixes/identity: any Len at input block color not a true out.
-            # Kills loose ``s0(Off), s1(Len), block(_,Bid,_,Color)`` over-paints.
-            for bid, (s, e, c) in enumerate(runs):
-                if c == 0:
-                    continue
-                Lin = e - s + 1
-                for L0 in range(1, Lin + 1):
-                    if (bid, 0, L0, c) not in true_set:
-                        neg.append(
-                            f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(0, t)},{_sz(L0, t)},{_col(c, t)}))."
-                        )
-            # Wrong Bid for a true (Off,Len,Color).
-            for bid in colored_bids:
+            # Wrong OutBid for a true (Off,Len,Color), plus leftover input ids.
+            all_bids = sorted(set(range(n_out)) | set(colored_bids))
+            for bid in all_bids:
                 for _tb, off, L, c in true_blocks:
                     if (bid, off, L, c) in true_set:
                         continue
                     neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},"
+                        f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
                     )
-            # Cross-block Len/Color mix at a true (Bid, Off): block1 with block2's
-            # (Len,Color). Compact O(|true|*|colored|); kills over-general rules that
-            # take Off from gap(Bid,_) but Len/Color from a different block(_).
-            input_lc: List[Tuple[int, int, int]] = []
-            for bid2, (s2, e2, c2) in enumerate(runs):
+            # Cross mix: true OutBid with another object's (Len, Color).
+            input_lc: List[Tuple[int, int]] = []
+            for _bid2, (s2, e2, c2) in enumerate(runs):
                 if c2 == 0:
                     continue
-                input_lc.append((bid2, e2 - s2 + 1, c2))
+                input_lc.append((e2 - s2 + 1, c2))
             for bid, off, L, c in true_blocks:
-                for _b2, L2, C2 in input_lc:
+                for L2, C2 in input_lc:
                     if (bid, off, L2, C2) in true_set:
                         continue
                     neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L2, t)},{_col(C2, t)}))."
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},"
+                        f"{_sz(off, t)},{_sz(L2, t)},{_col(C2, t)}))."
                     )
-            # Off=0 wrong color at each input block's own length: kills
-            # ``vK(Color), s0(Off), block(_,Bid,Len,_)`` over-paints.
-            observed_colors = sorted(colors_used | {c for _b, _L, c in input_lc})
-            for bid2, Lin, Cin in input_lc:
-                for C2 in observed_colors:
-                    if C2 == Cin:
-                        continue
-                    if (bid2, 0, Lin, C2) in true_set:
+                for _b2, _o2, L2, C2 in true_blocks:
+                    if (bid, off, L2, C2) in true_set:
                         continue
                     neg.append(
-                        f"neg(out_block({eg.ex_id},{_bid(bid2, t)},{_sz(0, t)},{_sz(Lin, t)},{_col(C2, t)}))."
+                        f"neg(out_block({eg.ex_id},{_bid(bid, t)},"
+                        f"{_sz(off, t)},{_sz(L2, t)},{_col(C2, t)}))."
                     )
         else:
             w = len(eg.out)
-            for bid in colored_bids:
+            for bid in range(n_out):
                 for off in sorted(observed_sizes):
-                    if off < 0 or off > w:
+                    if off < -w or off > w:
                         continue
                     for L in range(1, w + 1):
                         for c in colors_used:
                             if (bid, off, L, c) not in true_set:
                                 neg.append(
-                                    f"neg(out_block({eg.ex_id},{_bid(bid, t)},{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
+                                    f"neg(out_block({eg.ex_id},{_bid(bid, t)},"
+                                    f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)}))."
                                 )
     seen: set = set()
     out: List[str] = []
@@ -660,7 +669,9 @@ def _paint_constraint_bk(
     """SWI paint checker for stock Popper ``functional_test`` (append to exs).
 
     Not bias body preds and not ``bk.pl`` (Clingo recall deduction cannot parse
-    SWI rules). Facts: ``gold`` / ``need_block`` / ``paint_start`` / ``sz_int``.
+    SWI rules). Facts: ``gold`` / ``need_block`` / ``paint_start`` /
+    ``rank_origin`` / ``sz_int``. Paint origin is the body's ``block/4`` InBid
+    (facts fall back to same-rank input via ``rank_origin``).
     Dup/extra fire even when the hypothesis is still incomplete (``eff8e50``).
     """
     t = typed_roles
@@ -672,44 +683,57 @@ def _paint_constraint_bk(
             max_w = max(max_w, len(eg.out))
     for i in range(max_w + 1):
         lines.append(f"sz_int({_sz(i, t)},{i}).")
+    for i in range(1, max_w + 1):
+        lines.append(f"sz_int({_sz(-i, t)},{-i}).")
 
     paint_starts: List[str] = []
+    rank_origins: List[str] = []
     golds: List[str] = []
     needs: List[str] = []
     for eg in train:
         assert eg.out is not None
-        runs = segment_all_runs(eg.inp)
-        for bid, (s, _e, c) in enumerate(runs):
+        k = 0
+        for bid, (s, _e, c) in enumerate(segment_all_runs(eg.inp)):
             if c == 0:
                 continue
-            # Integer canvas start for start(Bid)+Off cover (checker-only).
+            # Integer canvas start for start(InBid)+Off cover (checker-only).
             paint_starts.append(f"paint_start({eg.ex_id},{_bid(bid, t)},{int(s)}).")
+            rank_origins.append(
+                f"rank_origin({eg.ex_id},{_bid(k, t)},{_bid(bid, t)})."
+            )
+            k += 1
         for p, c in enumerate(eg.out):
             golds.append(f"gold({eg.ex_id},{int(p)},{_col(int(c), t)}).")
-        for s, e, c in segment_blocks(eg.out):
-            L = e - s + 1
-            anchored = anchor_input_block_offset(eg.inp, s, e)
-            if anchored is None:
-                continue
-            bid, off = anchored
+        for bid, off, L, c in _out_block_gold(eg.inp, eg.out):
             needs.append(
                 f"need_block({eg.ex_id},{_bid(bid, t)},"
                 f"{_sz(off, t)},{_sz(L, t)},{_col(int(c), t)})."
             )
     lines.extend(paint_starts)
+    lines.extend(rank_origins)
     lines.extend(golds)
     lines.extend(needs)
 
     lines.extend(
         [
-            "painted(E,P,Bid,C) :- out_block(E,Bid,Off,Len,C), paint_start(E,Bid,S), "
+            "first_block((A,B), Ex, InBid) :- "
+            "(first_block(A, Ex, InBid) -> true ; first_block(B, Ex, InBid)).",
+            "first_block(block(Ex, InBid, _, _), Ex, InBid) :- nonvar(InBid).",
+            "origin_inbid(Ex, OutBid, Off, Len, C, InBid) :- "
+            "clause(out_block(Ex, OutBid, Off, Len, C), Body), Body \\== true, "
+            "call(Body), first_block(Body, Ex, InBid), !.",
+            "origin_inbid(Ex, OutBid, _, _, _, InBid) :- "
+            "rank_origin(Ex, OutBid, InBid).",
+            "painted(E,P,OutBid,C) :- out_block(E,OutBid,Off,Len,C), "
+            "origin_inbid(E,OutBid,Off,Len,C,InBid), paint_start(E,InBid,S), "
             "sz_int(Off,Oi), sz_int(Len,Li), Start is S+Oi, End is Start+Li-1, "
             "between(Start, End, P).",
             "overlap(E,P) :- painted(E,P,B1,_), painted(E,P,B2,_), B1 \\= B2.",
             "uncovered(E,P) :- gold(E,P,C), C \\= v0, \\+ painted(E,P,_,_).",
             "extra(E,P) :- painted(E,P,_,_), gold(E,P,v0).",
             "wrong(E,P) :- painted(E,P,_,C), gold(E,P,G), G \\= C.",
-            "block_oob :- out_block(E,Bid,Off,Len,_), paint_start(E,Bid,S), "
+            "block_oob :- out_block(E,OutBid,Off,Len,C), "
+            "origin_inbid(E,OutBid,Off,Len,C,InBid), paint_start(E,InBid,S), "
             "sz_int(Off,Oi), sz_int(Len,Li), End is S+Oi+Li-1, "
             "(S+Oi < 0 ; \\+ gold(E,End,_)).",
             "dup_bid :- out_block(E,B,O1,L1,C1), out_block(E,B,O2,L2,C2), "

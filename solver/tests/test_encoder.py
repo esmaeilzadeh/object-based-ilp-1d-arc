@@ -66,6 +66,8 @@ def test_object_bias_head_only():
     assert "max_body(6)." in text
     assert "body_pred(size_lt,2)." in text
     assert "body_pred(cardinal_ordinal,2)." in text
+    assert "not body_literal(C, block, 4, (0,_,_,_))." in text
+    assert "not body_literal(C, block, 4, (0,1,_,_))" not in text
 
 
 def test_encode_instance_object_only(tmp_path: Path):
@@ -88,6 +90,9 @@ def test_encode_instance_object_only(tmp_path: Path):
     bias = enc.bias_object_path.read_text()
     assert "head_pred(out_block,5)." in bias
     assert "head_pred(out,3)." not in bias
+    assert "constant(b1, 'block_id')." in bias or "constant(b1," in bias
+    assert "not body_literal(C, block, 4, (0,1,_,_))" not in bias
+    assert "not body_literal(C, block, 4, (0,_,_,_))." in bias
 
 
 def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
@@ -118,6 +123,14 @@ def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
     assert "body_pred(need_block" not in bias
     assert "body_pred(paint_start" not in bias
     assert "body_pred(non_functional" not in bias
+    assert "body_pred(rank_origin" not in bias
+    exs = enc.exs_object_path.read_text()
+    # OutBid is output rank, not argmax input id (b2 would be the 2's all-run id).
+    assert "pos(out_block(0,b0,s1,s2,v1))." in exs
+    assert "pos(out_block(0,b1,s0,s1,v2))." in exs
+    assert "pos(out_block(0,b2," not in exs
+    assert "need_block(0,b1,s0,s1,v2)." in exs
+    assert "rank_origin(0,b1,b2)." in exs
 
 
 def test_non_functional_rejects_dup_bid(tmp_path: Path):

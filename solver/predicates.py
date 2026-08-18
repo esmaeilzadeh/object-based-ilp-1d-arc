@@ -31,9 +31,10 @@ class Predicate:
 PREDICATES: Tuple[Predicate, ...] = (
     # heads
     Predicate("out", 3, ("ex", "position", "value"), "head", frozenset()),
-    # Object head: anchor input block id + output length/color (pixel start is decode-only).
+    # Object head: output rank + Off/Len/Color. Input Bid is body-only.
     Predicate("out_block", 5, ("ex", "block_id", "size", "size", "value"), "head_object", frozenset()),
-    # out_block(E, Bid, Off, Len, Color): paint at start(Bid)+Off.
+    # out_block(E, OutBid, Off, Len, Color): paint at start(InBid)+Off for the
+    # input block the clause binds (not a prelabeled head Bid).
     Predicate("out_pixel", 4, ("ex", "unit_id", "size", "value"), "head_unit", frozenset()),
     # out_pixel(E, Pid, Off, Color): paint one cell at start(Pid)+Off.
     Predicate("unit", 3, ("ex", "unit_id", "value"), "block", frozenset({4})),

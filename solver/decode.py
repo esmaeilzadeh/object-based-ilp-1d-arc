@@ -13,8 +13,19 @@ from solver.encoder import (
     _uid,
     block_geometry_for_row,
 )
+from solver.grid import segment_all_runs
 
 PathLike = Union[str, Path]
+
+# Consulted with the hypothesis so decode can read the body's InBid.
+_ORIGIN_HELPERS = """
+first_block((A,B), Ex, InBid) :-
+    (first_block(A, Ex, InBid) -> true ; first_block(B, Ex, InBid)).
+first_block(block(Ex, InBid, _, _), Ex, InBid) :- nonvar(InBid).
+origin_inbid(Ex, OutBid, Off, Len, C, InBid) :-
+    clause(out_block(Ex, OutBid, Off, Len, C), Body), Body \\== true,
+    call(Body), first_block(Body, Ex, InBid).
+"""
 
 
 def _strip_program(text: str) -> str:
@@ -27,45 +38,109 @@ def _strip_program(text: str) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
+def _int_bid(val: object) -> Optional[int]:
+    if val is None:
+        return None
+    if isinstance(val, int):
+        return int(val)
+    s = str(val)
+    if s.startswith("b") and s[1:].isdigit():
+        return int(s[1:])
+    if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
+        return int(s)
+    return None
+
+
+def _rank_origin_bids(row: Sequence[int]) -> Dict[int, int]:
+    """OutBid rank → all-run input bid of the k-th colored run."""
+    mapping: Dict[int, int] = {}
+    k = 0
+    for bid, (_s, _e, c) in enumerate(segment_all_runs(row)):
+        if c == 0:
+            continue
+        mapping[k] = bid
+        k += 1
+    return mapping
+
+
+def _origin_inbids(
+    ex_id: int,
+    out_bid: int,
+    off: int,
+    L: int,
+    c: int,
+    *,
+    typed_roles: bool,
+) -> List[int]:
+    """Input bids bound by the first ``block/4`` in a successful clause proof."""
+    from janus_swi import query_once
+
+    t = typed_roles
+    atom = (
+        f"origin_inbid({ex_id},{_bid(out_bid, t)},"
+        f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)}, InBid)"
+    )
+    try:
+        res = query_once(atom)
+    except Exception:
+        return []
+    if not res.get("truth"):
+        return []
+    bid = _int_bid(res.get("InBid"))
+    return [bid] if bid is not None else []
+
+
 def _collect_out_blocks(
     ex_id: int,
     width: int,
-    bids: Sequence[int],
     geometry: Dict[int, Tuple[int, int]],
+    inp: Sequence[int],
     *,
     typed_roles: bool = False,
     min_len: int = 1,
     extra_offs: Sequence[int] = (),
 ) -> List[Tuple[int, int, int]]:
-    """Enumerate grounded ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Enumerate grounded ``out_block(Ex, OutBid, Off, Len, Color)``.
 
-    Returns ``(paint_start, Len, Color)`` with ``paint_start = start(Bid)+Off``.
+    Returns ``(paint_start, Len, Color)`` with
+    ``paint_start = start(InBid)+Off`` for the InBid the clause proves.
+    Body-less facts fall back to the same-rank colored input.
     """
     from janus_swi import query_once
 
     t = typed_roles
-    offs = set(range(0, width + 1))
+    offs = set(range(-width, width + 1))
     offs.update(int(x) for x in extra_offs)
+    rank_origin = _rank_origin_bids(inp)
+    max_out = min(width - 1, max(list(rank_origin.keys()) + list(geometry.keys()) + [4]))
     blocks: List[Tuple[int, int, int]] = []
-    for bid in bids:
-        if bid not in geometry:
-            continue
-        start, _end = geometry[bid]
+    for out_bid in range(max_out + 1):
         for off in sorted(offs):
             for L in range(max(min_len, 1), width + 1):
-                paint = start + off
-                if L < min_len or paint < 0 or paint + L > width:
-                    continue
                 for c in range(1, 10):
                     atom = (
-                        f"out_block({ex_id},{_bid(bid, t)},"
+                        f"out_block({ex_id},{_bid(out_bid, t)},"
                         f"{_sz(off, t)},{_sz(L, t)},{_col(c, t)})"
                     )
                     try:
                         res = query_once(atom)
                     except Exception:
                         continue
-                    if res.get("truth"):
+                    if not res.get("truth"):
+                        continue
+                    inbids = _origin_inbids(
+                        ex_id, out_bid, off, L, c, typed_roles=typed_roles
+                    )
+                    if not inbids:
+                        fb = rank_origin.get(out_bid)
+                        inbids = [fb] if fb is not None else []
+                    for in_bid in inbids:
+                        if in_bid not in geometry:
+                            continue
+                        start, _end = geometry[in_bid]
+                        paint = start + off
+                        if L < min_len or paint < 0 or paint + L > width:
+                            continue
                         blocks.append((paint, L, c))
     return blocks
 
@@ -78,8 +153,9 @@ def apply_object_program(
     typed_roles: bool = False,
     block_geometry: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None,
 ) -> Dict[int, List[int]]:
-    """Paint pixels from ``out_block(Ex, Bid, Off, Len, Color)``.
+    """Paint pixels from ``out_block(Ex, OutBid, Off, Len, Color)``.
 
+    Paint at ``start(InBid)+Off`` for the input block the clause binds.
     Overlap, OOB, or ambiguous color raises ValueError (verify treats as fail).
 
     Janus/SWI is process-global: consulting train ``bk.pl`` then ``test_bk.pl``
@@ -186,7 +262,7 @@ def _apply_object_program_inproc(
     prog = _strip_program(program)
     tmp = Path(bk_path).parent / "_apply_object_prog.pl"
     # Dynamic so later Popper tester retractall(out_block(...)) can clean up.
-    tmp.write_text(":- dynamic out_block/5.\n" + prog)
+    tmp.write_text(":- dynamic out_block/5.\n" + _ORIGIN_HELPERS + prog)
 
     consult(str(bk_path))
     consult(str(tmp))
@@ -207,7 +283,7 @@ def _apply_object_program_inproc(
             row = [0] * w
             occupied: Dict[int, int] = {}
             for s, L, c in _collect_out_blocks(
-                eg.ex_id, w, list(eg_geo.keys()), eg_geo, typed_roles=typed_roles
+                eg.ex_id, w, eg_geo, eg.inp, typed_roles=typed_roles
             ):
                 if L <= 0 or s < 0 or s + L > w:
                     raise ValueError(
@@ -288,6 +364,7 @@ def apply_hybrid_program(
     tmp = Path(bk_path).parent / "_apply_hybrid_prog.pl"
     tmp.write_text(
         ":- dynamic out_block/5.\n:- dynamic out_pixel/4.\n"
+        + _ORIGIN_HELPERS
         + _strip_program(block_program)
         + "\n"
         + _strip_program(unit_program)
@@ -314,8 +391,8 @@ def apply_hybrid_program(
             for s, L, c in _collect_out_blocks(
                 eg.ex_id,
                 w,
-                list(bgeo.keys()),
                 bgeo,
+                eg.inp,
                 typed_roles=typed_roles,
                 min_len=2,
                 extra_offs=extra_offs,
