@@ -318,19 +318,23 @@ def _block_and_derived(
                     f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
                 )
                 observed_sizes.add(L - 1)
-        # Absolute-Start head needs InStart+k → OutStart. Include every run start
-        # (empty + colored) and close under +k for k=0..w-S (uniform from geometry).
+        # Absolute-Start head: InStart+k → OutStart for small k (uniform).
+        # Keep k tiny so size_lt stays lean — full 0..w-S closure exploded search.
         if anchors:
             run_starts = sorted({s for s, _e, _c in runs})
+            for bid, (s, _e, _c) in enumerate(runs):
+                observed_sizes.add(s)
+                # Size-typed start so body need not route through cardinal_ordinal.
+                facts.append(
+                    f"block_start_sz({ex},{_bid(bid, t)},{_sz(s, t)})."
+                )
             for S in run_starts:
-                observed_sizes.add(S)
-            for S in run_starts:
-                for k in range(0, w - S + 1):
+                for k in (0, 1, 2, 3):
                     tot = S + k
-                    facts.append(
-                        f"size_add({_sz(S, t)},{_sz(k, t)},{_sz(tot, t)})."
-                    )
-                    observed_sizes.add(tot)
+                    if tot <= w:
+                        facts.append(
+                            f"size_add({_sz(S, t)},{_sz(k, t)},{_sz(tot, t)})."
+                        )
         # Within-type cardinal comparison over observed sizes (lean).
         sizes = sorted(s for s in observed_sizes if s >= 0)
         for a in sizes:

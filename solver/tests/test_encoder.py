@@ -175,10 +175,12 @@ def test_start_shift_size_add_and_block_id_constants(tmp_path: Path):
     bias = enc.bias_object_path.read_text()
     assert "size_add(s1,s1,s2)." in bk  # colored start 1 + shift 1
     assert "size_add(s0,s1,s1)." in bk  # empty/left start 0 + 1
+    assert "block_start_sz(0,b1,s1)." in bk
     assert "b0(b0)." in bk
     assert "b1(b1)." in bk
     assert "constant(b0, 'block_id')." in bias
     assert "constant(b1, 'block_id')." in bias
+    assert "body_pred(block_start_sz,3)." in bias
 
 
 def test_non_functional_rejects_dup_bid(tmp_path: Path):
