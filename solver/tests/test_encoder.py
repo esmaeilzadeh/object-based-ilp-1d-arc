@@ -91,7 +91,7 @@ def test_encode_instance_object_only(tmp_path: Path):
 
 
 def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
-    """Gold paint checker is train-BK only; never body preds / test_bk."""
+    """Gold paint checker rides with exs (SWI); never body preds / test_bk / bk.pl."""
     inst = {
         "train": [
             {"input": [[1, 1, 0, 2]], "output": [[0, 1, 1, 2]]},
@@ -101,12 +101,16 @@ def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):
     }
     enc = encode_instance(inst, tmp_path / "enc")
     bk = enc.bk_path.read_text()
+    exs = enc.exs_object_path.read_text()
     test_bk = enc.test_bk_path.read_text()
     bias = enc.bias_object_path.read_text()
-    assert "non_functional(_Atom) :- dup_bid." in bk
-    assert "need_block(" in bk
-    assert "gold(" in bk
-    assert "paint_start(" in bk
+    assert "non_functional(_Atom) :- dup_bid." in exs
+    assert "need_block(" in exs
+    assert "gold(" in exs
+    assert "paint_start(" in exs
+    assert "non_functional(" not in bk
+    assert "need_block(" not in bk
+    assert "gold(" not in bk
     assert "gold(" not in test_bk
     assert "need_block(" not in test_bk
     assert "non_functional(" not in test_bk
@@ -134,6 +138,7 @@ def test_non_functional_rejects_dup_bid(tmp_path: Path):
         "out_block(0,b0,s1,s2,v1).\n"
         "out_block(0,b0,s0,s2,v1).\n"
     )
+    consult(str(enc.exs_object_path))
     consult(str(enc.bk_path))
     consult(str(prog))
     assert query_once("dup_bid")["truth"] is True
@@ -153,7 +158,7 @@ def test_non_functional_accepts_exact_need_blocks(tmp_path: Path):
     enc = encode_instance(inst, tmp_path / "enc")
     needs = [
         line
-        for line in enc.bk_path.read_text().splitlines()
+        for line in enc.exs_object_path.read_text().splitlines()
         if line.startswith("need_block(")
     ]
     assert needs
@@ -162,6 +167,7 @@ def test_non_functional_accepts_exact_need_blocks(tmp_path: Path):
     for n in needs:
         clauses.append(n.replace("need_block(", "out_block(", 1))
     prog.write_text("\n".join(clauses) + "\n")
+    consult(str(enc.exs_object_path))
     consult(str(enc.bk_path))
     consult(str(prog))
     assert query_once("missing_head")["truth"] is False

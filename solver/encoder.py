@@ -657,14 +657,14 @@ def _paint_constraint_bk(
     *,
     typed_roles: bool = True,
 ) -> List[str]:
-    """Train-only paint checker for stock Popper ``functional_test``.
+    """SWI paint checker for stock Popper ``functional_test`` (append to exs).
 
-    Not bias body preds: ``gold`` / ``need_block`` / ``paint_start`` / ``sz_int``
-    and the ``non_functional/1`` clauses. Never emitted into ``test_bk``.
+    Not bias body preds and not ``bk.pl`` (Clingo recall deduction cannot parse
+    SWI rules). Facts: ``gold`` / ``need_block`` / ``paint_start`` / ``sz_int``.
     Dup/extra fire even when the hypothesis is still incomplete (``eff8e50``).
     """
     t = typed_roles
-    lines: List[str] = [":- dynamic out_block/5."]
+    lines: List[str] = []
     max_w = 1
     for eg in train:
         max_w = max(max_w, len(eg.inp))
@@ -673,6 +673,9 @@ def _paint_constraint_bk(
     for i in range(max_w + 1):
         lines.append(f"sz_int({_sz(i, t)},{i}).")
 
+    paint_starts: List[str] = []
+    golds: List[str] = []
+    needs: List[str] = []
     for eg in train:
         assert eg.out is not None
         runs = segment_all_runs(eg.inp)
@@ -680,19 +683,22 @@ def _paint_constraint_bk(
             if c == 0:
                 continue
             # Integer canvas start for start(Bid)+Off cover (checker-only).
-            lines.append(f"paint_start({eg.ex_id},{_bid(bid, t)},{int(s)}).")
+            paint_starts.append(f"paint_start({eg.ex_id},{_bid(bid, t)},{int(s)}).")
         for p, c in enumerate(eg.out):
-            lines.append(f"gold({eg.ex_id},{int(p)},{_col(int(c), t)}).")
+            golds.append(f"gold({eg.ex_id},{int(p)},{_col(int(c), t)}).")
         for s, e, c in segment_blocks(eg.out):
             L = e - s + 1
             anchored = anchor_input_block_offset(eg.inp, s, e)
             if anchored is None:
                 continue
             bid, off = anchored
-            lines.append(
+            needs.append(
                 f"need_block({eg.ex_id},{_bid(bid, t)},"
                 f"{_sz(off, t)},{_sz(L, t)},{_col(int(c), t)})."
             )
+    lines.extend(paint_starts)
+    lines.extend(golds)
+    lines.extend(needs)
 
     lines.extend(
         [
@@ -754,7 +760,8 @@ def encode_instance(
 
     train_bk = sorted(_bk_lines_for(train, max_w=max_w), key=lambda f: f.split("(", 1)[0])
     test_bk = sorted(_bk_lines_for(test, max_w=max_w), key=lambda f: f.split("(", 1)[0])
-    # Bias from input BK only — paint checker must not become body preds.
+    # Bias + Clingo recalls from input BK only. Paint checker is SWI-only and
+    # must not sit in bk.pl (Clingo cannot parse ``:-`` / ``\+`` / ``between``).
     input_bk_text = "\n".join(train_bk) + "\n"
     paint_bk = _paint_constraint_bk(train, typed_roles=True)
 
@@ -763,15 +770,17 @@ def encode_instance(
     test_path = out_dir / "test.pl"
     exs_object_path = out_dir / "exs_object.pl"
 
-    bk_path.write_text(input_bk_text + "\n".join(paint_bk) + "\n")
+    bk_path.write_text(input_bk_text)
     test_bk_path.write_text("\n".join(test_bk) + "\n")
 
     labeled_test = [eg for eg in test if eg.out is not None]
     test_exs = _exs_pos_neg(labeled_test) if labeled_test else []
     test_path.write_text("\n".join(test_exs + test_bk) + "\n")
 
+    exs_lines = _exs_out_blocks(train, typed_roles=True)
+    # Tester consults exs then bk; keep paint checker with examples (SWI).
     exs_object_path.write_text(
-        "\n".join(_exs_out_blocks(train, typed_roles=True)) + "\n"
+        "\n".join(exs_lines) + "\n" + "\n".join(paint_bk) + "\n"
     )
 
     from solver.bias_gen import render_object_bias_from_bk
@@ -780,7 +789,7 @@ def encode_instance(
     bias_object_path.write_text(
         render_object_bias_from_bk(
             input_bk_text,
-            exs_text=exs_object_path.read_text(),
+            exs_text="\n".join(exs_lines) + "\n",
         )
     )
 
