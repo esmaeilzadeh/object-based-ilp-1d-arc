@@ -50,6 +50,9 @@ PREDICATES: Tuple[Predicate, ...] = (
     # geometry (object–object)
     Predicate("left_of", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("adjacent", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
+    # Input/output correspondence for the object-head path: bind(E, OutBid, InBid)
+    # grounds the output object to the relevant input object before Off/Len/Color.
+    Predicate("bind", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({4})),
     Predicate("gap", 4, ("ex", "block_id", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("touches_edge", 3, ("ex", "block_id", "edge"), "geometry", frozenset({2, 3, 4})),
     Predicate("block_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
@@ -131,6 +134,7 @@ def head_pred_unit() -> Predicate:
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
+        "bind",
         "obj_succ",
         "gap",
         "size_sum3",

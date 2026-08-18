@@ -44,6 +44,13 @@ def test_lean_cardinal_ordinal_bridge():
     assert "cardinal_ordinal(s3,p3)." in facts
 
 
+def test_object_bias_includes_bind():
+    lean = "block(0,b0,s3,v2).\nobj_succ(0,b0,b1).\nbind(0,b0,b0).\n"
+    text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
+    assert "body_pred(bind,3)." in text
+    assert "type(bind,('ex', 'block_id', 'block_id'))." in text
+
+
 def test_object_bias_includes_cardinal_ordinal():
     lean = "block(0,b0,s3,v2).\ncardinal_ordinal(s3,p3).\n"
     text = render_object_bias_from_bk(lean, exs_text="pos(out_block(0,b0,s0,s3,v2)).")
