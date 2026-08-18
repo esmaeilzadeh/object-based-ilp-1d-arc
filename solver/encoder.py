@@ -7,7 +7,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from solver.grid import colored_blocks_with_left_margin, flatten, segment_all_runs
+from solver.grid import (
+    colored_blocks_with_left_margin,
+    flatten,
+    right_margins_from_left,
+    segment_all_runs,
+)
 from solver.predicates import OBJECT_BODY_ALLOWLIST
 
 PathLike = Union[str, Path]
@@ -139,7 +144,10 @@ def _block_and_derived(
 ) -> List[str]:
     """Emit searchable block facts + optional cell/pixel bridges.
 
-    Lean (``typed_roles``): colored objects only, ``block(E,Bid,Left,Len,Color)``.
+    Lean (``typed_roles``): colored objects only,
+    ``block(E,Bid,Left,Right,Len,Color)``. Right is the next object's Left
+    (gap), or trailing pad on the last object. Head stays
+    ``out_block(E,OutBid,Left,Len,Color)``.
     Non-lean: all maximal runs (including color 0) share one left→right
     ``block_id`` space. Colored: ``block(Ex,Id,Len,Color)``. Empty:
     ``empty_block(Ex,Id,Len)``. Geometry over all run ids; aggregations over
@@ -425,25 +433,28 @@ def _block_and_derived(
 def _lean_left_margin_facts(
     ex: int, row: Sequence[int], *, typed: bool
 ) -> List[str]:
-    """Lean BK: colored ``block(E, Bid, Left, Len, Color)``; no empty/gap atoms.
+    """Lean BK: colored ``block(E, Bid, Left, Right, Len, Color)``.
 
-    ``Left`` is the leading pad (first object) or the gap to the previous
-    colored run. Trailing zeros are implicit canvas, not a block.
+    ``Left`` is the leading pad (first) or the gap to the previous colored run.
+    ``Right`` is the next object's Left, or trailing pad on the last object.
+    Output examples stay ``out_block(E, OutBid, Left, Len, Color)``.
     """
     t = typed
     w = len(row)
     blocks = colored_blocks_with_left_margin(row)
+    rights = right_margins_from_left(blocks, w)
     facts: List[str] = []
     observed_sizes: set = {0, 1}
     n = len(blocks)
     lengths: List[int] = []
     margins: List[int] = []
-    for bid, (left, L, c, _s, _e) in enumerate(blocks):
+    for bid, ((left, L, c, _s, _e), right) in enumerate(zip(blocks, rights)):
         bb = _bid(bid, t)
         facts.append(
-            f"block({ex},{bb},{_sz(left, t)},{_sz(L, t)},{_col(c, t)})."
+            f"block({ex},{bb},{_sz(left, t)},{_sz(right, t)},{_sz(L, t)},{_col(c, t)})."
         )
         observed_sizes.add(left)
+        observed_sizes.add(right)
         observed_sizes.add(L)
         lengths.append(L)
         margins.append(left)
@@ -455,6 +466,14 @@ def _lean_left_margin_facts(
                 f"size_add({_sz(1, t)},{_sz(left, t)},{_sz(left + 1, t)})."
             )
             observed_sizes.add(left + 1)
+        if right + 1 <= w:
+            facts.append(
+                f"size_add({_sz(right, t)},{_sz(1, t)},{_sz(right + 1, t)})."
+            )
+            facts.append(
+                f"size_add({_sz(1, t)},{_sz(right, t)},{_sz(right + 1, t)})."
+            )
+            observed_sizes.add(right + 1)
         if L >= 2 and L <= w:
             facts.append(
                 f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
@@ -466,6 +485,15 @@ def _lean_left_margin_facts(
                 f"size_add({_sz(left, t)},{_sz(L, t)},{_sz(span, t)})."
             )
             observed_sizes.add(span)
+        lr = left + right
+        if lr <= w:
+            facts.append(
+                f"size_add({_sz(left, t)},{_sz(right, t)},{_sz(lr, t)})."
+            )
+            facts.append(
+                f"size_add({_sz(right, t)},{_sz(left, t)},{_sz(lr, t)})."
+            )
+            observed_sizes.add(lr)
     for i in range(n - 1):
         facts.append(f"obj_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
         La, Lb = lengths[i], lengths[i + 1]

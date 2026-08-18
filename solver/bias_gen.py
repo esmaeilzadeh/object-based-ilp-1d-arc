@@ -135,8 +135,8 @@ def render_object_bias_from_bk(
     parts.append("")
     # Input Bid is body-only: require some block, not pinned to OutBid.
     parts.append(
-        "% Every clause: some input block (Left, Len, Color).\n"
-        ":- clause(C), not body_literal(C, block, 5, (0,_,_,_,_))."
+        "% Every clause: some input block (Left, Right, Len, Color).\n"
+        ":- clause(C), not body_literal(C, block, 6, (0,_,_,_,_,_))."
     )
     body_names = {p.name for p in bodies}
     # Left is head var 2; Len is head var 3.

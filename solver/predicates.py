@@ -51,12 +51,12 @@ PREDICATES: Tuple[Predicate, ...] = (
     # block / object-head core
     Predicate(
         "block",
-        5,
-        ("ex", "block_id", "size", "size", "value"),
+        6,
+        ("ex", "block_id", "size", "size", "size", "value"),
         "block",
         frozenset({2, 3, 4}),
     ),
-    # block(E, Bid, Left, Len, Color): colored input run with left margin (not gap/4).
+    # block(E, Bid, Left, Right, Len, Color): input run; Right = next Left (or trailing).
     Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3, 4})),
     Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3, 4})),
     Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3, 4})),
