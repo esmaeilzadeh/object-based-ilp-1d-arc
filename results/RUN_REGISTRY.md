@@ -162,3 +162,5 @@ Full 54-task `hybrid_census` @120s `JOBS=2` after removing unused `size_even`/`s
 | id | note |
 |----|------|
 | `eval_60s_functional_color` | Intermediate branch `cursor/functional-color-negs` only; merged into the combined ablation above — do not treat as a second headline. Local partial tree may exist under `results/eval_60s_functional_color/` (incomplete / non-citable alone). |
+| `eval_120s_pi_native_smoke` | ILP-native OutBid (no argmax). **0/12** @120s `JOBS=2` (`flip`/`mirror`/`move_1p`/`move_2p_dp`): all `popper_exhausted`. SHA `c2c25bf`. Artifacts `results/eval_120s_pi_native_smoke/`. |
+| `eval_120s_pi_native_dense` | Same + dense colored input ids. **0/12** (`flip`/`2p_dp` `paint_verify_failed`; `mirror`/`move_1p` exhausted). SHA `c638cca`. Artifacts `results/eval_120s_pi_native_dense/`. Do not run the 33/54 gate on this encoding. |
