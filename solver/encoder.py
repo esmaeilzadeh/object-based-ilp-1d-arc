@@ -644,7 +644,7 @@ def _exs_out_blocks(
             continue
         w = len(eg.out)
         n = len(out_blocks)
-        left_cands = sorted(set(observed_lefts) | set(range(0, min(w, 12) + 1)))
+        left_cands = list(range(0, w + 1))
         len_cands = sorted(set(observed_sizes) | set(range(1, min(w, 12) + 1)))
         color_cands = sorted(set(range(1, max_color + 1)) | colors_used)
         for bid, left, L, c in true:
