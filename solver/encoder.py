@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from solver.grid import flatten, segment_all_runs, segment_blocks
+from solver.grid import flatten, segment_all_runs
 from solver.predicates import OBJECT_BODY_ALLOWLIST
 
 PathLike = Union[str, Path]
