@@ -180,5 +180,7 @@ def test_move_shaped_left_margin_plus_one(tmp_path: Path):
     exs = enc.exs_object_path.read_text()
     assert "block(0,b0,s1,s2,v1)." in bk
     assert "size_add(s1,s1,s2)." in bk
+    assert "size_add(s1,s2,s3)." in bk  # +2 closure
+    assert "size_add(s1,s3,s4)." in bk  # +3 closure
     assert "pos(out_block(0,b0,s2,s2,v1))." in exs
     assert "empty_block(" not in bk

@@ -475,13 +475,27 @@ def _lean_left_margin_facts(
             facts.append(
                 f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
             )
-        for x, y in ((La, g), (1, g)):
+        for x, y in ((La, g), (1, g), (margins[i], margins[i + 1])):
             s = x + y
             if s <= w and x >= 0 and y >= 0:
                 facts.append(
                     f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)})."
                 )
                 observed_sizes.add(s)
+    # Uniform +k closure on observed cardinals (covers 1-/2-/3-cell shifts).
+    seed = set(observed_sizes)
+    for s in sorted(seed):
+        for k in (1, 2, 3):
+            tot = s + k
+            if 0 <= tot <= w:
+                facts.append(
+                    f"size_add({_sz(s, t)},{_sz(k, t)},{_sz(tot, t)})."
+                )
+                facts.append(
+                    f"size_add({_sz(k, t)},{_sz(s, t)},{_sz(tot, t)})."
+                )
+                observed_sizes.add(k)
+                observed_sizes.add(tot)
     sizes = sorted(s for s in observed_sizes if s >= 0)
     for a in sizes:
         for b in sizes:
