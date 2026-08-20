@@ -1,0 +1,68 @@
+{
+  "file": "/tmp/census_match_fail32_ds/1d_flip/1d_flip_1.json",
+  "task": "1d_flip",
+  "mode": "hybrid_census",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "fallback_identity",
+  "confidence": "low",
+  "verified_train": false,
+  "elapsed": 22.36432909965515,
+  "predicted": [
+    0,
+    0,
+    6,
+    4,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0
+  ],
+  "gold": [
+    0,
+    0,
+    4,
+    4,
+    4,
+    4,
+    6,
+    0,
+    0,
+    0
+  ],
+  "failure_reason": "paint_verify_failed",
+  "failure_detail": {
+    "popper_status": "ok",
+    "had_program": true,
+    "program_chars": 154,
+    "max_vars": 10,
+    "max_body": 6,
+    "max_clauses": 3,
+    "max_literals": 21,
+    "timeout_s": 120,
+    "induce_elapsed_s": 21.294,
+    "error": null,
+    "census_match": true,
+    "road": "object"
+  },
+  "program": "out_block(V0,V1,V2,V3,V4):- block(V0,V5,V3,V4),gap(V0,V1,V5,V2).\nout_block(V0,V1,V2,V3,V4):- block(V0,V1,V7,V8),block(V0,V6,V3,V4),size_sum3(V3,V5,V2,V7).",
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "git_sha": "f6b78733aef63bf3b69bc861350df7da9e91a27c",
+    "git_branch": "cursor/paint-in-ilp-bk-ea52",
+    "git_dirty": true,
+    "mode": "hybrid_census",
+    "timeout": 120,
+    "jobs": 1,
+    "started_at": "2026-08-18T20:28:53.728235+00:00"
+  }
+}

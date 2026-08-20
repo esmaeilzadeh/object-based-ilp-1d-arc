@@ -1,0 +1,33 @@
+{
+  "file": "raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_11.json",
+  "task": "1d_denoising_1c",
+  "mode": "hybrid_census",
+  "ok": false,
+  "exact_ok": false,
+  "soft_accuracy": 0.0,
+  "soft_matrix": [
+    0,
+    1,
+    0,
+    0
+  ],
+  "level": "error",
+  "confidence": "low",
+  "verified_train": false,
+  "elapsed": 0.0,
+  "predicted": null,
+  "gold": null,
+  "error": "No module named 'clingo'",
+  "failure_reason": "popper_error",
+  "failure_detail": {},
+  "run_meta": {
+    "schema": "eval-run-meta/v1",
+    "git_sha": "da525a4ffdd269721f33496ac117ac757512175d",
+    "git_branch": "cursor/pi-without-argmax",
+    "git_dirty": true,
+    "mode": "hybrid_census",
+    "timeout": 120,
+    "jobs": 1,
+    "started_at": "2026-08-18T19:27:29.242082+00:00"
+  }
+}

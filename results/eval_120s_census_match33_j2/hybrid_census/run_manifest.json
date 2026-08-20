@@ -1,0 +1,21 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-18T19:55:23.358789+00:00",
+  "finished_at": "2026-08-18T20:08:53.952135+00:00",
+  "git_sha": "82429f18ce70ad85b7397ac2d1dfc6ae3a02f16c",
+  "git_branch": "cursor/paint-in-ilp-bk-ea52",
+  "git_dirty": true,
+  "git_describe": "82429f1-dirty",
+  "hostname": "mohamad-Precision-M4600",
+  "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "mode": "hybrid_census",
+  "timeout": 120,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "/tmp/census_match_first3_ds",
+  "out": "results/eval_120s_census_match33_j2",
+  "pid": 37717,
+  "entry": "run_solver_eval_parallel",
+  "n_tasks": 33
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-18T19:27:29.238790+00:00",
+  "finished_at": null,
+  "git_sha": "da525a4ffdd269721f33496ac117ac757512175d",
+  "git_branch": "cursor/pi-without-argmax",
+  "git_dirty": true,
+  "git_describe": "da525a4-dirty",
+  "hostname": "mohamad-Precision-M4600",
+  "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "mode": "hybrid_census",
+  "timeout": 120,
+  "jobs": 1,
+  "trials": null,
+  "dataset": "raw_data/onedarcraw/dataset",
+  "out": "results/eval_first3_census",
+  "pid": 31806,
+  "entry": "harness",
+  "one": true
+}
