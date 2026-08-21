@@ -1,53 +1,54 @@
 ---
-description: Keep solver work strictly block-level (no pixel tricks / false positives)
+description: Census-routed hybrid ILP direction (object or pixel by train-grid census)
 alwaysApply: true
 ---
 
-# Block-level ILP direction (mandatory)
+# Census-routed hybrid ILP direction (mandatory)
 
 ## Core idea
 
-Lift 1D-ARC from **pixel** to **block** perspective:
+Solve 1D-ARC with Popper by **routing** each instance on a name-free train-grid census:
 
-1. Represent **input**, **output**, and **relations** at block level.
-2. Induce / solve only in that block perspective (`out_block` / object ILP).
-3. Translate the block solution back to pixels for scoring.
+1. If bulky/unit colored-run **counts** match on every train I/O pair → **object road** (`out_block` / `solve`).
+2. Otherwise → **pixel road** (`out/3` via `pixel_encode` / hybrid mismatch branch).
+3. Decode to pixels for scoring.
 
-All solver changes must serve measuring whether **that lift** improves results vs pixel Decom.
+The headline system / default eval mode is **`hybrid_census`**. Mode **`block_primary`** (object-only) is an ablation/control, not the default claim.
+
+Scientific claim: **routing to a fitting representation** improves results vs locking to one language (and vs pixel-only Decom under the same protocol)—not “blocks always beat pixels,” and not “pixel solves count as block wins.”
 
 ## Uniform mechanical exs / BK / bias (mandatory)
 
 `exs`, `bk`, and `bias` must each be produced by a **single uniform algorithm**
-applied to the instance grids (and facts derived from those grids).
+applied to the instance grids (and facts derived from those grids), **per road**.
 
 Allowed:
 
-- The same codegen path for every instance
-- Inputs = that instance’s train/test grids (and mechanically derived block geometry)
+- The same codegen path for every instance on a given road
+- Inputs = that instance’s train/test grids (and mechanically derived geometry)
 - Bias body preds / constants taken from what actually appears in that instance’s BK/exs
+- Census routing from train-grid run counts only
 
 Forbidden without 100% explicit user confirmation:
 
 - Switching bias, BK, or exs shape on **category / task name** (`1d_mirror`, …)
-- Hand-authored per-family bias files or pipeline stages (`object_mirror`,
-  `object_hollow`, `object_move`, …) chosen by transform knowledge
+- Hand-authored per-family bias files or pipeline stages chosen by transform knowledge
 - Any “intelligence” that inspects the name (or a human label of the transform)
   and changes the hypothesis language
 
-Family-shaped search ladders are false positives for measuring the block lift:
-ILP must select structure inside one shared mechanical language, not via a
-human-routed vocabulary switch.
+Family-shaped search ladders are false positives: ILP must select structure inside
+the shared mechanical language of the chosen road, not via a human-routed vocabulary switch.
 
 ## Do not add without 100% explicit user confirmation
 
 Treat these as **false-positive / off-direction** unless the user confirms in writing:
 
 - Trivial closed-form solvers (identity, shift, recolor, reverse, …)
-- Hybrid `block_ilp`: pixel head `out/3` with block BK (stage-2 ladder)
-- Pixel ILP / dual bias stages used to “rescue” scores
-- Ladder stages that switch to pixel to inflate accuracy
+- Stage ladders that switch vocabulary mid-search to inflate accuracy without the census
 - Answer-leaking BK (precomputed correct `out_block` / mirrored_out / etc.)
-- Any other shortcut that solves at pixel level while reporting a “block” win
+- Reporting pixel-road solves as a “block-only” or “block lift” win
+
+The census→pixel road itself is **in-direction** for `hybrid_census` (it is the documented system).
 
 ## Strong refuse: marker / mirror geometry hacks
 
@@ -60,21 +61,21 @@ not enough:
 - `block_marker_gap`, `between_block_marker`
 - `same_side_marker`, `opp_side_marker`
 - Any new BK that precomputes a task transform (mirror, fill recipe, …) instead of
-  neutral block–block relations
+  neutral block–block (or pixel) relations
 
 If the user asks for such tools: **warn before planning**, refuse by default, proceed
 only after they confirm that specific hack family.
 
 ## If the user asks for other off-direction work
 
-**Warn before planning or coding.** State that it conflicts with block-level-only
-evaluation, wait for confirmation, then proceed only if they still insist.
+**Warn before planning or coding.** State the conflict with this direction, wait for
+confirmation, then proceed only if they still insist.
 
 ## Allowed default path
 
-- `block_primary` / object-head induction only
-- One mechanical object bias per instance (from that instance’s BK/exs)
-- Block BK and object–object relations that do not encode the answer
-- Generic arith sugar (`offset_pos`, `size_add`) when emitted uniformly from
-  observed sizes/gaps (not gated by category name)
-- Decode `out_block` → pixel grid for metrics
+- `hybrid_census` / `solve_hybrid` as the headline path
+- `block_primary` / `solve` as object-only control
+- One mechanical object bias per instance (from that instance’s BK/exs) on the object road
+- Decom-style mechanical pixel encode on the pixel road
+- Generic arith sugar when emitted uniformly from observed sizes/gaps (not gated by category name)
+- Decode / apply → pixel grid for metrics

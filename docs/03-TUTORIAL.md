@@ -1,6 +1,11 @@
 # 03 — Tutorial: Both Roads
 
-This tutorial walks through **two** complete solves: one on the **object road** (census match) and one on the **pixel road** (census fail). Commands use the default hybrid CLI.
+This tutorial walks through **two** complete solves that match what the code actually does:
+
+1. **Part A — Object road** on `1d_flip_0` (`census_match=true`)
+2. **Part B — Pixel road** on `1d_pcopy_1c_0` (`census_match=false`)
+
+Commands use the default hybrid CLI.
 
 ```bash
 source .venv/bin/activate
@@ -8,128 +13,104 @@ python -m solver.cli PATH.json --mode hybrid_census --timeout 60 \
   --work-dir work/tut --out work/tut/pred.json
 ```
 
-Inspect `pred.json` for `failure_detail.census_match`, `failure_detail.road`, `level`, `program`, and `predicted_grid`.
+After a run, open `pred.json` and check `failure_detail.census_match`, `failure_detail.road`, `level`, `program`, and `predicted_grid`. Do not guess the road from the category name alone—always read the JSON.
 
 ---
 
-# Part A — Object road (census match)
+# Part A — Object road (`1d_flip_0`)
 
-We use `raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json`. Each grid is a single row of 32 pixels.
+**File:** `raw_data/onedarcraw/dataset/1d_flip/1d_flip_0.json`
 
-## The task
+## The task (short grids)
 
 ### Training example 0
 
 ```
-Input:  0 0 4 0 0 0 0 0 4 4 4 4 4 4 4 4 4 4 0 0 0 0 4 0 0 0 0 0 0 0 0 0
-Output: 0 0 0 0 0 0 0 0 4 4 4 4 4 4 4 4 4 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Input:  0 0 0 0 0 0 0 0 0 0 0 0 0 4 8 8 8 8 8 8 8 0 0 0 0
+Output: 0 0 0 0 0 0 0 0 0 0 0 0 0 8 8 8 8 8 8 8 4 0 0 0 0
 ```
 
 ### Training example 1
 
 ```
-Input:  0 0 0 2 0 0 2 0 0 2 0 0 2 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0 0 0
-Output: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0 0 0
+Input:  0 0 0 0 1 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0 0 0 0 0
+Output: 0 0 0 0 3 3 3 3 3 3 3 3 3 3 1 0 0 0 0 0 0 0 0 0 0
 ```
 
 ### Training example 2
 
 ```
-Input:  4 4 4 4 4 4 4 4 4 4 4 4 4 4 0 0 0 4 0 0 0 0 4 0 0 0 0 0 0 0 0 0
-Output: 4 4 4 4 4 4 4 4 4 4 4 4 4 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Input:  0 0 0 0 0 0 6 5 5 5 5 5 5 5 5 5 5 5 0 0 0 0 0 0 0
+Output: 0 0 0 0 0 0 5 5 5 5 5 5 5 5 5 5 5 6 0 0 0 0 0 0 0
 ```
 
-### Test example 3
+### Test
 
 ```
-Input:  3 3 3 3 3 3 3 3 3 3 3 3 0 0 3 0 0 3 0 0 0 3 0 0 0 0 0 0 0 0 0 0
-Output: (to predict)
+Input:  0 0 0 0 0 0 6 2 2 2 2 2 2 2 0 0 0 0 0 0 0 0 0 0 0
+Output: (to predict; gold swaps the unit marker to the other end of the bar)
 ```
 
-**Rule in English:** each input has one long run of a color plus isolated same-color “noise” pixels. The output keeps only the long run.
+**Rule in English:** there is one long bar and one adjacent single-pixel marker. The output keeps both runs but **flips** which side of the bar the marker sits on (and swaps which color is the marker vs the bar body in the obvious way for each example).
 
 ## Why the census matches
 
-For each train pair, count bulky (length ≥ 2) and unit (length 1) **colored** runs on input vs output.
+For every train pair, count **bulky** colored runs (length ≥ 2) and **unit** colored runs (length = 1):
 
-On example 0 the input has one bulky run of `4` (length 10) and two unit runs of `4`; the output keeps one bulky run of `4` and **zero** unit runs of that noise—wait: that would *fail* the census if unit counts change!
+| Pair | Bulky in→out | Unit in→out |
+|------|--------------|-------------|
+| 0 | 1 → 1 | 1 → 1 |
+| 1 | 1 → 1 | 1 → 1 |
+| 2 | 1 → 1 | 1 → 1 |
 
-Important: the denoising family often **deletes** unit noise, so unit counts drop. In practice `1d_denoising_1c_0` is still solved on the object road when the census matches for the pairs as implemented—or, if your local census returns false, hybrid will take the pixel road and may still succeed. Always trust `failure_detail.census_match` in `pred.json` for the run you just made.
-
-For a **guaranteed** match illustration from the test suite, use the flip-style pattern:
-
-```
-Input:  0 4 8 8 8 8 8 8 8 0
-Output: 0 8 8 8 8 8 8 8 4 0
-```
-
-Same bulky count (1) and same unit count (1) → `census_match=true` → object artifacts under `work-dir/encode/` (`exs_object.pl`, `bias_object.pl` with `head_pred(out_block,5)`).
-
-The rest of Part A follows the classic denoising object encoding so you can read block facts; if your CLI run reports `road: pixel` for denoising, skip to Part B’s artifact layout and treat Part A as “how the object encoder talks.”
+Counts are preserved → `census_match=true` → hybrid takes the **object road** (`road: object`).
 
 ## Segmentation (example 0 input)
 
-| Block ID | Start–End | Length | Color | Role |
-|----------|-----------|--------|-------|------|
-| `b0` | 0–1 | 2 | 0 | background |
-| `b1` | 2–2 | 1 | 4 | unit noise |
-| `b2` | 3–7 | 5 | 0 | background |
-| `b3` | 8–17 | 10 | 4 | **largest** bar |
-| `b4` | 18–21 | 4 | 0 | background |
-| `b5` | 22–22 | 1 | 4 | unit noise |
-| `b6` | 23–31 | 9 | 0 | background |
+Ignore background for a moment; the interesting colored runs are:
 
-Geometry lives in Python (`block_geometry`) for painting later.
+| Block | Span (approx.) | Length | Color | Role |
+|-------|----------------|--------|-------|------|
+| unit | one cell of `4` | 1 | 4 | marker |
+| bulky | seven cells of `8` | 7 | 8 | bar |
 
-## Background knowledge (English)
+(The encoder also numbers background runs; object facts focus on colored blocks and relations between them.)
 
-Facts for example 0 include:
+## Background knowledge (English then Prolog)
+
+The object encoder writes facts such as:
+
+- **`block(Example, BlockId, Length, Color)`** — “this example has a colored run with this length and color.”
+- **`obj_succ`** — which colored run sits to the right of which.
+- Size/color constants use typed prefixes (`s7`, `v8`) so lengths are not confused with block ids.
+
+A sketch for example 0 (ids depend on full segmentation including background):
 
 ```prolog
-block(0, b1, s1, v4).
-block(0, b3, s10, v4).
-block(0, b5, s1, v4).
-largest(0, b3).
-non_largest(0, b1).
-non_largest(0, b5).
-gap(0, b1, b3, s5).
-obj_succ(0, b1, b3).
+% Conceptual — open work/tut/encode/bk.pl after a real run for exact ids
+block(0, b_marker, s1, v4).
+block(0, b_bar,    s7, v8).
+obj_succ(0, b_marker, b_bar).
 ```
-
-Meaning: three colored runs; `b3` is longest; gaps and succession relate them. Prefixes `s*` / `v*` are typed sizes and colors.
 
 ## Target examples
 
-Head: **`out_block(Example, BlockId, Offset, Length, Color)`** — paint that input block with the given offset/length/color.
+Head predicate:
 
-Typical positives for “keep largest, offset 0”:
+> **`out_block(Example, BlockId, Offset, Length, Color)`**  
+> “Paint this **input** block, shifted by `Offset`, with the given length and color.”
 
-```prolog
-pos(out_block(0, b3, s0, s10, v4)).
-```
+Positives teach how each train output is assembled from input blocks (here: both blocks still appear, but with swapped sides / colors as the flip requires). Negatives forbid wrong offsets, wrong colors, and painting the wrong block.
 
-Negatives ban wrong colors, lengths, offsets, and painting a noise block instead of the largest.
+## Bias, induction, verify
 
-## Bias and induction
+`bias_object.pl` declares `head_pred(out_block,5)` and only allows body predicates that appear in this instance’s BK. Popper returns a small logic program. Before accepting it, the object road **paint-verifies** on all training outputs (`solver/verify.py`). On success:
 
-`bias_object.pl` allows `out_block/5` as head and only body predicates present in this BK. Popper may return:
+- `level: object_ilp`
+- `verified_train: true`
+- `failure_detail.road: object`
 
-```prolog
-out_block(V0, V1, V2, V3, V4) :-
-    largest(V0, V1),
-    s0(V2),
-    block(V0, V1, V3, V4).
-```
-
-English: paint the largest block at offset 0 with its own length and color.
-
-## Verify, apply, score
-
-1. Paint-verify on all train outputs (`verify.py`).
-2. Apply to test BK → predicted row.
-3. Compare to gold (exact + soft).
-
-On success you typically see `level: object_ilp`, `verified_train: true`, and `road: object` when hybrid routed here.
+Then the same program is applied to the test BK and painted to pixels.
 
 ### Work-dir sketch (object)
 
@@ -146,72 +127,110 @@ work/tut/
 └── soft_score/
 ```
 
+Try it:
+
+```bash
+python -m solver.cli \
+  raw_data/onedarcraw/dataset/1d_flip/1d_flip_0.json \
+  --mode hybrid_census --timeout 120 \
+  --work-dir work/tut_flip --out work/tut_flip/pred.json
+```
+
 ---
 
-# Part B — Pixel road (census fail)
+# Part B — Pixel road (`1d_pcopy_1c_0`)
 
-When bulky/unit **counts** change between train input and output, hybrid switches to pixel ILP.
+**File:** `raw_data/onedarcraw/dataset/1d_pcopy_1c/1d_pcopy_1c_0.json`
 
-## A minimal mismatch instance
+## Why the census fails
 
-The unit tests use a short structural change:
+### Training example 0 (excerpt)
+
+```
+Input:  0 0 1 1 1 0 0 1 0 0 ...
+Output: 0 0 1 1 1 0 1 1 1 0 ...
+```
+
+| Pair | Bulky in→out | Unit in→out |
+|------|--------------|-------------|
+| 0 | 1 → 2 | 1 → 0 |
+| 1 | 1 → 4 | 3 → 0 |
+| 2 | 1 → 2 | 1 → 0 |
+
+The output **invents extra bulky copies** of the pattern and removes unit markers. Counts change → `census_match=false` → hybrid takes the **pixel road** (`road: pixel`).
+
+That is exactly the blind spot of an object head that only paints from an existing input-block inventory: the output needs more bars than the input provided as first-class objects.
+
+## Tiny unit-test mismatch (same idea)
 
 ```
 Input:  4 8 8 8
 Output: 8 8 8 0 8 8 8
 ```
 
-- Input: one unit (`4`) + one bulky (`8 8 8`).
-- Output: two bulky runs of `8` separated by a zero — run inventory changed.
-- `census_match` → **false** → pixel road.
-
-You can save that JSON shape (train + test) under `work/` and run the CLI, or pick a dataset family that routinely changes run counts (many `pcopy_*` trials). Always confirm with `failure_detail` in the prediction JSON.
+Run inventory changes → pixel road. The `solver/tests/test_pipeline_pixel.py` fixture uses this shape.
 
 ## What the pixel encoder writes
 
-Under the hybrid work dir you will see pixel artifacts (names follow `encode_pixel_instance`), conceptually:
+`solver/pixel_encode.py` builds a Decom-style encoding:
 
-- BK with **`in(Example, Position, Color)`** and **`empty(Example, Position)`** — “at index 0 of example 0 the color is 4,” etc.
-- Examples for head **`out(Example, Position, Color)`** — which output color belongs at which index (learning positives for nonzero gold; generated negatives).
-- Bias with **`head_pred(out,3)`**.
+| Artifact idea | Meaning in English |
+|---------------|--------------------|
+| `in(Example, Position, Color)` | “At this index of the input, the color is …” |
+| `empty(Example, Position)` | “This input index is background.” |
+| `out(Example, Position, Color)` examples | “At this index of the **output**, the color should be …” |
+| Bias `head_pred(out,3)` | Learn pixel output rules, not `out_block` |
 
-English target: “For each position, what color should the output have?” — not “which input block should I move?”
+English target: **for each position, what output color?** — not “which input block do I move?”
 
 ## Induction and acceptance
 
-Popper searches for `out/3` rules under the pixel literal budget. On this road, **soft scoring** against Decom-style test facts is the main success signal (aligned with the Decom evaluation helper). The pipeline records `road: pixel` and, when appropriate, `decom_solved`. Successful level: `pixel_ilp`.
+Popper searches under the pixel literal budget. On this road, **soft scoring** against Decom-style test facts is the main success signal (aligned with Decom’s evaluation helper). Paint-verify is not the sole gate. On success you typically see:
 
-The predicted row comes from applying the program to the test BK (`apply_pixel_program`), not from `out_block` painting.
+- `level: pixel_ilp`
+- `failure_detail.road: pixel`
+- `failure_detail.decom_solved: true` (when the soft matrix says so)
+
+The predicted row comes from `apply_pixel_program`, not from painting `out_block` atoms.
 
 ### Work-dir sketch (pixel)
 
 ```
 work/tut/
-├── encode/          # pixel bk / exs / bias / test.pl
+├── encode/           # pixel bk / exs / bias / test.pl (see pixel_encode.py)
 ├── popper_pixel/
 │   └── program.pl
 └── soft_score/
 ```
 
-Exact filenames match whatever `pixel_encode.py` wrote for that run—open the directory after the CLI finishes.
+Try it:
+
+```bash
+python -m solver.cli \
+  raw_data/onedarcraw/dataset/1d_pcopy_1c/1d_pcopy_1c_0.json \
+  --mode hybrid_census --timeout 120 \
+  --work-dir work/tut_pcopy --out work/tut_pcopy/pred.json
+```
+
+---
 
 ## How to read the result JSON
 
-| Field | Object road (typical) | Pixel road (typical) |
-|-------|----------------------|----------------------|
+| Field | Object road (Part A) | Pixel road (Part B) |
+|-------|----------------------|---------------------|
 | `failure_detail.census_match` | `true` | `false` |
 | `failure_detail.road` | `object` | `pixel` |
 | `level` | `object_ilp` | `pixel_ilp` |
-| `verified_train` | paint-verify gate | may differ; soft matrix matters |
+| `verified_train` | paint-verify gate | soft / Decom-style path |
 | `program` | `out_block(...)` clauses | `out(...)` clauses |
 
-On hard failure both roads may return `fallback_identity` (often a copy of the test input) with a `failure_reason` such as `popper_timeout` or `popper_exhausted`.
+On hard failure both roads may return `fallback_identity` (often a copy of the test input) with reasons such as `popper_timeout` or `popper_exhausted`.
 
 ---
 
 ## Summary
 
-1. Hybrid always starts with a **train-grid census**.
-2. **Match** → learn **which blocks to paint** (`out_block`), verify by painting train grids, decode test.
-3. **Mismatch** → learn **which color per position** (`out`), score in the Decom style, decode test.
-4. Use `pred.json` + the work directory to see which road ran—do not assume from the category name alone.
+1. Hybrid always starts with a **train-grid census** (bulky/unit counts).
+2. **Match** (flip) → learn **which blocks to paint** (`out_block`), paint-verify, decode.
+3. **Mismatch** (pcopy) → learn **which color per position** (`out`), soft-score like Decom, decode.
+4. Trust `pred.json` + the work directory—not the category name—to see which road ran.
