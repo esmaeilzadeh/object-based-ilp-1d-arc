@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from solver.bias_gen import render_object_bias, render_object_bias_from_bk
-from solver.encoder import _block_and_derived, encode_instance
+from solver.encoder import _block_and_derived, _typed_constant_unaries, encode_instance
 from solver.predicates import PREDICATES
 
 
@@ -16,6 +16,7 @@ def _facts(row):
             include_cell_bridges=False,
             include_pixel_anchors=False,
         )
+        + _typed_constant_unaries(len(row))
     )
 
 
@@ -100,6 +101,24 @@ def test_encode_instance_object_only(tmp_path: Path):
     assert "constant(b1, 'block_id')." in bias or "constant(b1," in bias
     assert "not body_literal(C, block, 4, (0,1,_,_))" not in bias
     assert "not body_literal(C, block, 4, (0,_,_,_))." in bias
+
+
+def test_bk_constant_unaries_deduped(tmp_path: Path):
+    """Typed b*/s*/v*/sm* tables appear once per bk.pl, not per train example."""
+    inst = {
+        "train": [
+            {"input": [[1, 1, 0, 2]], "output": [[1, 1, 0, 2]]},
+            {"input": [[3, 3, 0, 4]], "output": [[3, 3, 0, 4]]},
+        ],
+        "test": [{"input": [[5, 0, 6]], "output": [[5, 0, 6]]}],
+    }
+    enc = encode_instance(inst, tmp_path / "enc")
+    bk = enc.bk_path.read_text()
+    assert bk.count("b0(b0).") == 1
+    assert bk.count("s3(s3).") == 1
+    assert bk.count("v2(v2).") == 1
+    assert "block(0," in bk
+    assert "block(1," in bk
 
 
 def test_paint_constraint_in_train_bk_not_bias(tmp_path: Path):

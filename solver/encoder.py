@@ -437,11 +437,19 @@ def _block_and_derived(
             for f in facts
             if any(f.startswith(n + "(") for n in _LEAN_EMIT_ALLOW)
         ]
-        # Typed constant unary facts so Popper can resolve body_pred(C,1).
-        for i in range(10):
-            facts.append(f"v{i}(v{i}).")
-        for i in range(w + 1):
-            facts.append(f"s{i}(s{i}).")
+    return facts
+
+
+def _typed_constant_unaries(max_w: int) -> List[str]:
+    """Emit ``b*`` / ``s*`` / ``v*`` / ``sm*`` unary tables once per ``bk.pl``."""
+    facts: List[str] = []
+    for i in range(10):
+        facts.append(f"v{i}(v{i}).")
+    for i in range(max_w + 1):
+        facts.append(f"s{i}(s{i}).")
+        facts.append(f"b{i}(b{i}).")
+    for i in range(1, max_w + 1):
+        facts.append(f"sm{i}(sm{i}).")
     return facts
 
 
@@ -521,7 +529,7 @@ def _bk_lines_for(examples: Sequence[ExampleGrids], *, max_w: int) -> List[str]:
                 include_pixel_anchors=False,
             )
         )
-    del max_w  # width used inside lean emit via row length
+    lines.extend(_typed_constant_unaries(max_w))
     return lines
 
 
