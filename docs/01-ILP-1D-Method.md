@@ -1,78 +1,125 @@
 # 01 — Approach & Landscape
 
-Why we solve 1D-ARC with **object-level** inductive logic programming, and how that choice positions this work among recent ILP methods.
+Why this repository solves 1D-ARC with a **census-routed hybrid** of object-level and pixel-level inductive logic programming, and how that choice sits next to recent ILP methods.
 
 ## The problem
 
 1D-ARC tasks are one-dimensional grids. A task shows a few input/output pairs (typically three training examples and one test input). The solver must infer the transformation rule and apply it to the test input.
 
-The challenge is **relational**: the rule usually depends on *objects* (contiguous runs of the same color), not on individual pixels. A rule like “keep the largest block and delete the rest” is trivial to state in terms of objects, but verbose and brittle when expressed as pixel coordinates.
+Many rules are naturally stated over **objects**: contiguous runs of the same color (“keep the largest block,” “recolor the shorter block,” “move the left block past the pivot”). Stating the same ideas only in pixel coordinates is possible but verbose and brittle. Other rules change how many runs exist or stretch structure in ways that are awkward for a fixed object inventory (for example, duplicating a pattern across the row). A single representation therefore leaves blind spots.
+
+This project’s answer is not “always use blocks” or “always use pixels.” It is **route each instance** to the representation that fits, using a mechanical check on the training grids only.
 
 ## Three recent ILP strategies
 
 ### A. Relational Decomposition + Popper (Hocquette & Cropper, IJCAI 2025)
 
-**What they did.** Decompose input/output grids into pixel facts (`in`, `out`, `empty`), add arithmetic predicates (`my_succ`, `add`, `lt`), and let off-the-shelf Popper learn `out(Pixel, Color)` rules.
+**What they did.** Decompose input/output grids into pixel facts (`in`, `out`, `empty`), add arithmetic predicates, and let off-the-shelf Popper learn rules whose head is roughly “output color at position.”
 
-**Why it matters.** Domain-light, interpretable, and exact on the pixel level. It proved that standard ILP can solve ARC-style tasks without a neural network or a hand-crafted domain-specific language (DSL).
+**Why it matters.** Domain-light, interpretable, and exact on the pixel level. It showed that standard ILP can solve ARC-style tasks without a neural network or a hand-crafted domain-specific language (DSL).
 
-**The limitation.** Because the background knowledge is pixel-level, the learned rules must reconstruct objects from coordinates. That forces long clauses, struggles with counting, and cannot express “the block” as a first-class concept.
+**The limitation.** Because background knowledge is pixel-level, the learner must reconstruct object concepts from coordinates when the true rule is about blocks. That forces long clauses and struggles with counting and “the largest block” as a first-class idea.
+
+In this repo we treat Decom as the **shared-engine baseline**: same Popper family, same 54-task evaluation slice, different representation (and, in our case, a router).
 
 ### B. ILPAR — ILP over an object DSL (Rocha et al., 2024/2025)
 
 **What they did.** Use a hand-designed object-centric DSL as background knowledge and have ILP generate output objects into an empty grid.
 
-**Why it matters.** Objects-first, which matches the relational nature of ARC. First-order logic fits relations naturally.
+**Why it matters.** Objects-first matches the relational nature of many ARC transforms. First-order logic fits relations naturally.
 
-**The limitation.** The DSL is fixed *a priori*. The system inherits the designer’s choices about which object operations are possible, risking a bias toward what the developer already knows. It also does not scale to the full 900-task 1D-ARC benchmark.
+**The limitation.** The DSL is fixed *a priori*. The system inherits the designer’s choices about which object operations are possible. Scaling that vocabulary to the full 1D-ARC benchmark is hard without baking transform knowledge into the language.
 
-### C. This repository — block-anchored object ILP (`block_primary`)
+### C. This repository — census-routed hybrid ILP (`hybrid_census`)
 
-**What we do.** Per-instance Popper induction, but the facts are **blocks** (maximal same-color runs), not pixels. The head predicate is `out_block(Example, BlockId, Offset, Length, Color)`. The bias (the grammar of rules Popper can try) is generated mechanically from that instance’s own facts.
+**What we do.** For each JSON trial independently:
 
-**How it differs from A.** We keep the ILP machinery but lift the representation from pixels to blocks. Popper learns rules about objects directly, without needing to invent object concepts from coordinates.
+1. Run a **name-free census** on the training pairs (see below).
+2. If the census says object geometry is preserved, induce an **object** program whose head paints blocks (`out_block`).
+3. Otherwise induce a **pixel** program in the Decom-style head (`out`).
+4. Decode to a pixel grid and score against gold.
 
-**How it differs from B.** We do not hand-craft a DSL of transforms. The only prior is segmentation (maximal runs) and aggregation (largest, smallest, count). The relations over blocks are learned, not given.
+Neither road is chosen by reading the category name (`1d_mirror`, `1d_pcopy_1c`, …). The census looks only at run counts derived from the grids.
 
-**Known limits.** No cross-task library yet. The segmentation prior is fixed (maximal same-color runs). No pixel-head rescue — if the block representation fails, the task fails.
+**How it differs from A.** We still use Popper and we still score pixels, but we do not force every instance through a pixel-only language. When bulky/unit run counts are stable across train input→output, we give Popper first-class blocks.
+
+**How it differs from B.** We do not ship a rich hand-authored transform DSL. Object background knowledge is segmentation plus aggregations and relations computed from that instance’s grids. Pixel background knowledge follows the Decom-style encoding path when the census fails.
+
+**What we claim.** The scientific claim is that **routing to a fitting representation** improves exact accuracy versus locking the system to one language—especially versus pixel-only Decom under the same protocol—not that blocks alone always dominate pixels.
+
+## The census in plain language
+
+Segment every training row into maximal same-color runs. Split colored runs into:
+
+- **Bulky runs** — length at least 2
+- **Unit runs** — length exactly 1
+
+For each train pair, compare input vs output:
+
+- Same number of bulky runs?
+- Same number of unit runs?
+
+If **every** train pair answers yes to both, `census_match` is true → **object road**.  
+If any pair fails → **pixel road**.
+
+### Tiny match example (object road)
+
+```
+Input:  0 4 8 8 8 8 8 8 8 0
+Output: 0 8 8 8 8 8 8 8 4 0
+```
+
+Both sides have one bulky run (seven `8`s) and one unit run (a single colored cell). Colors and order can change; **counts** match → object induction is appropriate.
+
+### Tiny mismatch example (pixel road)
+
+```
+Input:  4 8 8 8
+Output: 8 8 8 0 8 8 8
+```
+
+The output invents a different run inventory (structure/length profile changes). Counts no longer match → pixel induction.
 
 ## Positioning summary
 
 | Method | Representation | What ILP learns | Prior in background knowledge | Main gap |
-|--------|----------------|-----------------|------------------------------|----------|
-| Pixel relational decomposition (A) | pixels | `out(Pixel, Color)` | arithmetic | no object concept |
-| ILPAR (B) | objects + DSL | object-generating rules | rich object DSL | DSL completeness; scale |
-| **This repo** | **blocks + aggregations** | `out_block/5` | segmentation + aggregation only | no library; hard sub-object tasks stay hard |
+|--------|----------------|-----------------|-------------------------------|----------|
+| Pixel relational decomposition (A) | pixels only | pixel `out` rules | arithmetic over indices | no first-class objects |
+| ILPAR (B) | objects + DSL | object-generating rules | rich hand-designed DSL | DSL completeness; scale |
+| **This repo (hybrid)** | **census → objects or pixels** | `out_block` **or** `out` | segmentation + aggregation, or Decom-style pixels | census is a heuristic, not an oracle |
 
-The baseline to beat is **A** (pixel Decom), not because A is the strongest system overall, but because it shares the same ILP engine (Popper) and the same evaluation protocol. The comparison isolates the effect of the representation: pixels versus blocks.
+The baseline to beat for headline numbers is **A** (pixel Decom): same ILP engine family and the same evaluation protocol. The comparison is “hybrid routing under uniform mechanical encodings” versus “pixels only,” not “we secretly switched vocabulary by task name.”
 
 ## Why per-task from scratch (not curriculum)
 
-Both this repo and pixel Decom treat each JSON trial as an independent **few-shot program synthesis** problem: learn from that trial’s training pairs, then score the held-out test. There is no shared training set across categories, and no warm-start from a simpler sibling task.
+Both this repo and pixel Decom treat each JSON trial as an independent **few-shot program synthesis** problem: learn from that trial’s training pairs, then score the held-out test. There is no shared training set across categories, and no warm-start from a sibling task.
 
 That is deliberate:
 
-1. **ARC-style claim.** The target is inventing a program for a *novel* transform from a tiny support set — not accumulating a curriculum of known transforms.
-2. **Fair comparison.** Head-to-head numbers only measure the representation (pixel vs block) if both sides use the same per-trial scratch protocol.
-3. **Hypotheses do not transfer cleanly.** Each instance has its own latent rule, constants, and geometry. Reusing “simple” solutions as priors risks answer leakage.
-4. **Scientific target is representation.** We ask whether lifting pixels→blocks under one uniform mechanical language improves induction. Curriculum adds a second axis that muddies that measurement.
+1. **ARC-style claim.** Invent a program for a *novel* transform from a tiny support set.
+2. **Fair comparison.** Head-to-head numbers only stay meaningful if both sides use the same per-trial scratch protocol.
+3. **No answer leakage via transfer.** Reusing “simple” solutions as priors risks contaminating the measurement.
 
-Cross-task library refinement remains an optional later extension, but it is disabled for the comparable single-instance runs reported here.
+Cross-task library refinement remains a possible later extension; it is disabled for the comparable single-instance runs described in the evaluation doc.
 
 ## Pipeline at a glance
 
 ```
 Input grids (JSON)
-    ↓
-Segment into maximal runs (blocks)
-    ↓
-Encode as Prolog facts (BK) + examples (exs) + bias
-    ↓
-Popper induces out_block/5 rules
-    ↓
-Paint-verify on training examples
-    ↓
-Decode to pixels for test scoring
+        ↓
+Train-grid census (bulky / unit run counts)
+        ↓
+   ┌────┴────┐
+   │ match?  │
+   └────┬────┘
+  yes   │   no
+   ↓    │    ↓
+Object road     Pixel road
+(out_block)     (out)
+   ↓    │    ↓
+Paint / decode to pixels
+        ↓
+Exact + soft score vs gold
 ```
 
-The next document walks through this pipeline in detail.
+The next document walks through both roads in detail. The tutorial then shows one real task on each road.

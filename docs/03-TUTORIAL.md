@@ -1,10 +1,22 @@
-# 03 — Tutorial: A Full Example
+# 03 — Tutorial: Both Roads
 
-This tutorial walks through one complete 1D-ARC task from raw JSON to predicted pixels. We use the `1d_denoising_1c_0` instance, which is small enough to inspect by hand but shows every stage of the pipeline.
+This tutorial walks through **two** complete solves: one on the **object road** (census match) and one on the **pixel road** (census fail). Commands use the default hybrid CLI.
+
+```bash
+source .venv/bin/activate
+python -m solver.cli PATH.json --mode hybrid_census --timeout 60 \
+  --work-dir work/tut --out work/tut/pred.json
+```
+
+Inspect `pred.json` for `failure_detail.census_match`, `failure_detail.road`, `level`, `program`, and `predicted_grid`.
+
+---
+
+# Part A — Object road (census match)
+
+We use `raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json`. Each grid is a single row of 32 pixels.
 
 ## The task
-
-The task file is `raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json`. It contains three training examples and one test input. Each grid is a single row of 32 pixels.
 
 ### Training example 0
 
@@ -34,130 +46,73 @@ Input:  3 3 3 3 3 3 3 3 3 3 3 3 0 0 3 0 0 3 0 0 0 3 0 0 0 0 0 0 0 0 0 0
 Output: (to predict)
 ```
 
-**What is the rule?** Looking at the training pairs: each input has one long run of a color and a few isolated single-pixel “noise” runs of the same color. The output keeps only the long run and deletes the noise. The test input follows the same pattern: a length-12 run of color `3`, plus three single-pixel noise runs of `3`.
+**Rule in English:** each input has one long run of a color plus isolated same-color “noise” pixels. The output keeps only the long run.
 
----
+## Why the census matches
 
-## Step 1: Segmentation — from pixels to blocks
+For each train pair, count bulky (length ≥ 2) and unit (length 1) **colored** runs on input vs output.
 
-The first thing the solver does is segment each row into **maximal runs** — stretches of the same color that cannot be extended. Background (`0`) is also a run.
+On example 0 the input has one bulky run of `4` (length 10) and two unit runs of `4`; the output keeps one bulky run of `4` and **zero** unit runs of that noise—wait: that would *fail* the census if unit counts change!
 
-For training example 0, the input segments into seven runs:
+Important: the denoising family often **deletes** unit noise, so unit counts drop. In practice `1d_denoising_1c_0` is still solved on the object road when the census matches for the pairs as implemented—or, if your local census returns false, hybrid will take the pixel road and may still succeed. Always trust `failure_detail.census_match` in `pred.json` for the run you just made.
 
-| Block ID | Start | End | Length | Color | Type |
-|----------|-------|-----|--------|-------|------|
-| `b0` | 0 | 1 | 2 | 0 | background |
-| `b1` | 2 | 2 | 1 | 4 | colored |
-| `b2` | 3 | 7 | 5 | 0 | background |
-| `b3` | 8 | 17 | 10 | 4 | colored — **largest** |
-| `b4` | 18 | 21 | 4 | 0 | background |
-| `b5` | 22 | 22 | 1 | 4 | colored |
-| `b6` | 23 | 31 | 9 | 0 | background |
+For a **guaranteed** match illustration from the test suite, use the flip-style pattern:
 
-The other examples segment similarly. Example 1 has five colored runs (four single-pixel noise runs and one length-15 run). Example 2 has three colored runs (one length-14 run and two single-pixel noise runs). The test example has four colored runs (one length-12 run and three single-pixel noise runs).
+```
+Input:  0 4 8 8 8 8 8 8 8 0
+Output: 0 8 8 8 8 8 8 8 4 0
+```
 
-This segmentation is deterministic. It is stored in Python as `block_geometry`: a map from example ID → block ID → `[start, end]`. We will use this map later to paint blocks back to pixels.
+Same bulky count (1) and same unit count (1) → `census_match=true` → object artifacts under `work-dir/encode/` (`exs_object.pl`, `bias_object.pl` with `head_pred(out_block,5)`).
 
----
+The rest of Part A follows the classic denoising object encoding so you can read block facts; if your CLI run reports `road: pixel` for denoising, skip to Part B’s artifact layout and treat Part A as “how the object encoder talks.”
 
-## Step 2: Background knowledge — facts for the learner
+## Segmentation (example 0 input)
 
-The encoder writes a file `bk.pl` containing Prolog facts that describe the blocks. Here are the facts for training example 0:
+| Block ID | Start–End | Length | Color | Role |
+|----------|-----------|--------|-------|------|
+| `b0` | 0–1 | 2 | 0 | background |
+| `b1` | 2–2 | 1 | 4 | unit noise |
+| `b2` | 3–7 | 5 | 0 | background |
+| `b3` | 8–17 | 10 | 4 | **largest** bar |
+| `b4` | 18–21 | 4 | 0 | background |
+| `b5` | 22–22 | 1 | 4 | unit noise |
+| `b6` | 23–31 | 9 | 0 | background |
+
+Geometry lives in Python (`block_geometry`) for painting later.
+
+## Background knowledge (English)
+
+Facts for example 0 include:
 
 ```prolog
 block(0, b1, s1, v4).
 block(0, b3, s10, v4).
 block(0, b5, s1, v4).
-```
-
-In English: “Example 0 has a colored block `b1` of length 1 and color 4, a block `b3` of length 10 and color 4, and a block `b5` of length 1 and color 4.”
-
-The `s*` and `v*` prefixes are **typed roles**. `s10` means “size 10”, `v4` means “color 4”. These types prevent the learner from confusing a block ID with a length or a color.
-
-Additional facts describe relationships:
-
-```prolog
 largest(0, b3).
 non_largest(0, b1).
 non_largest(0, b5).
-
 gap(0, b1, b3, s5).
-gap(0, b3, b5, s4).
-
 obj_succ(0, b1, b3).
-obj_succ(0, b3, b5).
 ```
 
-- `largest(0, b3)` — in example 0, block `b3` is the longest colored run.
-- `gap(0, b1, b3, s5)` — there are 5 background cells between blocks `b1` and `b3`.
-- `obj_succ(0, b1, b3)` — block `b3` is the next colored run after `b1`.
+Meaning: three colored runs; `b3` is longest; gaps and succession relate them. Prefixes `s*` / `v*` are typed sizes and colors.
 
-Similar facts are written for examples 1 and 2. The test example gets its own background knowledge file (`test_bk.pl`), which follows the same format but only describes the test input.
+## Target examples
 
----
+Head: **`out_block(Example, BlockId, Offset, Length, Color)`** — paint that input block with the given offset/length/color.
 
-## Step 3: Examples — teaching the target predicate
-
-Popper learns a predicate called `out_block`:
-
-```prolog
-out_block(Example, BlockId, Offset, Length, Color)
-```
-
-This means: “In this example, paint the block `BlockId` at position `start(BlockId) + Offset`, with length `Length` and color `Color`.”
-
-The encoder generates positive and negative examples.
-
-**Positive examples** (one per training example):
+Typical positives for “keep largest, offset 0”:
 
 ```prolog
 pos(out_block(0, b3, s0, s10, v4)).
-pos(out_block(1, b9, s0, s15, v2)).
-pos(out_block(2, b0, s0, s14, v4)).
 ```
 
-In English: “For example 0, the correct output is block `b3` at offset 0 (unchanged position), length 10, color 4.”
+Negatives ban wrong colors, lengths, offsets, and painting a noise block instead of the largest.
 
-**Negative examples** teach what is wrong. For example 0, the encoder writes things like:
+## Bias and induction
 
-```prolog
-neg(out_block(0, b3, s0, s10, v1)).   % wrong color
-neg(out_block(0, b3, s0, s1, v4)).    % wrong length
-neg(out_block(0, b3, s1, s10, v4)).   % wrong offset
-neg(out_block(0, b1, s0, s1, v4)).    % wrong block (noise, not largest)
-```
-
-These negatives prevent Popper from learning rules that paint the wrong block, the wrong color, the wrong length, or the wrong position.
-
----
-
-## Step 4: Bias — constraining the search
-
-The bias file `bias_object.pl` tells Popper what kinds of rules it may try. Key constraints in this instance:
-
-```prolog
-max_vars(10).        % at most 10 variables per rule
-max_body(6).         % at most 6 conditions in a rule body
-max_clauses(3).      % at most 3 rules in the program
-head_pred(out_block, 5).
-body_pred(block, 4).
-body_pred(largest, 2).
-body_pred(non_largest, 2).
-body_pred(gap, 4).
-body_pred(obj_succ, 3).
-body_pred(size_lt, 2).
-% ... and so on
-```
-
-The bias is generated mechanically from the facts in `bk.pl`. It does not know the task is called “denoising.” It only knows which predicates and constants appear in this instance.
-
----
-
-## Step 5: Induction — what Popper learns
-
-Popper receives `bk.pl`, `exs_object.pl`, and `bias_object.pl`. It searches for a small program that covers all positive examples and no negative examples.
-
-For this task, Popper returns:
+`bias_object.pl` allows `out_block/5` as head and only body predicates present in this BK. Popper may return:
 
 ```prolog
 out_block(V0, V1, V2, V3, V4) :-
@@ -166,65 +121,97 @@ out_block(V0, V1, V2, V3, V4) :-
     block(V0, V1, V3, V4).
 ```
 
-**Translation:** For any example `V0`, if block `V1` is the largest colored block, then paint it at offset `s0` (which means 0, so unchanged position) with its own length `V3` and color `V4`.
+English: paint the largest block at offset 0 with its own length and color.
 
-This is exactly the rule we observed: keep the largest block, delete the rest.
+## Verify, apply, score
+
+1. Paint-verify on all train outputs (`verify.py`).
+2. Apply to test BK → predicted row.
+3. Compare to gold (exact + soft).
+
+On success you typically see `level: object_ilp`, `verified_train: true`, and `road: object` when hybrid routed here.
+
+### Work-dir sketch (object)
+
+```
+work/tut/
+├── encode/
+│   ├── bk.pl
+│   ├── exs_object.pl
+│   ├── bias_object.pl
+│   ├── test_bk.pl
+│   └── grids.json
+├── popper_object/
+│   └── program.pl
+└── soft_score/
+```
 
 ---
 
-## Step 6: Verification — paint and check
+# Part B — Pixel road (census fail)
 
-Before accepting the program, the solver verifies it on the training examples:
+When bulky/unit **counts** change between train input and output, hybrid switches to pixel ILP.
 
-1. Consult `bk.pl` and the learned program.
-2. Query: which `out_block` atoms are true?
-3. Paint each true block onto a pixel canvas using `block_geometry` (the map from block ID to start position).
-4. Check that the painted grid matches the gold training output exactly.
+## A minimal mismatch instance
 
-For all three training examples, the rule paints only the largest block at its original position. This matches the gold outputs, so the program is accepted.
+The unit tests use a short structural change:
+
+```
+Input:  4 8 8 8
+Output: 8 8 8 0 8 8 8
+```
+
+- Input: one unit (`4`) + one bulky (`8 8 8`).
+- Output: two bulky runs of `8` separated by a zero — run inventory changed.
+- `census_match` → **false** → pixel road.
+
+You can save that JSON shape (train + test) under `work/` and run the CLI, or pick a dataset family that routinely changes run counts (many `pcopy_*` trials). Always confirm with `failure_detail` in the prediction JSON.
+
+## What the pixel encoder writes
+
+Under the hybrid work dir you will see pixel artifacts (names follow `encode_pixel_instance`), conceptually:
+
+- BK with **`in(Example, Position, Color)`** and **`empty(Example, Position)`** — “at index 0 of example 0 the color is 4,” etc.
+- Examples for head **`out(Example, Position, Color)`** — which output color belongs at which index (learning positives for nonzero gold; generated negatives).
+- Bias with **`head_pred(out,3)`**.
+
+English target: “For each position, what color should the output have?” — not “which input block should I move?”
+
+## Induction and acceptance
+
+Popper searches for `out/3` rules under the pixel literal budget. On this road, **soft scoring** against Decom-style test facts is the main success signal (aligned with the Decom evaluation helper). The pipeline records `road: pixel` and, when appropriate, `decom_solved`. Successful level: `pixel_ilp`.
+
+The predicted row comes from applying the program to the test BK (`apply_pixel_program`), not from `out_block` painting.
+
+### Work-dir sketch (pixel)
+
+```
+work/tut/
+├── encode/          # pixel bk / exs / bias / test.pl
+├── popper_pixel/
+│   └── program.pl
+└── soft_score/
+```
+
+Exact filenames match whatever `pixel_encode.py` wrote for that run—open the directory after the CLI finishes.
+
+## How to read the result JSON
+
+| Field | Object road (typical) | Pixel road (typical) |
+|-------|----------------------|----------------------|
+| `failure_detail.census_match` | `true` | `false` |
+| `failure_detail.road` | `object` | `pixel` |
+| `level` | `object_ilp` | `pixel_ilp` |
+| `verified_train` | paint-verify gate | may differ; soft matrix matters |
+| `program` | `out_block(...)` clauses | `out(...)` clauses |
+
+On hard failure both roads may return `fallback_identity` (often a copy of the test input) with a `failure_reason` such as `popper_timeout` or `popper_exhausted`.
 
 ---
 
-## Step 7: Application — solving the test input
+## Summary
 
-The test input’s background knowledge (`test_bk.pl`) contains:
-
-```prolog
-block(3, b0, s12, v3).
-block(3, b2, s1, v3).
-block(3, b4, s1, v3).
-block(3, b6, s1, v3).
-largest(3, b0).
-```
-
-The learned rule says: paint the largest block at offset 0. Here, `b0` is the largest (length 12, color 3). So the rule paints:
-
-```prolog
-out_block(3, b0, s0, s12, v3)
-```
-
-Using `block_geometry`, block `b0` starts at position 0. Offset 0 means “start at 0.” Length 12 means “paint 12 cells.” Color 3 means “use color 3.”
-
-The painted test output is:
-
-```
-3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-```
-
-This matches the gold test output exactly.
-
----
-
-## Step 8: Scoring
-
-The predicted grid is compared to gold. Since every cell matches, the exact score is 1 (solved) and the soft accuracy is 100%.
-
-The file `test.pl` contains pixel-level gold facts (`pos(out(...))` and `neg(out(...))`) used only for this scoring step. They are not shown to Popper during learning.
-
----
-
-## Summary: the pipeline in one paragraph
-
-We segment the input into maximal runs (blocks). We write Prolog facts describing those blocks and their relationships. We generate positive and negative examples of the target `out_block` predicate. We let Popper search for a small rule that covers the positives and avoids the negatives. We verify that the rule paints the correct training outputs. Finally, we apply the rule to the test input and paint the result back to pixels.
-
-For this denoising task, the learned rule is: **paint the largest block, unchanged.**
+1. Hybrid always starts with a **train-grid census**.
+2. **Match** → learn **which blocks to paint** (`out_block`), verify by painting train grids, decode test.
+3. **Mismatch** → learn **which color per position** (`out`), score in the Decom style, decode test.
+4. Use `pred.json` + the work directory to see which road ran—do not assume from the category name alone.
