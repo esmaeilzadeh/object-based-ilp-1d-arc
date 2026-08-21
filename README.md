@@ -1,8 +1,8 @@
-# Object-based ILP for 1D-ARC
+# Census-routed hybrid ILP for 1D-ARC
 
-Per-instance solver for 1D-ARC: encode grids as **color blocks (objects)**, induce rules with [Popper](https://github.com/logic-and-learning-lab/popper), decode to pixels for scoring.
+Per-instance solver for [1D-ARC](raw_data/onedarcraw/): a **train-grid census** chooses whether to induce rules over **color blocks (objects)** or over **pixels**, then [Popper](https://github.com/logic-and-learning-lab/popper) learns a program and we decode to pixels for scoring.
 
-**Sole path:** object-head / `block_primary` only. No pixel-head ILP, dual induction, or trivial closed-form stages.
+**Default path:** `hybrid_census` — if every training pair keeps the same count of bulky runs (length ≥ 2) and unit runs (length 1), use the object head (`out_block`); otherwise use the pixel head (`out`). Mode `block_primary` forces the object road only (ablation / debug).
 
 ## Quick start
 
@@ -14,37 +14,37 @@ pip install -r requirements.txt && pip install -e ./popper
 
 python -m solver.cli \
   raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json \
-  --timeout 60 --out pred.json --work-dir work/demo
+  --mode hybrid_census --timeout 60 --out pred.json --work-dir work/demo
 ```
 
 Full setup, flags, and eval: [docs/06-RUNNING.md](docs/06-RUNNING.md).  
-Walkthrough of what that run produces: [docs/03-TUTORIAL.md](docs/03-TUTORIAL.md).
+Worked examples of both roads: [docs/03-TUTORIAL.md](docs/03-TUTORIAL.md).
 
 ## Docs
 
-| Doc | Audience | Content |
-|-----|----------|---------|
-| [01 — Approach & Landscape](docs/01-ILP-1D-Method.md) | Researchers | Why blocks vs pixels; positioning vs Decom and ILPAR |
-| [02 — Method](docs/02-SOLVER_PLAN.md) | Method readers | Encode → induce → verify → decode pipeline |
-| [03 — Tutorial](docs/03-TUTORIAL.md) | New users | One full example from pixels to learned rule |
-| [04 — Evaluation](docs/04-EVALUATION.md) | Empirical readers | Scoreboard vs pixel Relational Decomposition |
-| [05 — Repository Guide](docs/05-REPO_STRUCTURE.md) | Developers | Folder map, data flow, where to change what |
-| [06 — Running](docs/06-RUNNING.md) | Practitioners | Setup, CLI, smoke, 54-task eval |
+| Doc | Summary |
+|-----|---------|
+| [01 — Approach & Landscape](docs/01-ILP-1D-Method.md) | For researchers. Explains the 1D-ARC few-shot setting, compares pixel Relational Decomposition (Decom) and ILPAR to this repo, and states the claim: **routing** each instance to object-level or pixel-level induction via a name-free census—not “blocks always beat pixels.” |
+| [02 — Method](docs/02-SOLVER_PLAN.md) | For method readers. Walks through `solve_hybrid`: the census gate, the object road (encode → induce → paint-verify → decode), the pixel road (Decom-style `out/3` encode → induce → soft-score → decode), and how modes `hybrid_census` vs `block_primary` differ. |
+| [03 — Tutorial](docs/03-TUTORIAL.md) | For newcomers. Two end-to-end walks: a census-match denoising task on the object road, and a census-fail structure-changing task on the pixel road, including grids, work-dir artifacts, and how to read the result JSON. |
+| [04 — Evaluation](docs/04-EVALUATION.md) | For empirical readers. Protocol for the 54-task slice vs Decom, metric definitions, and the hybrid scoreboard. Our exact numbers are **TBD** until the current experiment finishes; qualitatively the hybrid shows a clear jump at the 10-minute budget. |
+| [05 — Repository Guide](docs/05-REPO_STRUCTURE.md) | For developers. Folder map, which module owns census / object encode / pixel encode / harness, dual-path dataflow, and “where to change what.” |
+| [06 — Running](docs/06-RUNNING.md) | For practitioners. Install, CLI `--mode`, smoke scripts, parallel 54-task eval with `hybrid_census`, reading `summary.json`, and troubleshooting common failure reasons. |
 
-Also: [block-level-only direction](.cursor/rules/block-level-only.mdc) · [solver package notes](solver/README.md) · [Decom paper (IJCAI 2025)](https://dl.acm.org/doi/10.24963/ijcai.2025/504) ([local PDF](docs/2408.12212v3.pdf))
+Also: [solver package notes](solver/README.md) · [Decom paper (IJCAI 2025)](https://dl.acm.org/doi/10.24963/ijcai.2025/504) ([local PDF](docs/2408.12212v3.pdf))
 
 ## Eval (54-task slice)
 
 ```bash
-JOBS=2 OUT=results/eval_local_120 \
-  ./scripts/run_solver_eval_parallel.sh block_primary 120 0,1,2
+JOBS=2 OUT=results/eval_local_600 \
+  ./scripts/run_solver_eval_parallel.sh hybrid_census 600 0,1,2
 ```
 
-Only mode: `block_primary`. Details → [docs/06-RUNNING.md](docs/06-RUNNING.md).
+Object-only control: use mode `block_primary` instead. Details → [docs/06-RUNNING.md](docs/06-RUNNING.md).
 
 ## Layout
 
-- `solver/` — encode, bias, induce, verify, decode, harness
+- `solver/` — census gate, object/pixel encode, bias, induce, verify, decode, CLI, harness
 - `popper/` — vendored Popper
 - `raw_data/onedarcraw/` — 1D-ARC JSON
 - `scripts/` — smoke / eval wrappers
