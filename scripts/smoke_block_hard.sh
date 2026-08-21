@@ -14,7 +14,7 @@ fail=0
 for name in fill_gap_with_shorter move_left_block_past_pivot hollow_largest_keep_rest; do
   json="$FIX/${name}.json"
   echo "======== $name (timeout=$TIMEOUT) ========"
-  python -m solver.cli "$json" --timeout "$TIMEOUT" \
+  python -m solver.cli "$json" --mode hybrid_census --timeout "$TIMEOUT" \
     --work-dir "$OUT/$name" --out "$OUT/$name/pred.json"
   if python - "$OUT/$name/pred.json" "$json" <<'PY'
 import json, sys

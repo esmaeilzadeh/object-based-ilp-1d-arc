@@ -15,6 +15,6 @@ pip install -q -e ./popper
 JSON="${1:-raw_data/onedarcraw/dataset/1d_denoising_1c/1d_denoising_1c_0.json}"
 TIMEOUT="${TIMEOUT:-90}"
 
-python -m solver.harness --mode block_primary --timeout "$TIMEOUT" \
+python -m solver.harness --mode hybrid_census --timeout "$TIMEOUT" \
   --out results/solver/smoke --one "$JSON"
 echo "Smoke harness finished"

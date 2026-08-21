@@ -1,4 +1,4 @@
-"""CLI: python -m solver.cli path/to.json --timeout 60 --out pred.json"""
+"""CLI: python -m solver.cli path/to.json --mode hybrid_census --timeout 60 --out pred.json"""
 
 from __future__ import annotations
 
@@ -6,22 +6,41 @@ import argparse
 import json
 from pathlib import Path
 
-from solver.pipeline import solve
+from solver.harness import MODES
+from solver.pipeline import solve, solve_hybrid
 
 
 def main(argv=None) -> None:
-    p = argparse.ArgumentParser(description="Object-based ILP 1D-ARC solver")
+    p = argparse.ArgumentParser(
+        description=(
+            "Census-routed hybrid ILP solver for 1D-ARC: by default routes each "
+            "instance to object-head or pixel-head induction via a train-grid census."
+        )
+    )
     p.add_argument("json_path", type=Path)
+    p.add_argument(
+        "--mode",
+        default="hybrid_census",
+        choices=sorted(MODES),
+        help="hybrid_census (default) or block_primary (object-only)",
+    )
     p.add_argument("--timeout", type=int, default=600)
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--work-dir", type=Path, default=None)
     args = p.parse_args(argv)
 
-    result = solve(
-        args.json_path,
-        timeout=args.timeout,
-        work_dir=args.work_dir,
-    )
+    if args.mode == "hybrid_census":
+        result = solve_hybrid(
+            args.json_path,
+            timeout=args.timeout,
+            work_dir=args.work_dir,
+        )
+    else:
+        result = solve(
+            args.json_path,
+            timeout=args.timeout,
+            work_dir=args.work_dir,
+        )
     payload = result.to_dict()
     text = json.dumps(payload, indent=2)
     print(text)
