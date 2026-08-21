@@ -86,6 +86,56 @@ Not a block-lift result. `hybrid_census` on the 21 first-3 tasks where `census_m
 
 ---
 
+## Census-match hybrid block road (`eval_120s_match33_j2`)
+
+`hybrid_census` bulky+unit `out_block`/`out_pixel` heads on the 33 first-3 tasks where `census_match` is true. Match language unchanged by the pixel-road work.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_match33_j2` |
+| **metric** | **16/33** exact @120 s |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` (match families only) |
+| **git_sha** | `30d1d9c74967e9630301a43adffdf60fe60f3994` (eval start; solver same as `014b897`) |
+| **host** | Cloud Agent VPS, 4 vCPU, `JOBS=2` |
+| **artifacts** | `results/eval_120s_match33_j2/hybrid_census/summary.json` |
+| **notes** | `flip` 3/3, `move_1p/2p/2p_dp/3p` 12/12, `mirror` 1/3, `move_dp`/`recolor_*`/`scale_dp` 0/15. `1d_recolor_cmp_2` worker 139; reran clean (`paint_verify_failed`). |
+
+---
+
+## Whole `hybrid_census` system (`eval_120s_hybrid_full54_j2`)
+
+Combined first-3 @120s `JOBS=2`: match 33 + fail 21. Not a single parallel invocation; subsets are the two campaigns above.
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_hybrid_full54_j2` |
+| **metric** | **34/54** exact @120 s (`hybrid_census`) |
+| **by path** | census-match hybrid block **16/33**; census-fail pixel **18/21** |
+| **soft** | 0.630 (same as exact; misses score 0) |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **artifacts** | `results/eval_120s_hybrid_full54_j2/hybrid_census/summary.json` |
+| **vs `block_primary` @120s** | 34/54 vs 32/54 (`eval_120s_first3_j2`) — pixel road recovered `denoising_mc`+`pcopy_*`; match path is a different object language than `block_primary` |
+| **vs paper Decom** | Decom comparison on the **pixel** subset is 18/21; do not report 34/54 as beating Decom |
+
+---
+
+## Single-invocation two-head confirm (`eval_120s_allcats_j2`)
+
+Full 54-task `hybrid_census` @120s `JOBS=2` after removing unused `size_even`/`size_odd`. Same split as the combined 34/54 (two-head match, not single `out_block/5`).
+
+| Field | Value |
+|-------|--------|
+| **id** | `eval_120s_allcats_j2` |
+| **metric** | **34/54** exact @120 s (`hybrid_census`) |
+| **timeout / jobs / trials** | 120 / 2 / `0,1,2` |
+| **git_sha** | `21c78a59c9bb9157d7fc3b3894fdcbc98d2e24f7` |
+| **branch** | `cursor/remove-size-parity-92ee` |
+| **host** | Cloud Agent VPS, 4 vCPU, 15 GiB, 0 swap, `JOBS=2` |
+| **artifacts** | `results/eval_120s_allcats_j2/hybrid_census/summary.json` |
+| **notes** | All 54 GNU parallel workers exit 0. Confirms combined `eval_120s_hybrid_full54_j2`. Census-match is still bulky+unit two-head (`recolor_cnt`/`scale_dp`/`move_dp` 0 vs `block_primary`). |
+
+---
+
 ## Related (not a separate scoreboard)
 
 | id | note |

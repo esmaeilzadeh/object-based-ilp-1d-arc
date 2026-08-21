@@ -51,7 +51,6 @@ For each training example, the encoder writes facts that describe the blocks and
 - `size_lt(A, B)` — size A is less than size B.
 - `size_add(A, B, Result)` — A + B = Result.
 - `size_sum3(A, B, C, Result)` — A + B + C = Result.
-- `size_even(Size)` / `size_odd(Size)`.
 - `cardinal_ordinal(Size, Position)` — bridges sizes to ordinal positions.
 
 These are **not** learned; they are mechanical relations computed from the instance. The bias only allows Popper to use predicates that actually appear in the background knowledge.

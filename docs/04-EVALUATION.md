@@ -103,7 +103,7 @@ The `pcopy` tasks duplicate pixel patterns (e.g., copy a block to fill the grid)
 
 ### Ours wins: `recolor_*`, `flip`, `hollow`, `move_2p_dp`
 
-The `recolor` family requires comparing block lengths or counting blocks. Decom’s pixel background knowledge has no concept of “block length,” so it scores 0/9 on `recolor_*` at every budget. Our block background knowledge includes `largest`, `size_lt`, `size_even`, and `size_odd`, which directly capture these properties.
+The `recolor` family requires comparing block lengths or counting blocks. Decom’s pixel background knowledge has no concept of “block length,” so it scores 0/9 on `recolor_*` at every budget. Our block background knowledge includes `size_lt`, which captures length comparison.
 
 `flip` and `hollow` are also faster for us: we solve them by 120 s, while Decom needs a full hour (and then only partially).
 

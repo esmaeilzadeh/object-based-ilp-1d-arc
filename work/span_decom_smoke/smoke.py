@@ -118,9 +118,6 @@ def _bk_for_row(ex: int, row: Sequence[int]) -> Tuple[List[str], Set[int], int]:
         if i < w:
             facts.append(f"cardinal_ordinal({_s(i)},{_p(i)}).")
 
-    for sz in sizes:
-        facts.append(f"size_even({_s(sz)})." if sz % 2 == 0 else f"size_odd({_s(sz)}).")
-
     return facts, observed, w
 
 
@@ -193,8 +190,6 @@ def _bias(bk_text: str, exs_text: str) -> str:
         ("size_lt", 2, "('size','size')"),
         ("offset_pos", 3, "('position','size','position')"),
         ("cardinal_ordinal", 2, "('size','position')"),
-        ("size_even", 1, "('size',)"),
-        ("size_odd", 1, "('size',)"),
     ]
     present = {n for n, _a, _t in preds if f"{n}(" in bk_text}
     parts = [

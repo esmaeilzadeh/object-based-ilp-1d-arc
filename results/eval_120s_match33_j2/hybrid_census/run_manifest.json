@@ -1,0 +1,22 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-17T15:04:06.388811+00:00",
+  "finished_at": "2026-08-17T15:23:50.236185+00:00",
+  "git_sha": "30d1d9c74967e9630301a43adffdf60fe60f3994",
+  "git_branch": "cursor/decom-pixel-fragment-92ee",
+  "git_dirty": true,
+  "git_describe": "30d1d9c",
+  "hostname": "cursor",
+  "platform": "Linux-6.12.94+-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "mode": "hybrid_census",
+  "timeout": 120,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "raw_data/onedarcraw/dataset",
+  "out": "results/eval_120s_match33_j2",
+  "pid": 18794,
+  "entry": "match33_parallel",
+  "n_tasks": 32,
+  "subset": "census_match_first3"
+}
