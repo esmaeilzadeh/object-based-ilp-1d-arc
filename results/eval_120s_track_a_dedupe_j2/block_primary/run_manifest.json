@@ -1,0 +1,26 @@
+{
+  "schema": "eval-run-meta/v1",
+  "started_at": "2026-08-21T06:37:33.213637+00:00",
+  "finished_at": "2026-08-21T06:48:00.605585+00:00",
+  "git_sha": "c79e641e6715a6517087c521a4360c79697915ec",
+  "git_branch": "cursor/bk-dedupe-track-a",
+  "git_dirty": true,
+  "git_describe": "c79e641",
+  "hostname": "mohamad-Precision-M4600",
+  "platform": "Linux-6.2.0-26-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "mode": "block_primary",
+  "timeout": 120,
+  "jobs": 2,
+  "trials": "0,1,2",
+  "dataset": "raw_data/onedarcraw/dataset",
+  "out": "results/eval_120s_track_a_dedupe_j2",
+  "pid": 143455,
+  "entry": "track_a_family",
+  "n_tasks": 9,
+  "categories": [
+    "1d_mirror",
+    "1d_pcopy_mc",
+    "1d_recolor_cnt"
+  ]
+}
