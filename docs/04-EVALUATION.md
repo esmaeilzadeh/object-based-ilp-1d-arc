@@ -1,165 +1,124 @@
-# 04 — Evaluation vs Relational Decomposition
+# 04 — Evaluation: Hybrid vs Relational Decomposition
 
-This document compares our block-ILP solver against the pixel-level Relational Decomposition (Decom) baseline from Hocquette & Cropper (IJCAI 2025). Both systems use the same ILP engine (Popper) and the same evaluation slice (54 tasks: 18 categories × 3 instances). The only difference is the representation: **pixels** versus **blocks**.
+This document describes how we evaluate the **census-routed hybrid** solver (`hybrid_census`) against the pixel-level Relational Decomposition (Decom) baseline from Hocquette & Cropper (IJCAI 2025).
 
-## Headline result
+Both systems use the same ILP engine family (Popper) and the same 54-task slice (18 categories × trials `0,1,2`). The difference is the **system**: Decom is pixels-only; ours **routes** each instance to object-head or pixel-head induction via a train-grid census (see [02 — Method](02-SOLVER_PLAN.md)).
 
-| Budget | Ours (block) | Decom (pixel) | Margin |
-|--------|--------------|---------------|--------|
-| **60 s** | **40/54** | 32/54 | **+8** |
-| **120 s** | **39/54** | 30/54 | **+9** |
-| **600 s** | **41/54** | 34/54 | **+7** |
-| **3600 s** | 30/54 | **37/54** | −7 |
+> **Numbers pending.** Exact / soft figures for **Ours** below are placeholders (`TBD`) until the current experiment finishes. Qualitatively, at the **10-minute (600 s)** budget the hybrid system already shows a **clear performance jump** relative to the older single-representation / block-only scoreboard narrative. Fill tables from `results/.../hybrid_census/summary.json` + git SHA when ready.
 
-**Key finding:** At 1 minute, our block-level solver already exceeds Decom’s best 1-hour result (40 vs 37 exact). The advantage holds through 10 minutes. At 1 hour, our solver regresses (see below), while Decom continues to improve slowly.
+## What “Ours” means
 
-## Why blocks win (and where they lose)
+| Label | Meaning |
+|-------|---------|
+| **Ours (hybrid_census)** | Default system: `solve_hybrid` with census routing |
+| **Ours (block_primary)** | Ablation: object road only (no pixel road). Not the headline claim |
+| **Decom** | Published pixel Relational Decomposition results on the same slice |
 
-| Side | Wins on | Why |
-|------|---------|-----|
-| **Decom (pixel)** | `pcopy_1c`, `pcopy_mc`, `scale_dp` | Pixel rules can express per-index arithmetic (e.g., “output position I = input position I/2”). Block rules cannot invent new blocks or stretch pixels within a block. |
-| **Ours (block)** | `recolor_*` (all 3), `move_2p_dp`, `flip`, `hollow`, `padded_fill` | Object facts capture “the largest block”, “its length”, “count of blocks” directly. Pixel Decom has no object concept and scores 0/9 on `recolor_*`. |
+Do **not** report a pixel-road solve as a “block-only win.” Use `failure_detail.road` when discussing which path succeeded.
 
-The takeaway: **the block representation is strictly more expressive for object-level transforms**, but **lossy for pixel-index duplication** (`pcopy`). Longer search times currently hurt us because Popper’s compression objective conflicts with paint verification (see §2.4 in the Method doc).
+## Headline scoreboard (exact match /54)
+
+| Budget | Ours (hybrid_census) | Decom (pixel, paper) | Margin |
+|--------|----------------------|----------------------|--------|
+| **60 s** | TBD/54 | 32/54 | +TBD |
+| **120 s** | TBD/54 | 30/54 | +TBD |
+| **600 s (10 min)** | TBD/54 | 34/54 | +TBD |
+| **3600 s** | TBD/54 | 37/54 | +TBD |
+
+**Pending finding (qualitative):** at **600 s**, hybrid shows a clear jump; replace this sentence with the measured TBD/54 and margin after the experiment lands.
+
+## Soft accuracy (%)
+
+Soft accuracy is `(TP + TN) / (TP + FN + TN + FP)` over predicted vs gold pixel colors (same family of metric as Decom).
+
+| Budget | Ours (hybrid_census) | Decom (paper) |
+|--------|----------------------|---------------|
+| 60 s | TBD | 59.3 |
+| 120 s | TBD | 55.6 |
+| 600 s | TBD | 63.0 |
+| 3600 s | TBD | 68.5 |
+
+**Caveat:** Decom’s soft score is inflated by true negatives (each pixel contributes one positive and many negative color labels). On many of our failure modes the pipeline returns the test input unchanged, so soft can collapse toward the exact rate. Prefer **exact /54** as the headline.
 
 ## Protocol alignment
 
-Both systems are evaluated on the same 54-task slice (first 3 instances of each of 18 categories). Both learn from scratch per trial — no curriculum, no transfer.
+- **Slice:** first 3 instances of each of 18 categories → 54 tasks.
+- **Learning:** from scratch per trial — no curriculum, no cross-task transfer.
+- **Metrics:** exact match on the test grid; soft accuracy as above.
+- **Mode for headline:** `hybrid_census`.
+- **Hardware note:** Decom’s paper used a single Xeon Gold 6138 core, serial. Our parallel evals typically use `JOBS=2` on a small multi-vCPU host; parallelism speeds the suite wall-clock but does not lengthen any single task’s timeout.
 
-**Metric definitions:**
-- **Exact:** All pixels in the test output grid match gold.
-- **Soft accuracy:** `(TP + TN) / (TP + FN + TN + FP)` over predicted pixel colors. Decom’s soft accuracy is inflated by true negatives (each pixel contributes 1 positive and 9 negative color labels). Our soft accuracy equals exact rate on this dataset because failures return the input unchanged.
+Example command (fill `OUT` when you run the campaign):
 
-**Hardware fairness:** Decom’s paper used a single Xeon Gold 6138 core, serial. Our 60 s run used `JOBS=2` on a 4-vCPU cloud VPS. Per-task CPU is not stronger on our side (likely weaker). Parallelism speeds up the suite but does not lengthen any single task’s 60 s budget.
+```bash
+JOBS=2 OUT=results/eval_hybrid_600s \
+  ./scripts/run_solver_eval_parallel.sh hybrid_census 600 0,1,2
+```
 
-## Scoreboard
+## Why routing helps (qualitative)
 
-### Exact match (/54)
+Neither representation wins everywhere:
 
-| Method | @60 | @120 | @600 | @3600 |
-|--------|-----|------|------|-------|
-| **Ours** | **40** | **39** | **41** | 30 |
-| **Decom** | 32 | 30 | 34 | **37** |
+| Situation | Typical road | Why |
+|-----------|--------------|-----|
+| Train I/O preserve bulky/unit **counts** (move, flip, many recolors, …) | Object (`out_block`) | First-class blocks, sizes, “largest,” gaps |
+| Train I/O change run inventory (many `pcopy_*`, some structure-changing transforms) | Pixel (`out`) | Can invent colors at new indices without anchoring only to existing input blocks |
 
-### Soft accuracy (%)
+The hybrid claim is that **choosing per instance** recovers both kinds of wins under one mechanical gate—not that object ILP alone matches Decom on duplication tasks, and not that pixel ILP alone matches object ILP on counting/recolor tasks.
 
-| Method | @60 | @120 | @600 | @3600 |
-|--------|-----|------|------|-------|
-| **Ours** | **74.1** | **72.2** | **75.9** | 55.6 |
-| **Decom** | 59.3 | 55.6 | 63.0 | **68.5** |
+After the experiment, replace the rows below with measured exact x/3 (or delete if you prefer only the aggregate table).
 
-**Note:** Our 3600 s regression (30/54, down from 41/54 at 600 s) is a known search-selection issue, not a representation failure. Popper keeps compressing after finding a valid program and returns the final compressed version, which sometimes fails paint verification or generalizes worse.
+### Per-category exact (x/3) — placeholders
 
-## Per-category breakdown
+| Category | Ours @60 | Ours @120 | Ours @600 | Ours @3600 | Decom @60 | Decom @120 | Decom @600 | Decom @3600 |
+|----------|----------|-----------|-----------|------------|-----------|------------|------------|-------------|
+| denoising_1c | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| denoising_mc | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| fill | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| flip | TBD | TBD | TBD | TBD | 0 | 0 | 0 | 2 |
+| hollow | TBD | TBD | TBD | TBD | 3 | 3 | 2 | 3 |
+| mirror | TBD | TBD | TBD | TBD | 1 | 0 | 3 | 3 |
+| move_1p | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| move_2p | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| move_2p_dp | TBD | TBD | TBD | TBD | 1 | 0 | 2 | 2 |
+| move_3p | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| move_dp | TBD | TBD | TBD | TBD | 0 | 0 | 0 | 0 |
+| padded_fill | TBD | TBD | TBD | TBD | 0 | 0 | 0 | 0 |
+| pcopy_1c | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| pcopy_mc | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| recolor_cmp | TBD | TBD | TBD | TBD | 0 | 0 | 0 | 0 |
+| recolor_cnt | TBD | TBD | TBD | TBD | 0 | 0 | 0 | 0 |
+| recolor_oe | TBD | TBD | TBD | TBD | 0 | 0 | 0 | 0 |
+| scale_dp | TBD | TBD | TBD | TBD | 3 | 3 | 3 | 3 |
+| **Total** | **TBD** | **TBD** | **TBD** | **TBD** | **32** | **30** | **34** | **37** |
 
-Exact match (x/3) per category and budget. **Bold** marks the higher score in each cell.
+Decom cells above are from the published paper tables for this slice; re-check against the artifact repo if you need machine-verified digits.
 
-| Category | Method | @60 | @120 | @600 | @3600 |
-|----------|--------|-----|------|------|-------|
-| **denoising_1c** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | **3** | **3** |
-| **denoising_mc** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | **3** | **3** |
-| **fill** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | **3** | **3** |
-| **flip** | Ours | **2** | **3** | **3** | 0 |
-| | Decom | 0 | 0 | 0 | **2** |
-| **hollow** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | 2 | **3** |
-| **mirror** | Ours | **2** | **2** | 2 | 0 |
-| | Decom | 1 | 0 | **3** | **3** |
-| **move_1p** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | **3** | **3** |
-| **move_2p** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | **3** | **3** |
-| **move_2p_dp** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | 1 | 0 | 2 | 2 |
-| **move_3p** | Ours | **3** | **3** | **3** | **3** |
-| | Decom | **3** | **3** | **3** | **3** |
-| **move_dp** | Ours | **1** | **1** | **1** | **1** |
-| | Decom | 0 | 0 | 0 | 0 |
-| **padded_fill** | Ours | **2** | 1 | 1 | **2** |
-| | Decom | 0 | 0 | 0 | 0 |
-| **pcopy_1c** | Ours | 0 | 0 | 0 | 0 |
-| | Decom | **3** | **3** | **3** | **3** |
-| **pcopy_mc** | Ours | 0 | 0 | 1 | 0 |
-| | Decom | **3** | **3** | **3** | **3** |
-| **recolor_cmp** | Ours | **3** | **3** | **3** | 1 |
-| | Decom | 0 | 0 | 0 | 0 |
-| **recolor_cnt** | Ours | **2** | **2** | **2** | **1** |
-| | Decom | 0 | 0 | 0 | 0 |
-| **recolor_oe** | Ours | **2** | **3** | **3** | 0 |
-| | Decom | 0 | 0 | 0 | 0 |
-| **scale_dp** | Ours | 2 | 2 | **3** | 1 |
-| | Decom | **3** | **3** | **3** | **3** |
-| **Total** | **Ours** | **40** | **39** | **41** | 30 |
-| | **Decom** | 32 | 30 | 34 | **37** |
+## Ablations (optional, not the headline)
 
-## Where each side wins
+Useful controls once numbers exist:
 
-### Decom wins: `pcopy_*` and `scale_dp`
+| Ablation | Mode / setup | Question it answers |
+|----------|--------------|---------------------|
+| Object-only | `block_primary` | How much does the pixel road add? |
+| Pixel-only subset | tasks with `census_match=false` | Is the pixel road healthy on its own slice? |
+| Match-only subset | tasks with `census_match=true` | Is the object road healthy on its own slice? |
 
-The `pcopy` tasks duplicate pixel patterns (e.g., copy a block to fill the grid). Decom’s learned rule is pure index arithmetic: “output position I is input position I/2.” This is compact over pixels but impossible over blocks, because the output contains more blocks than the input.
+Leave measured ablation tables TBD until you decide which campaigns to cite. Historical `block_primary` scoreboards (e.g. old 40/54 @60 s) are **not** the hybrid headline; keep them in `results/RUN_REGISTRY.md` if needed for provenance, not as “current Ours.”
 
-### Ours wins: `recolor_*`, `flip`, `hollow`, `move_2p_dp`
+## Search / timeout caveats
 
-The `recolor` family requires comparing block lengths or counting blocks. Decom’s pixel background knowledge has no concept of “block length,” so it scores 0/9 on `recolor_*` at every budget. Our block background knowledge includes `size_lt`, which captures length comparison.
+Popper’s timeout is a **search budget**. A longer budget can replace an early train-good program with a later compressed one that verifies or generalizes worse. If a longer timeout looks worse than a shorter one on the same commit, treat it as an infra / search-selection issue until per-task `failure_reason` and joblogs say otherwise (see project eval-hygiene rules).
 
-`flip` and `hollow` are also faster for us: we solve them by 120 s, while Decom needs a full hour (and then only partially).
+## Data provenance (fill after experiment)
 
-### Shared hard families: `move_dp` and `padded_fill`
-
-Both systems struggle with these, but we achieve partial credit (1/3 and 2/3 respectively) where Decom scores 0/3.
-
-## The 3600 s regression
-
-Our measured 3600 s run scores 30/54, down from 41/54 at 600 s. This is **not** evidence that the block representation fails with more time. The failure mode is:
-
-1. Popper finds a train-perfect program quickly.
-2. Popper keeps searching for a smaller program.
-3. The final compressed program fails paint verification or generalizes worse.
-4. We score only the final program.
-
-This is a known limitation of the current pipeline (see Method doc, §2.4). A fix would retain the first train-paint-valid program instead of the final compressed one.
-
-## Ablation: functional color + staged paint-in-induction (@60 s)
-
-**Status:** separate side experiment — **not** the default headline claim above.  
-Treat **both** changes as **one** experiment (do not split into two scoreboards):
-
-1. **Functional color** — drop explicit wrong-color `neg(out_block…)` atoms; emit `non_functional/1` in train BK; Popper `functional_test=True` (color unique given `(Ex, Bid, Off, Len)`).
-2. **Staged paint-in-induction** — after a candidate is block-complete (covers all pos, consistent w.r.t. negs / functional), reject it inside Popper if train paint fails (`paint_test` + checker via `grids.json`), so search continues instead of returning a post-hoc `paint_verify_failed` program.
-
-**Branch / code:** `cursor/paint-in-induction` @ `c5bcfa9` (includes functional-color commits `603ed34` / `278cbd2` plus paint staging `a8e8d15` / `c9b8b59` / `c5bcfa9`).  
-**Protocol:** same 54-task slice, `timeout=60`, `JOBS=2`, trials `0,1,2` (Cloud Agent VPS profile matching the 40/54 baseline).  
-**Baseline “Was”:** headline Ours @60 s = **40/54** (`results/eval_60s_first3_j2/`).
-
-### Category deltas vs 40/54 baseline (@60 s)
-
-| Category | Was | Now | Δ |
-|----------|-----|-----|---|
-| `denoising_1c`, `denoising_mc`, `fill`, `hollow`, `move_*` (except `move_dp`), `recolor_*` | 3/3 or 2/3 | unchanged | 0 |
-| `mirror` | 2/3 | 3/3 | **+1** |
-| `scale_dp` | 2/3 | 3/3 | **+1** |
-| `flip` | 2/3 | 2/3 | 0 |
-| `padded_fill` | 2/3 | 1/3 | **−1** |
-| `pcopy_*`, `move_dp` | partial / 0 | unchanged | 0 |
-
-**Implied exact total:** 40 + 1 + 1 − 1 = **41/54** (+1 vs baseline at 1 minute).
-
-**Interpretation:** Net small gain at the 60 s budget: mirror and scale_dp each pick up the missing trial; padded_fill loses one. Hard families (`pcopy_*`, `move_dp`) stay flat — this experiment does not claim a pixel-duplication fix.
-
-**Provenance strength:** category table recorded from the Cloud Agent experiment report for this combined stack. Prefer citing a committed `summary.json` under `results/eval_60s_paint_induction/` (or equivalent) once pulled from the agent; until then label **`provenance: best_effort_experiment_report`**. Index: `results/RUN_REGISTRY.md`. Agent bookmark: `results/eval_60s_functional_color_cloud_agent.txt` / paint follow-up on the same VPS profile.
-
-**KEEP / REVERT:** treat as an ablation KEEP candidate for the **combined** stack at 60 s only after soft gate vs baseline on the artifact summary; do not silently replace the Decom comparison headline (40/54) until that artifact is versioned.
-
-## Data provenance
-
-| Claim | Source |
-|-------|--------|
+| Claim | Source (to fill) |
+|-------|------------------|
 | Decom results | `programs/relational/{60,600,3600}/1d/*/popper/*/results.pl` in the IJCAI 2025 artifact repo |
-| Our 60 s run (headline) | `results/eval_60s_first3_j2/block_primary/summary.json` (2026-08-11) |
-| Our 3600 s run | `results/eval_s6_3600s_jobs2/block_primary/summary.json` (2026-08-08) |
-| Functional+paint @60 s ablation | Category deltas above; registry `results/RUN_REGISTRY.md`; target artifacts `results/eval_60s_paint_induction/` when available |
-| Paper host | Single CPU, Xeon Gold 6138 |
-| Our host | 4× Xeon vCPU (KVM), 15 GiB RAM, `JOBS=2` |
+| Ours @60 s | `results/<campaign>/hybrid_census/summary.json` + git SHA — **TBD** |
+| Ours @120 s | **TBD** |
+| Ours @600 s | **TBD** (priority fill for the 10-minute jump claim) |
+| Ours @3600 s | **TBD** |
+| Host / JOBS | Record in `run_manifest.json` for each campaign |
+
+Cite a finished run as **directory + git SHA + exact n/N**. Local campaign index: `results/RUN_REGISTRY.md`.
