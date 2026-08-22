@@ -1,0 +1,7 @@
+Seq	Host	Starttime	JobRuntime	Send	Receive	Exitval	Signal	Command
+1	:	1787420280.254	  3605.630	0	1751	0	0	python -m solver.harness --mode hybrid_census --timeout 3600 --out results/eval_3600s_census_mismatch21_j3 --one /tmp/census_mismatch_first3_ds.a0U63o/1d_pcopy_1c/1d_pcopy_1c_0.json
+2	:	1787420285.258	  3601.573	0	1751	0	0	python -m solver.harness --mode hybrid_census --timeout 3600 --out results/eval_3600s_census_mismatch21_j3 --one /tmp/census_mismatch_first3_ds.a0U63o/1d_pcopy_1c/1d_pcopy_1c_1.json
+3	:	1787420290.263	  3601.569	0	1751	0	0	python -m solver.harness --mode hybrid_census --timeout 3600 --out results/eval_3600s_census_mismatch21_j3 --one /tmp/census_mismatch_first3_ds.a0U63o/1d_pcopy_1c/1d_pcopy_1c_2.json
+5	:	1787423890.888	  1292.974	0	1718	0	0	python -m solver.harness --mode hybrid_census --timeout 3600 --out results/eval_3600s_census_mismatch21_j3 --one /tmp/census_mismatch_first3_ds.a0U63o/1d_pcopy_mc/1d_pcopy_mc_1.json
+6	:	1787423896.055	  1345.394	0	1715	0	0	python -m solver.harness --mode hybrid_census --timeout 3600 --out results/eval_3600s_census_mismatch21_j3 --one /tmp/census_mismatch_first3_ds.a0U63o/1d_pcopy_mc/1d_pcopy_mc_2.json
+4	:	1787423885.888	  2457.608	0	1704	0	0	python -m solver.harness --mode hybrid_census --timeout 3600 --out results/eval_3600s_census_mismatch21_j3 --one /tmp/census_mismatch_first3_ds.a0U63o/1d_pcopy_mc/1d_pcopy_mc_0.json
