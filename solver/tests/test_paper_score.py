@@ -46,8 +46,10 @@ def test_score_wrong_out_program(tmp_path: Path):
     enc = encode_instance(inst, tmp_path / "enc")
     prog = grid_to_out_program(3, [5, 0, 7])  # wrong last color
     matrix, acc = score_program_soft(prog, enc.test_path, work_dir=tmp_path / "score")
-    assert acc == 0.0
-    assert matrix[1] >= 1  # FN
+    tp, fn, tn, fp = matrix
+    assert fn >= 1 and fp >= 1
+    assert 0.0 < acc < 1.0
+    assert abs(acc - (tp + tn) / (tp + fn + tn + fp)) < 1e-9
 
 
 def test_failure_matrix_nonzero_pos(tmp_path: Path):

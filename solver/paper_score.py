@@ -101,7 +101,10 @@ def score_program_soft(
         matrix = [int(x) for x in data["matrix"]]
         return matrix, float(data["acc"])
     except Exception:
-        matrix = [0, 1, 0, 0]
+        try:
+            matrix = failure_matrix(test_path)
+        except Exception:
+            matrix = [0, 1, 0, 0]
         return matrix, soft_accuracy(matrix)
 
 

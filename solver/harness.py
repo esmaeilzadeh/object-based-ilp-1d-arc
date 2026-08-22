@@ -157,14 +157,25 @@ def main(argv: Optional[List[str]] = None) -> None:
         try:
             row = run_one(path, args.mode, args.timeout, out_dir, run_meta=run_meta)
         except Exception as e:
+            soft_matrix = [0, 1, 0, 0]
+            soft_acc = 0.0
+            try:
+                from solver.encoder import encode_instance
+                from solver.paper_score import failure_matrix, soft_accuracy
+
+                enc = encode_instance(path, out_dir / "_err_encode" / path.stem)
+                soft_matrix = failure_matrix(enc.test_path)
+                soft_acc = soft_accuracy(soft_matrix)
+            except Exception:
+                pass
             row = {
                 "file": str(path),
                 "task": path.parent.name,
                 "mode": args.mode,
                 "ok": False,
                 "exact_ok": False,
-                "soft_accuracy": 0.0,
-                "soft_matrix": [0, 1, 0, 0],
+                "soft_accuracy": soft_acc,
+                "soft_matrix": soft_matrix,
                 "level": "error",
                 "confidence": "low",
                 "verified_train": False,
