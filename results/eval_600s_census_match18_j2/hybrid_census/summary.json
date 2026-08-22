@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 18,
   "exact_accuracy": 0.5555555555555556,
-  "soft_accuracy": 0.5555555555555556,
-  "soft_sem": 0.12051692101036454,
-  "accuracy": 0.5555555555555556,
+  "soft_accuracy": 0.9677416347960988,
+  "soft_sem": 0.010606906800547301,
+  "accuracy": 0.9677416347960988,
   "per_task_exact": {
     "1d_flip": 1.0,
     "1d_mirror": 1.0,
@@ -24,9 +24,9 @@
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
     "1d_move_dp": 1.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.3333333333333333,
-    "1d_recolor_oe": 0.0,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.9351067137044997,
+    "1d_recolor_oe": 0.9182495461527719,
     "1d_scale_dp": 1.0
   },
   "per_task": {
@@ -36,9 +36,9 @@
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
     "1d_move_dp": 1.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.3333333333333333,
-    "1d_recolor_oe": 0.0,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.9351067137044997,
+    "1d_recolor_oe": 0.9182495461527719,
     "1d_scale_dp": 1.0
   },
   "timeout": 600,
@@ -63,5 +63,6 @@
     "pid": 59944,
     "entry": "run_solver_eval_parallel",
     "n_tasks": 18
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 32,
   "exact_accuracy": 0.09375,
-  "soft_accuracy": 0.09375,
-  "soft_sem": 0.0523514603733822,
-  "accuracy": 0.09375,
+  "soft_accuracy": 0.9600506528357378,
+  "soft_sem": 0.006521285030684062,
+  "accuracy": 0.9600506528357378,
   "per_task_exact": {
     "1d_flip": 0.0,
     "1d_mirror": 0.0,
@@ -19,30 +19,30 @@
     "1d_scale_dp": 0.0
   },
   "per_task_soft": {
-    "1d_flip": 0.0,
-    "1d_mirror": 0.0,
-    "1d_move_1p": 0.5,
-    "1d_move_2p": 0.3333333333333333,
-    "1d_move_2p_dp": 0.0,
-    "1d_move_3p": 0.3333333333333333,
-    "1d_move_dp": 0.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.0
+    "1d_flip": 0.9755310264164939,
+    "1d_mirror": 0.9440564380985551,
+    "1d_move_1p": 0.9966216216216216,
+    "1d_move_2p": 0.990817132922396,
+    "1d_move_2p_dp": 0.9850262412125584,
+    "1d_move_3p": 0.9862256993835942,
+    "1d_move_dp": 0.9797840307301734,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.8974723051023492,
+    "1d_recolor_oe": 0.8936719731881023,
+    "1d_scale_dp": 0.9704474865265807
   },
   "per_task": {
-    "1d_flip": 0.0,
-    "1d_mirror": 0.0,
-    "1d_move_1p": 0.5,
-    "1d_move_2p": 0.3333333333333333,
-    "1d_move_2p_dp": 0.0,
-    "1d_move_3p": 0.3333333333333333,
-    "1d_move_dp": 0.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.0
+    "1d_flip": 0.9755310264164939,
+    "1d_mirror": 0.9440564380985551,
+    "1d_move_1p": 0.9966216216216216,
+    "1d_move_2p": 0.990817132922396,
+    "1d_move_2p_dp": 0.9850262412125584,
+    "1d_move_3p": 0.9862256993835942,
+    "1d_move_dp": 0.9797840307301734,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.8974723051023492,
+    "1d_recolor_oe": 0.8936719731881023,
+    "1d_scale_dp": 0.9704474865265807
   },
   "timeout": 120,
   "jobs": 2,
@@ -66,5 +66,6 @@
     "pid": 50774,
     "entry": "run_solver_eval_parallel",
     "n_tasks": 32
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

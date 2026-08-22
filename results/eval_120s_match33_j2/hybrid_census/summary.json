@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 33,
   "exact_accuracy": 0.48484848484848486,
-  "soft_accuracy": 0.48484848484848486,
-  "soft_sem": 0.08834775598250455,
-  "accuracy": 0.48484848484848486,
+  "soft_accuracy": 0.9773363865008011,
+  "soft_sem": 0.005656367507823444,
+  "accuracy": 0.9773363865008011,
   "per_task_exact": {
     "1d_flip": 1.0,
     "1d_mirror": 0.3333333333333333,
@@ -20,33 +20,32 @@
   },
   "per_task_soft": {
     "1d_flip": 1.0,
-    "1d_mirror": 0.3333333333333333,
+    "1d_mirror": 0.9819488539699126,
     "1d_move_1p": 1.0,
     "1d_move_2p": 1.0,
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
-    "1d_move_dp": 0.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.0
+    "1d_move_dp": 0.969294520240663,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.8974723051023492,
+    "1d_recolor_oe": 0.9795546478610996,
+    "1d_scale_dp": 0.9693363754154696
   },
   "per_task": {
     "1d_flip": 1.0,
-    "1d_mirror": 0.3333333333333333,
+    "1d_mirror": 0.9819488539699126,
     "1d_move_1p": 1.0,
     "1d_move_2p": 1.0,
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
-    "1d_move_dp": 0.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.0
+    "1d_move_dp": 0.969294520240663,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.8974723051023492,
+    "1d_recolor_oe": 0.9795546478610996,
+    "1d_scale_dp": 0.9693363754154696
   },
   "timeout": 120,
   "jobs": 2,
-  "subset": "census_match_first3",
   "run_meta": {
     "schema": "eval-run-meta/v1",
     "started_at": "2026-08-17T15:04:06.388811+00:00",
@@ -68,5 +67,6 @@
     "entry": "match33_parallel",
     "n_tasks": 32,
     "subset": "census_match_first3"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

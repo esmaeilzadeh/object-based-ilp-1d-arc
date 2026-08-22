@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 33,
   "exact_accuracy": 0.7878787878787878,
-  "soft_accuracy": 0.7878787878787878,
-  "soft_sem": 0.07226812131946558,
-  "accuracy": 0.7878787878787878,
+  "soft_accuracy": 0.9881062682859586,
+  "soft_sem": 0.004877893460087536,
+  "accuracy": 0.9881062682859586,
   "per_task_exact": {
     "1d_flip": 1.0,
     "1d_mirror": 1.0,
@@ -26,10 +26,10 @@
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
     "1d_move_dp": 1.0,
-    "1d_recolor_cmp": 0.0,
+    "1d_recolor_cmp": 0.9617142385744927,
     "1d_recolor_cnt": 1.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.6666666666666666
+    "1d_recolor_oe": 0.9279465158497416,
+    "1d_scale_dp": 0.9795081967213114
   },
   "per_task": {
     "1d_flip": 1.0,
@@ -39,10 +39,10 @@
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
     "1d_move_dp": 1.0,
-    "1d_recolor_cmp": 0.0,
+    "1d_recolor_cmp": 0.9617142385744927,
     "1d_recolor_cnt": 1.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.6666666666666666
+    "1d_recolor_oe": 0.9279465158497416,
+    "1d_scale_dp": 0.9795081967213114
   },
   "timeout": 3600,
   "jobs": 3,
@@ -66,5 +66,6 @@
     "pid": 165482,
     "entry": "run_solver_eval_parallel",
     "n_tasks": 33
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

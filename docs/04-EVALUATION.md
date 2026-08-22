@@ -29,7 +29,7 @@ Do **not** report a pixel-road solve as a “block-only win.” Use `failure_det
 
 ## Soft accuracy (%)
 
-Soft accuracy is `(TP + TN) / (TP + FN + TN + FP)` over predicted vs gold pixel colors (same family of metric as Decom).
+Soft accuracy is `(TP + TN) / (TP + FN + TN + FP)` over **each** Decom-style `pos(out(...))` / `neg(out(...))` label (not per example id, and not raw pixel Hamming). Near-miss grids can therefore score high because of many true-negative color labels. Implementation: `solver/lp/do_test.pl` + `solver/paper_score.py`; rescored artifacts stamp `soft_definition: "per_label_out_v1"`.
 
 | Budget | Ours (hybrid_census) | Decom (paper) |
 |--------|----------------------|---------------|
@@ -38,7 +38,7 @@ Soft accuracy is `(TP + TN) / (TP + FN + TN + FP)` over predicted vs gold pixel 
 | 600 s | TBD | 63.0 |
 | 3600 s | TBD | 68.5 |
 
-**Caveat:** Decom’s soft score is inflated by true negatives (each pixel contributes one positive and many negative color labels). On many of our failure modes the pipeline returns the test input unchanged, so soft can collapse toward the exact rate. Prefer **exact /54** as the headline.
+**Caveat:** Soft is inflated by true negatives (each cell contributes one positive and many negative color labels). Prefer **exact /54** as the headline. Soft values written before `per_label_out_v1` are **not comparable** (they collapsed to exact-or-nothing per test id).
 
 ## Protocol alignment
 

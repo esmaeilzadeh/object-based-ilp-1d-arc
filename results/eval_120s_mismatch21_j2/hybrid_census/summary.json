@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 21,
   "exact_accuracy": 0.8571428571428571,
-  "soft_accuracy": 0.8571428571428571,
-  "soft_sem": 0.07824607964359517,
-  "accuracy": 0.8571428571428571,
+  "soft_accuracy": 0.9632662786658076,
+  "soft_sem": 0.004753076034061859,
+  "accuracy": 0.9632662786658076,
   "per_task_exact": {
     "1d_denoising_1c": 1.0,
     "1d_denoising_mc": 1.0,
@@ -15,22 +15,22 @@
     "1d_pcopy_mc": 1.0
   },
   "per_task_soft": {
-    "1d_denoising_1c": 1.0,
-    "1d_denoising_mc": 1.0,
-    "1d_fill": 1.0,
-    "1d_hollow": 1.0,
-    "1d_padded_fill": 0.0,
-    "1d_pcopy_1c": 1.0,
-    "1d_pcopy_mc": 1.0
+    "1d_denoising_1c": 0.9600071111901244,
+    "1d_denoising_mc": 0.9250683565562811,
+    "1d_fill": 0.9598594716645396,
+    "1d_hollow": 0.9883106453283963,
+    "1d_padded_fill": 0.9598594716645396,
+    "1d_pcopy_1c": 0.9697629354772213,
+    "1d_pcopy_mc": 0.9799959587795515
   },
   "per_task": {
-    "1d_denoising_1c": 1.0,
-    "1d_denoising_mc": 1.0,
-    "1d_fill": 1.0,
-    "1d_hollow": 1.0,
-    "1d_padded_fill": 0.0,
-    "1d_pcopy_1c": 1.0,
-    "1d_pcopy_mc": 1.0
+    "1d_denoising_1c": 0.9600071111901244,
+    "1d_denoising_mc": 0.9250683565562811,
+    "1d_fill": 0.9598594716645396,
+    "1d_hollow": 0.9883106453283963,
+    "1d_padded_fill": 0.9598594716645396,
+    "1d_pcopy_1c": 0.9697629354772213,
+    "1d_pcopy_mc": 0.9799959587795515
   },
   "timeout": 120,
   "jobs": 2,
@@ -55,5 +55,6 @@
     "entry": "mismatch21_parallel",
     "n_tasks": 21,
     "subset": "census_mismatch_first3"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

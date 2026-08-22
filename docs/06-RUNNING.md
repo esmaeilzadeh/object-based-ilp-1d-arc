@@ -95,7 +95,7 @@ python -m solver.cli \
 | `level` | e.g. `object_ilp`, `pixel_ilp`, `fallback_identity` |
 | `verified_train` | Object road: paint-verify passed. Pixel road: interpret with soft matrix |
 | `exact_ok` | (harness) predicted grid matches gold |
-| `soft_accuracy` / `soft_matrix` | Soft cell metric |
+| `soft_accuracy` / `soft_matrix` | Per-label soft: `[TP,FN,TN,FP]` over `pos`/`neg` `out` atoms (`per_label_out_v1`) |
 | `failure_reason` | `null` on clean success paths; else timeout / exhausted / verify / decode … |
 | `failure_detail.census_match` | Whether the train census matched |
 | `failure_detail.road` | `object` or `pixel` under hybrid |

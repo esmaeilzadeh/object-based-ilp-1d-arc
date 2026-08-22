@@ -2,23 +2,23 @@
   "mode": "block_primary",
   "n": 9,
   "exact_accuracy": 0.2222222222222222,
-  "soft_accuracy": 0.2222222222222222,
-  "soft_sem": 0.1469861839480328,
-  "accuracy": 0.2222222222222222,
+  "soft_accuracy": 0.9709293927853151,
+  "soft_sem": 0.01017925539869372,
+  "accuracy": 0.9709293927853151,
   "per_task_exact": {
     "1d_mirror": 0.0,
     "1d_pcopy_mc": 0.0,
     "1d_recolor_cnt": 0.6666666666666666
   },
   "per_task_soft": {
-    "1d_mirror": 0.0,
-    "1d_pcopy_mc": 0.0,
-    "1d_recolor_cnt": 0.6666666666666666
+    "1d_mirror": 0.9440564380985551,
+    "1d_pcopy_mc": 0.9933319862598505,
+    "1d_recolor_cnt": 0.97539975399754
   },
   "per_task": {
-    "1d_mirror": 0.0,
-    "1d_pcopy_mc": 0.0,
-    "1d_recolor_cnt": 0.6666666666666666
+    "1d_mirror": 0.9440564380985551,
+    "1d_pcopy_mc": 0.9933319862598505,
+    "1d_recolor_cnt": 0.97539975399754
   },
   "timeout": 120,
   "jobs": 2,
@@ -47,5 +47,6 @@
       "1d_pcopy_mc",
       "1d_recolor_cnt"
     ]
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

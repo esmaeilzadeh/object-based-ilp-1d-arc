@@ -6,9 +6,9 @@
   "exact_ok": true,
   "soft_accuracy": 1.0,
   "soft_matrix": [
-    1,
+    2,
     0,
-    0,
+    216,
     0
   ],
   "level": "pixel_ilp",
@@ -80,7 +80,8 @@
     "induce_elapsed_s": 120.653,
     "error": null,
     "census_match": false,
-    "road": "pixel"
+    "road": "pixel",
+    "decom_solved": true
   },
   "program": "out(V0,V1,V2):- in(V0,V1,V2),my_succ(V1,V3),empty(V0,V3).\nout(V0,V1,V2):- in(V0,V1,V2),my_succ(V3,V1),empty(V0,V3).",
   "run_meta": {
@@ -92,5 +93,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-16T17:37:49.733711+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

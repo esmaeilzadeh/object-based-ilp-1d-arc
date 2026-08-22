@@ -4,11 +4,11 @@
   "mode": "block_primary",
   "ok": false,
   "exact_ok": false,
-  "soft_accuracy": 0.0,
+  "soft_accuracy": 0.9963636363636363,
   "soft_matrix": [
-    0,
+    13,
     1,
-    0,
+    261,
     0
   ],
   "level": "object_ilp",
@@ -100,5 +100,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-17T07:53:59.467437+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

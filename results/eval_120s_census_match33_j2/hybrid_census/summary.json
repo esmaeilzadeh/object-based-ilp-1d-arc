@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 33,
   "exact_accuracy": 0.030303030303030304,
-  "soft_accuracy": 0.030303030303030304,
-  "soft_sem": 0.030303030303030325,
-  "accuracy": 0.030303030303030304,
+  "soft_accuracy": 0.9596663427817042,
+  "soft_sem": 0.00620438488293279,
+  "accuracy": 0.9596663427817042,
   "per_task_exact": {
     "1d_flip": 0.0,
     "1d_mirror": 0.0,
@@ -19,30 +19,30 @@
     "1d_scale_dp": 0.0
   },
   "per_task_soft": {
-    "1d_flip": 0.0,
-    "1d_mirror": 0.0,
-    "1d_move_1p": 0.3333333333333333,
-    "1d_move_2p": 0.0,
-    "1d_move_2p_dp": 0.0,
-    "1d_move_3p": 0.0,
-    "1d_move_dp": 0.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.0
+    "1d_flip": 0.9755310264164939,
+    "1d_mirror": 0.9440564380985551,
+    "1d_move_1p": 0.9948237711395606,
+    "1d_move_2p": 0.9849691797060217,
+    "1d_move_2p_dp": 0.9850262412125584,
+    "1d_move_3p": 0.9774537695590327,
+    "1d_move_dp": 0.9797840307301734,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.8974723051023492,
+    "1d_recolor_oe": 0.8936719731881023,
+    "1d_scale_dp": 0.9704474865265807
   },
   "per_task": {
-    "1d_flip": 0.0,
-    "1d_mirror": 0.0,
-    "1d_move_1p": 0.3333333333333333,
-    "1d_move_2p": 0.0,
-    "1d_move_2p_dp": 0.0,
-    "1d_move_3p": 0.0,
-    "1d_move_dp": 0.0,
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0,
-    "1d_scale_dp": 0.0
+    "1d_flip": 0.9755310264164939,
+    "1d_mirror": 0.9440564380985551,
+    "1d_move_1p": 0.9948237711395606,
+    "1d_move_2p": 0.9849691797060217,
+    "1d_move_2p_dp": 0.9850262412125584,
+    "1d_move_3p": 0.9774537695590327,
+    "1d_move_dp": 0.9797840307301734,
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.8974723051023492,
+    "1d_recolor_oe": 0.8936719731881023,
+    "1d_scale_dp": 0.9704474865265807
   },
   "timeout": 120,
   "jobs": 2,
@@ -66,5 +66,6 @@
     "pid": 37717,
     "entry": "run_solver_eval_parallel",
     "n_tasks": 33
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

@@ -4,11 +4,11 @@
   "mode": "hybrid_census",
   "ok": true,
   "exact_ok": true,
-  "soft_accuracy": 1.0,
+  "soft_accuracy": 0.9801980198019802,
   "soft_matrix": [
-    1,
     0,
-    0,
+    6,
+    297,
     0
   ],
   "level": "pixel_ilp",
@@ -99,7 +99,7 @@
     "error": null,
     "census_match": false,
     "road": "pixel",
-    "decom_solved": true
+    "decom_solved": false
   },
   "program": "out(V0,V1,V2):- my_succ(V4,V1),in(V0,V4,V2),my_succ(V3,V4),empty(V0,V3).\nout(V0,V1,V2):- in(V0,V6,V2),add(V1,V5,V6),lt(V5,V1),my_succ(V4,V6),add(V3,V4,V1).",
   "run_meta": {
@@ -111,5 +111,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-17T19:11:31.556465+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

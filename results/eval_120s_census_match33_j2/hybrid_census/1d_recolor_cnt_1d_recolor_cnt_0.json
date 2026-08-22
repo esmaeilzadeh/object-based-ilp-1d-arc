@@ -4,12 +4,12 @@
   "mode": "hybrid_census",
   "ok": false,
   "exact_ok": false,
-  "soft_accuracy": 0.0,
+  "soft_accuracy": 0.8791208791208791,
   "soft_matrix": [
     0,
-    1,
-    0,
-    0
+    11,
+    160,
+    11
   ],
   "level": "fallback_identity",
   "confidence": "low",
@@ -82,5 +82,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-18T20:03:30.893763+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

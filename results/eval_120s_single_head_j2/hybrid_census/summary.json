@@ -2,9 +2,9 @@
   "mode": "hybrid_census",
   "n": 54,
   "exact_accuracy": 0.7777777777777778,
-  "soft_accuracy": 0.7777777777777778,
-  "soft_sem": 0.057106240972227405,
-  "accuracy": 0.7777777777777778,
+  "soft_accuracy": 0.9774499667455989,
+  "soft_sem": 0.003763557140615495,
+  "accuracy": 0.9774499667455989,
   "per_task_exact": {
     "1d_denoising_1c": 1.0,
     "1d_denoising_mc": 1.0,
@@ -26,43 +26,43 @@
     "1d_scale_dp": 1.0
   },
   "per_task_soft": {
-    "1d_denoising_1c": 1.0,
-    "1d_denoising_mc": 1.0,
-    "1d_fill": 1.0,
+    "1d_denoising_1c": 0.9600071111901244,
+    "1d_denoising_mc": 0.9250683565562811,
+    "1d_fill": 0.9598594716645396,
     "1d_flip": 1.0,
-    "1d_hollow": 1.0,
-    "1d_mirror": 0.6666666666666666,
+    "1d_hollow": 0.9883106453283963,
+    "1d_mirror": 0.9798657718120806,
     "1d_move_1p": 1.0,
     "1d_move_2p": 1.0,
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
-    "1d_move_dp": 0.3333333333333333,
-    "1d_padded_fill": 0.0,
-    "1d_pcopy_1c": 1.0,
-    "1d_pcopy_mc": 1.0,
-    "1d_recolor_cmp": 0.0,
+    "1d_move_dp": 0.9867770377231805,
+    "1d_padded_fill": 0.9598594716645396,
+    "1d_pcopy_1c": 0.9697629354772213,
+    "1d_pcopy_mc": 0.9799959587795515,
+    "1d_recolor_cmp": 0.9530935489193203,
     "1d_recolor_cnt": 1.0,
-    "1d_recolor_oe": 0.0,
+    "1d_recolor_oe": 0.9314990923055441,
     "1d_scale_dp": 1.0
   },
   "per_task": {
-    "1d_denoising_1c": 1.0,
-    "1d_denoising_mc": 1.0,
-    "1d_fill": 1.0,
+    "1d_denoising_1c": 0.9600071111901244,
+    "1d_denoising_mc": 0.9250683565562811,
+    "1d_fill": 0.9598594716645396,
     "1d_flip": 1.0,
-    "1d_hollow": 1.0,
-    "1d_mirror": 0.6666666666666666,
+    "1d_hollow": 0.9883106453283963,
+    "1d_mirror": 0.9798657718120806,
     "1d_move_1p": 1.0,
     "1d_move_2p": 1.0,
     "1d_move_2p_dp": 1.0,
     "1d_move_3p": 1.0,
-    "1d_move_dp": 0.3333333333333333,
-    "1d_padded_fill": 0.0,
-    "1d_pcopy_1c": 1.0,
-    "1d_pcopy_mc": 1.0,
-    "1d_recolor_cmp": 0.0,
+    "1d_move_dp": 0.9867770377231805,
+    "1d_padded_fill": 0.9598594716645396,
+    "1d_pcopy_1c": 0.9697629354772213,
+    "1d_pcopy_mc": 0.9799959587795515,
+    "1d_recolor_cmp": 0.9530935489193203,
     "1d_recolor_cnt": 1.0,
-    "1d_recolor_oe": 0.0,
+    "1d_recolor_oe": 0.9314990923055441,
     "1d_scale_dp": 1.0
   },
   "timeout": 120,
@@ -88,16 +88,5 @@
     "entry": "run_solver_eval_parallel",
     "n_tasks": 54
   },
-  "by_path": {
-    "census_match_object": {
-      "n": 33,
-      "exact": 24,
-      "exact_acc": 0.7272727272727273
-    },
-    "census_fail_pixel": {
-      "n": 21,
-      "exact": 18,
-      "exact_acc": 0.8571428571428571
-    }
-  }
+  "soft_definition": "per_label_out_v1"
 }

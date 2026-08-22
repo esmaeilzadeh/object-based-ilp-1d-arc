@@ -2,23 +2,23 @@
   "mode": "block_primary",
   "n": 7,
   "exact_accuracy": 0.0,
-  "soft_accuracy": 0.0,
-  "soft_sem": 0.0,
-  "accuracy": 0.0,
+  "soft_accuracy": 0.9626235050096908,
+  "soft_sem": 0.011220014540481969,
+  "accuracy": 0.9626235050096908,
   "per_task_exact": {
     "1d_mirror": 0.0,
     "1d_pcopy_mc": 0.0,
     "1d_recolor_cnt": 0.0
   },
   "per_task_soft": {
-    "1d_mirror": 0.0,
-    "1d_pcopy_mc": 0.0,
-    "1d_recolor_cnt": 0.0
+    "1d_mirror": 0.9440564380985551,
+    "1d_pcopy_mc": 0.9933319862598505,
+    "1d_recolor_cnt": 0.9261992619926199
   },
   "per_task": {
-    "1d_mirror": 0.0,
-    "1d_pcopy_mc": 0.0,
-    "1d_recolor_cnt": 0.0
+    "1d_mirror": 0.9440564380985551,
+    "1d_pcopy_mc": 0.9933319862598505,
+    "1d_recolor_cnt": 0.9261992619926199
   },
   "timeout": 120,
   "jobs": 2,
@@ -42,5 +42,6 @@
     "pid": 144493,
     "entry": "track_a_fails_only",
     "n_tasks": 7
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

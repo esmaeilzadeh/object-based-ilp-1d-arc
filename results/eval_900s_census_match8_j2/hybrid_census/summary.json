@@ -2,23 +2,23 @@
   "mode": "hybrid_census",
   "n": 8,
   "exact_accuracy": 0.0,
-  "soft_accuracy": 0.0,
-  "soft_sem": 0.0,
-  "accuracy": 0.0,
+  "soft_accuracy": 0.9274186782912219,
+  "soft_sem": 0.014023852491422416,
+  "accuracy": 0.9274186782912219,
   "per_task_exact": {
     "1d_recolor_cmp": 0.0,
     "1d_recolor_cnt": 0.0,
     "1d_recolor_oe": 0.0
   },
   "per_task_soft": {
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.9026600705567496,
+    "1d_recolor_oe": 0.9182495461527719
   },
   "per_task": {
-    "1d_recolor_cmp": 0.0,
-    "1d_recolor_cnt": 0.0,
-    "1d_recolor_oe": 0.0
+    "1d_recolor_cmp": 0.9530935489193203,
+    "1d_recolor_cnt": 0.9026600705567496,
+    "1d_recolor_oe": 0.9182495461527719
   },
   "timeout": 900,
   "jobs": 2,
@@ -42,5 +42,6 @@
     "pid": 65514,
     "entry": "run_solver_eval_parallel",
     "n_tasks": 8
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

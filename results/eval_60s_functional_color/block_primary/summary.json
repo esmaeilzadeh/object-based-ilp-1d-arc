@@ -1,0 +1,45 @@
+{
+  "mode": "block_primary",
+  "n": 27,
+  "exact_accuracy": 0.7777777777777778,
+  "soft_accuracy": 0.9925092572003864,
+  "soft_sem": 0.003318361193855168,
+  "accuracy": 0.9925092572003864,
+  "per_task_exact": {
+    "1d_denoising_1c": 1.0,
+    "1d_denoising_mc": 0.6666666666666666,
+    "1d_fill": 0.3333333333333333,
+    "1d_flip": 0.5,
+    "1d_hollow": 1.0,
+    "1d_mirror": 0.3333333333333333,
+    "1d_move_1p": 1.0,
+    "1d_move_2p": 1.0,
+    "1d_move_2p_dp": 1.0,
+    "1d_move_3p": 1.0
+  },
+  "per_task_soft": {
+    "1d_denoising_1c": 1.0,
+    "1d_denoising_mc": 0.9957401490947816,
+    "1d_fill": 0.9786679184269546,
+    "1d_flip": 0.9914163090128756,
+    "1d_hollow": 1.0,
+    "1d_mirror": 0.9638977079398251,
+    "1d_move_1p": 1.0,
+    "1d_move_2p": 1.0,
+    "1d_move_2p_dp": 1.0,
+    "1d_move_3p": 1.0
+  },
+  "per_task": {
+    "1d_denoising_1c": 1.0,
+    "1d_denoising_mc": 0.9957401490947816,
+    "1d_fill": 0.9786679184269546,
+    "1d_flip": 0.9914163090128756,
+    "1d_hollow": 1.0,
+    "1d_mirror": 0.9638977079398251,
+    "1d_move_1p": 1.0,
+    "1d_move_2p": 1.0,
+    "1d_move_2p_dp": 1.0,
+    "1d_move_3p": 1.0
+  },
+  "soft_definition": "per_label_out_v1"
+}

@@ -6,9 +6,9 @@
   "exact_ok": true,
   "soft_accuracy": 1.0,
   "soft_matrix": [
-    1,
+    6,
     0,
-    0,
+    162,
     0
   ],
   "level": "hybrid_ilp",
@@ -84,5 +84,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-17T15:04:26.546605+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

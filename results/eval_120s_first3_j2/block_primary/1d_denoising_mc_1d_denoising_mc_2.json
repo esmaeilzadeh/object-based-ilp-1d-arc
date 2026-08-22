@@ -4,12 +4,12 @@
   "mode": "block_primary",
   "ok": false,
   "exact_ok": false,
-  "soft_accuracy": 0.0,
+  "soft_accuracy": 0.9935691318327974,
   "soft_matrix": [
-    0,
+    22,
     1,
-    0,
-    0
+    287,
+    1
   ],
   "level": "fallback_identity",
   "confidence": "low",
@@ -106,5 +106,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-17T07:21:05.437927+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }

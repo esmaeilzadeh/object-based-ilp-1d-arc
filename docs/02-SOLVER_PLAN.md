@@ -202,7 +202,7 @@ Harness / eval scripts take the same mode names.
 After a prediction exists:
 
 - **Exact** — predicted test row equals gold cell-for-cell.
-- **Soft accuracy** — `(TP + TN) / (TP + FN + TN + FP)` over predicted vs gold colors (paper-compatible helper in `solver/paper_score.py`).
+- **Soft accuracy** — `(TP + TN) / (TP + FN + TN + FP)` over each `pos`/`neg` `out` label in `test.pl` (Decom-compatible; `solver/paper_score.py`). Near-misses can be high due to TN inflation; do not confuse with pixel Hamming or with pre-`per_label_out_v1` soft (which matched exact).
 
 Pixel-level gold in `test.pl` is for **scoring**, not for teaching the object learner.
 

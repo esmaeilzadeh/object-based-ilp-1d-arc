@@ -6,9 +6,9 @@
   "exact_ok": true,
   "soft_accuracy": 1.0,
   "soft_matrix": [
-    1,
+    4,
     0,
-    0,
+    162,
     0
   ],
   "level": "pixel_ilp",
@@ -68,7 +68,8 @@
     "induce_elapsed_s": 19.886,
     "error": null,
     "census_match": false,
-    "road": "pixel"
+    "road": "pixel",
+    "decom_solved": true
   },
   "program": "out(V0,V1,V2):- in(V0,V6,V2),add(V5,V6,V1),in(V0,V4,V2),add(V1,V3,V4).",
   "run_meta": {
@@ -80,5 +81,6 @@
     "timeout": 120,
     "jobs": 1,
     "started_at": "2026-08-16T17:36:29.222187+00:00"
-  }
+  },
+  "soft_definition": "per_label_out_v1"
 }
