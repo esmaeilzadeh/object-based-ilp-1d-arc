@@ -29,15 +29,6 @@ SKIP_NAMES = {"summary.json", "run_manifest.json"}
 MODES = ("hybrid_census", "block_primary")
 
 
-def _work_stem(row: dict) -> Optional[str]:
-    f = row.get("file") or ""
-    if f:
-        return Path(f).stem
-    # result file: 1d_flip_1d_flip_0.json → work dir 1d_flip_0
-    task = row.get("task") or ""
-    return None
-
-
 def _resolve_test_pl(mode_dir: Path, row: dict, cache_dir: Path) -> Tuple[Path, int]:
     """Return (test.pl path, test ex_id)."""
     stem = Path(row["file"]).stem if row.get("file") else None
