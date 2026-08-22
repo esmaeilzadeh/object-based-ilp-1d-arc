@@ -21,6 +21,7 @@ REMOTE="${REMOTE:-origin}"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 # After each eval stage: add only that results tree, commit, push.
+# Push failures are non-fatal so the campaign continues to the next stage.
 commit_results_and_push() {
   local path="$1"
   local msg="$2"
@@ -31,16 +32,21 @@ commit_results_and_push() {
   git add -- "$path"
   if git diff --cached --quiet; then
     echo "[git] nothing new to commit for ${path}"
-    return 0
-  fi
-  git commit -m "$(cat <<EOF
+  else
+    if ! git commit -m "$(cat <<EOF
 ${msg}
 
 EOF
-)"
+)"; then
+      echo "[git] WARNING: commit failed for ${path}; continuing" >&2
+    fi
+  fi
   echo "[git] push ${BRANCH} → ${REMOTE}"
-  git push -u "$REMOTE" "HEAD:${BRANCH}"
-  echo "[git] done: committed+pushed ${path}"
+  if ! git push -u "$REMOTE" "HEAD:${BRANCH}"; then
+    echo "[git] WARNING: push failed for ${path}; continuing to next stage" >&2
+  else
+    echo "[git] done: committed+pushed ${path}"
+  fi
 }
 
 run_full54() {
