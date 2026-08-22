@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Compound hybrid eval campaign:
-#   1) all 54 @ 60s  JOBS=3  → git add/commit/push
-#   2) all 54 @ 600s JOBS=3  → git add/commit/push
-#   3) census-mismatch 21 @ 3600s JOBS=3 → git add/commit/push
+#   1) all 54 @ 60s  JOBS=3  → git add results / commit / push
+#   2) all 54 @ 600s JOBS=3 → git add results / commit / push
+#   3) census-mismatch 21 @ 3600s JOBS=3 → git add results / commit / push
 #
 # Usage (from repo root):
 #   ./scripts/run_hybrid_campaign_1m_10m_mismatch1h_j3.sh
