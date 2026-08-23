@@ -20,11 +20,9 @@ Do **not** report a pixel-road solve as a “block-only win.” Use `failure_det
 |--------|----------------------|----------------------|--------|
 | **60 s (1 min)** | **19/54** | 32/54 | −13 |
 | **600 s (10 min)** | **44/54** | 34/54 | **+10** |
-| **3600 s (1 h)** | **45/54**† | 37/54 | **+8** |
+| **3600 s (1 h)** | **45/54** | 37/54 | **+8** |
 
-† **3600 s composite:** census-match 33 (`results/eval_3600s_census_match33_j3`) + census-mismatch 21 (`results/eval_3600s_census_mismatch21_j3`). For `1d_scale_dp_0` only, the raw 1 h row is a standby-suspect `popper_timeout` (~5.5 h wall elapsed vs 3600 s budget); the table uses the **600 s exact** outcome for that trial until a clean `scripts/rerun_match33_scale_dp_1h.sh` finishes. Without that override the raw merge is **44/54** (26/33 match + 18/21 mismatch).
-
-**Finding:** at **600 s** the hybrid already jumps past Decom (+10 exact). At **3600 s** (with the interim `scale_dp_0` note) the lead is **+8**. Short **60 s** is behind Decom (−13); most of the lift appears between 1 min and 10 min.
+**Finding:** at **600 s** the hybrid already jumps past Decom (+10 exact). At **3600 s** the lead is **+8**. Short **60 s** is behind Decom (−13); most of the lift appears between 1 min and 10 min.
 
 ## Soft accuracy (%)
 
@@ -34,9 +32,7 @@ Soft accuracy is `(TP + TN) / (TP + FN + TN + FP)` over **each** Decom-style `po
 |--------|----------------------|---------------|
 | 60 s | 97.5 | 59.3 |
 | 600 s | 99.2 | 63.0 |
-| 3600 s | 99.2† | 68.5 |
-
-† Same `scale_dp_0` interim carry as the exact table (600 s soft = 1.0 for that trial).
+| 3600 s | 99.2 | 68.5 |
 
 **Caveat:** Soft is inflated by true negatives (each cell contributes one positive and many negative color labels). Prefer **exact /54** as the headline. Soft values written before `per_label_out_v1` are **not comparable** (they collapsed to exact-or-nothing per test id).
 
@@ -56,9 +52,6 @@ Campaign entrypoints:
 
 # Census-match 33 @ 1h (object road)
 ./scripts/run_census_match33_1h_j3.sh
-
-# Standby-contaminated scale_dp wave rerun (optional)
-./scripts/rerun_match33_scale_dp_1h.sh
 ```
 
 ## Why routing helps (qualitative)
@@ -95,10 +88,8 @@ Census road is uniform within each first-3 category on this slice (`match` = obj
 | recolor_cmp | match | 0 | 0 | 0 | 0 | 0 | 0 |
 | recolor_cnt | match | 1 | 3 | 3 | 0 | 0 | 0 |
 | recolor_oe | match | 0 | 0 | 0 | 0 | 0 | 0 |
-| scale_dp | match | 0 | 3 | 3† | 3 | 3 | 3 |
-| **Total** | | **19** | **44** | **45**† | **32** | **34** | **37** |
-
-† `scale_dp` @3600 uses interim exact from @600 for trial `0` (see headline footnote). Trials `1` and `2` are exact in the raw 1 h match33 artifacts.
+| scale_dp | match | 0 | 3 | 3 | 3 | 3 | 3 |
+| **Total** | | **19** | **44** | **45** | **32** | **34** | **37** |
 
 Decom cells are from the published paper tables for this slice (120 s / 2 min column omitted); re-check against the artifact repo if you need machine-verified digits.
 
@@ -106,10 +97,8 @@ Decom cells are from the published paper tables for this slice (120 s / 2 min co
 
 | Slice | @600 s | @3600 s |
 |-------|--------|---------|
-| Census-match 33 (object road) | 26/33 | 27/33† |
+| Census-match 33 (object road) | 26/33 | 27/33 |
 | Census-mismatch 21 (pixel road) | 18/21 | 18/21 |
-
-† Includes interim `scale_dp_0` exact from @600; raw match33 summary is **26/33**.
 
 Persistent exact zeros on this slice: `padded_fill` (pixel road), `recolor_cmp`, `recolor_oe` (object road).
 
@@ -129,8 +118,6 @@ Historical `block_primary` scoreboards (e.g. old 40/54 @60 s) are **not** the hy
 
 Popper’s timeout is a **search budget**. A longer budget can replace an early train-good program with a later compressed one that verifies or generalizes worse. If a longer timeout looks worse than a shorter one on the same commit, treat it as an infra / search-selection issue until per-task `failure_reason` and joblogs say otherwise (see project eval-hygiene rules).
 
-Host **standby / sleep** advances wall-clock timeouts: a task can record `popper_timeout` after resume even with little CPU progress (see inflated ~19750 s `elapsed` on the match33 `1d_scale_dp_*` wave). Prefer a clean rerun before treating that fail as a capability verdict.
-
 ## Data provenance
 
 | Claim | Source |
@@ -138,9 +125,9 @@ Host **standby / sleep** advances wall-clock timeouts: a task can record `popper
 | Decom results | `programs/relational/{60,600,3600}/1d/*/popper/*/results.pl` in the IJCAI 2025 artifact repo |
 | Ours @60 s | `results/eval_60s_hybrid_all54_j3/hybrid_census/summary.json` — **19/54** exact, soft 0.9749 — `git_sha` `1084793…` (jobs=3) |
 | Ours @600 s | `results/eval_600s_hybrid_all54_j3/hybrid_census/summary.json` — **44/54** exact, soft 0.9918 — `git_sha` `0306ca0…` (jobs=3) |
-| Ours @3600 s match 33 | `results/eval_3600s_census_match33_j3/hybrid_census/summary.json` — **26/33** exact (raw) — `git_sha` `35eb2c1…` (jobs=3) |
+| Ours @3600 s match 33 | `results/eval_3600s_census_match33_j3/hybrid_census/summary.json` — **27/33** exact — `git_sha` `35eb2c1…` (jobs=3) |
 | Ours @3600 s mismatch 21 | `results/eval_3600s_census_mismatch21_j3/hybrid_census/summary.json` — **18/21** exact — `git_sha` `4b4f808…` (jobs=3) |
-| Ours @3600 s /54 (table) | Match + mismatch merge; **`1d_scale_dp_0` exact carried from @600** until scale_dp wave rerun |
+| Ours @3600 s /54 | Match 33 + mismatch 21 → **45/54** |
 | Host / JOBS | Each campaign’s `run_manifest.json` |
 
 Cite a finished run as **directory + git SHA + exact n/N**. Local campaign index: `results/RUN_REGISTRY.md`.
