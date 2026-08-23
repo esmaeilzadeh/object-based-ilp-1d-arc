@@ -108,7 +108,7 @@ Each file is typically three train pairs + one test. The hybrid **does not** bra
 | `01-ILP-1D-Method.md` | Why hybrid routing vs Decom / ILPAR |
 | `02-SOLVER_PLAN.md` | Method: census + both roads |
 | `03-TUTORIAL.md` | Flip (object) + pcopy (pixel) walkthroughs |
-| `04-EVALUATION.md` | Protocol + TBD scoreboard |
+| `04-EVALUATION.md` | Protocol + hybrid vs Decom scoreboard |
 | `05-REPO_STRUCTURE.md` | This file |
 | `06-RUNNING.md` | Install, CLI, eval, troubleshooting |
 
