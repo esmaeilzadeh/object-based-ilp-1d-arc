@@ -12,7 +12,7 @@ Human docs (start at the repo README summaries):
 1. [Approach & Landscape](../docs/01-ILP-1D-Method.md)
 2. [Method](../docs/02-SOLVER_PLAN.md)
 3. [Tutorial](../docs/03-TUTORIAL.md) — flip (object) + pcopy (pixel)
-4. [Evaluation](../docs/04-EVALUATION.md) — TBD scoreboard vs Decom
+4. [Evaluation](../docs/04-EVALUATION.md) — scoreboard vs Decom (44/54 @600 s, 45/54 @3600 s)
 5. [Repository Guide](../docs/05-REPO_STRUCTURE.md)
 6. [Running](../docs/06-RUNNING.md)
 

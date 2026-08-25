@@ -198,7 +198,7 @@ results/<campaign>/hybrid_census/
 └── <category>_<stem>.json    # Per-task row
 ```
 
-Headline scoreboard: see [04 — Evaluation](04-EVALUATION.md) (e.g. 44/54 @600 s, 45/54 @3600 s with noted `scale_dp_0` interim).
+Headline scoreboard: see [04 — Evaluation](04-EVALUATION.md) (19/54 @60 s, 44/54 @600 s, 45/54 @3600 s).
 
 ---
 

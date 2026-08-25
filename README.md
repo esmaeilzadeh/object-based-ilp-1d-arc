@@ -27,13 +27,23 @@ Worked examples of both roads: [docs/03-TUTORIAL.md](docs/03-TUTORIAL.md).
 | [01 — Approach & Landscape](docs/01-ILP-1D-Method.md) | For researchers. Explains the 1D-ARC few-shot setting, compares pixel Relational Decomposition (Decom) and ILPAR to this repo, and states the claim: **routing** each instance to object-level or pixel-level induction via a name-free census—not “blocks always beat pixels.” |
 | [02 — Method](docs/02-SOLVER_PLAN.md) | For method readers. Walks through `solve_hybrid`: the census gate, the object road (encode → induce → paint-verify → decode), the pixel road (Decom-style `out/3` encode → induce → soft-score → decode), and how modes `hybrid_census` vs `block_primary` differ. |
 | [03 — Tutorial](docs/03-TUTORIAL.md) | For newcomers. Two end-to-end walks: a census-match denoising task on the object road, and a census-fail structure-changing task on the pixel road, including grids, work-dir artifacts, and how to read the result JSON. |
-| [04 — Evaluation](docs/04-EVALUATION.md) | For empirical readers. Protocol for the 54-task slice vs Decom, metric definitions, and the hybrid scoreboard. Our exact numbers are **TBD** until the current experiment finishes; qualitatively the hybrid shows a clear jump at the 10-minute budget. |
+| [04 — Evaluation](docs/04-EVALUATION.md) | For empirical readers. Protocol for the 54-task slice vs Decom, metric definitions, and the hybrid scoreboard (**19/54** @60 s, **44/54** @600 s, **45/54** @3600 s exact; +10 vs Decom at 10 min). |
 | [05 — Repository Guide](docs/05-REPO_STRUCTURE.md) | For developers. Folder map, which module owns census / object encode / pixel encode / harness, dual-path dataflow, and “where to change what.” |
 | [06 — Running](docs/06-RUNNING.md) | For practitioners. Install, CLI `--mode`, smoke scripts, parallel 54-task eval with `hybrid_census`, reading `summary.json`, and troubleshooting common failure reasons. |
 
 Also: [solver package notes](solver/README.md) · [Decom paper (IJCAI 2025)](https://dl.acm.org/doi/10.24963/ijcai.2025/504) ([local PDF](docs/2408.12212v3.pdf))
 
 ## Eval (54-task slice)
+
+Headline exact match (`hybrid_census` vs paper Decom on the same 54-task slice):
+
+| Budget | Ours | Decom |
+|--------|------|-------|
+| 60 s | **19/54** | 32/54 |
+| 600 s | **44/54** | 34/54 |
+| 3600 s | **45/54** | 37/54 |
+
+Provenance and per-category tables → [docs/04-EVALUATION.md](docs/04-EVALUATION.md).
 
 ```bash
 JOBS=2 OUT=results/eval_local_600 \
