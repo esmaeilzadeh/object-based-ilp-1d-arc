@@ -118,325 +118,88 @@ def _col(i: int, typed: bool) -> str:
     return f"v{i}" if typed else str(i)
 
 
-def _rank(i: int, typed: bool) -> str:
-    return f"r{i}" if typed else str(i)
-
-
 def _load_json(src: Union[PathLike, dict]) -> dict:
     if isinstance(src, dict):
         return src
     return json.loads(Path(src).read_text())
 
 
-def _pixel_facts(ex: int, row: Sequence[int]) -> List[str]:
-    facts = []
-    w = len(row)
-    facts.append(f"width({ex},{w}).")
-    for i, c in enumerate(row):
-        c = int(c)
-        if c == 0:
-            facts.append(f"empty({ex},{i}).")
-        else:
-            facts.append(f"in({ex},{i},{c}).")
-    return facts
+def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
+    """Emit searchable object BK for one input row.
 
-
-def _block_and_derived(
-    ex: int,
-    row: Sequence[int],
-    *,
-    typed_roles: bool = False,
-    include_cell_bridges: bool = True,
-    include_pixel_anchors: bool = True,
-) -> List[str]:
-    """Emit searchable block facts + optional cell/pixel bridges.
-
-    All maximal runs (including color 0) share one left→right ``block_id``
-    space on the non-lean path. Lean (``typed_roles``): colored objects only,
-    dense ranks ``0..n-1`` so ``OutBid`` can unify with ``InBid``.
-
-    When ``typed_roles`` is True (block-primary), numeric roles are distinct atoms
-    ``b*`` / ``p*`` / ``s*`` / ``v*`` so block_id cannot unify with position/size/value.
-
-    ``include_cell_bridges`` (False on block-primary): omit per-cell / paint bridges.
-    ``include_pixel_anchors`` (False on block-primary): omit ``block_start`` / ``block_end``
-    / ``mid`` — pixel starts live in Python ``block_geometry`` for decode only.
-
-    On ``typed_roles`` (block-primary): lean geometry only — ``obj_succ``-only
-    ``gap``, ``size_sum3`` for obj_succ triples (no width² ``size_add``), and
-    bias-allowlisted preds only (``OBJECT_BODY_ALLOWLIST``).
+    Colored runs only, dense ranks ``0..n-1`` so ``OutBid`` can unify with
+    ``InBid``. Typed atoms ``b*`` / ``p*`` / ``s*`` / ``v*`` keep roles apart.
+    Facts are the object-body allowlist: ``block``, ``bind``, ``obj_succ``,
+    ``gap``, ``size_sum3``, ``size_add``, ``size_lt``, ``cardinal_ordinal``.
+    Pixel starts live in Python ``block_geometry`` for decode, not in BK.
     """
-    t = typed_roles
-    cell = include_cell_bridges
-    anchors = include_pixel_anchors
-    lean = typed_roles
+    t = True
     facts: List[str] = []
     runs = segment_all_runs(row)
     w = len(row)
     n_runs = len(runs)
     colored_ids: List[int] = []
-    empty_ids: List[int] = []
     for bid, (_s, _e, c) in enumerate(runs):
-        if c == 0:
-            empty_ids.append(bid)
-        else:
+        if c != 0:
             colored_ids.append(bid)
-
-    if not lean:
-        facts.append(f"block_count({ex},{_sz(len(colored_ids), t)}).")
-        facts.append(f"empty_block_count({ex},{_sz(len(empty_ids), t)}).")
-    if w and anchors:
-        facts.append(f"mid({ex},{_pos(w // 2, t)}).")
-    if cell:
-        for i in range(w):
-            facts.append(f"from_right({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
-            facts.append(f"mirror_index({ex},{_pos(i, t)},{_pos(w - 1 - i, t)}).")
 
     dense_of: Dict[int, int] = {rid: k for k, rid in enumerate(colored_ids)}
 
     def _id(all_run: int) -> str:
-        if lean and all_run in dense_of:
-            return _bid(dense_of[all_run], t)
-        return _bid(all_run, t)
+        return _bid(dense_of[all_run], t)
 
-    lengths: List[int] = [0] * n_runs  # all-run bid -> length
-    colored_lengths: List[Tuple[int, int]] = []  # (len, id) for aggregations
-    color_counts: Dict[int, int] = {}
+    lengths: List[int] = [0] * n_runs
     observed_sizes: set = set()
-    obj_k = 0
 
-    for bid, (s, e, c) in enumerate(runs):
-        L = e - s + 1
+    for bid, (_s, _e, c) in enumerate(runs):
+        L = _e - _s + 1
         lengths[bid] = L
         observed_sizes.add(L)
-        bb = _id(bid) if c != 0 else _bid(bid, t)
-        if not lean:
-            if s == 0:
-                facts.append(f"touches_edge({ex},{bb},left).")
-            if e == w - 1:
-                facts.append(f"touches_edge({ex},{bb},right).")
-
-        if anchors:
-            facts.append(f"block_start({ex},{bb},{_pos(s, t)}).")
-            facts.append(f"block_end({ex},{bb},{_pos(e, t)}).")
-        if cell:
-            if e + 1 < w:
-                facts.append(f"after_block({ex},{bb},{_pos(e + 1, t)}).")
-            if s - 1 >= 0:
-                facts.append(f"before_block({ex},{bb},{_pos(s - 1, t)}).")
-
         if c == 0:
-            if not lean:
-                facts.append(f"empty_block({ex},{bb},{_sz(L, t)}).")
-            if cell:
-                for p in range(s, e + 1):
-                    facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
             continue
+        facts.append(f"block({ex},{_id(bid)},{_sz(L, t)},{_col(c, t)}).")
 
-        facts.append(f"block({ex},{bb},{_sz(L, t)},{_col(c, t)}).")
-        if not lean:
-            facts.append(f"block_len({ex},{bb},{_sz(L, t)}).")
-            facts.append(f"obj_index({ex},{bb},{_rank(obj_k, t)}).")
-        obj_k += 1
-        colored_lengths.append((L, bid))
-        color_counts[c] = color_counts.get(c, 0) + 1
-        if cell:
-            for p in range(s, e + 1):
-                facts.append(f"in_block({ex},{bb},{_pos(p, t)}).")
-                facts.append(f"pixel_block({ex},{_pos(p, t)},{bb}).")
-                facts.append(f"block_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
-                if p == s or p == e:
-                    facts.append(f"block_edge({ex},{bb},{_pos(p, t)}).")
-                    facts.append(f"edge_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
-                else:
-                    facts.append(f"interior_cell({ex},{bb},{_pos(p, t)},{_col(c, t)}).")
-
-    if not lean:
-        for i in range(n_runs - 1):
-            facts.append(f"block_succ({ex},{_bid(i, t)},{_bid(i + 1, t)}).")
     for a, b in zip(colored_ids, colored_ids[1:]):
         facts.append(f"obj_succ({ex},{_id(a)},{_id(b)}).")
-    # Minimal ILP-native object correspondence: output object rank binds to the
-    # matching dense input object rank for the same example. This is the ground
-    # relation that lets rules learn Off/Len/Color relative to a chosen input block.
     for i in range(len(colored_ids)):
         facts.append(f"bind({ex},{_bid(i, t)},{_bid(i, t)}).")
-    # Pairing / component macros are not on the closed lean theory.
-    if not lean:
-        for i in range(0, len(colored_ids) - 1, 2):
-            a, b = colored_ids[i], colored_ids[i + 1]
-            facts.append(f"obj_pair({ex},{_bid(a, t)},{_bid(b, t)}).")
-        if colored_ids:
-            comp_start = colored_ids[0]
-            prev = colored_ids[0]
-            for cid in colored_ids[1:]:
-                if cid != prev + 1:
-                    s0, _, _ = runs[comp_start]
-                    _, e1, _ = runs[prev]
-                    span = e1 - s0 + 1
-                    facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
-                    facts.append(
-                        f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)})."
-                    )
-                    observed_sizes.add(span)
-                    comp_start = cid
-                prev = cid
-            s0, _, _ = runs[comp_start]
-            _, e1, _ = runs[prev]
-            span = e1 - s0 + 1
-            facts.append(f"component_start({ex},{_bid(comp_start, t)}).")
+
+    for a, b in zip(colored_ids, colored_ids[1:]):
+        _s1, e1, _c1 = runs[a]
+        s2, _e2, _c2 = runs[b]
+        g = s2 - e1 - 1
+        facts.append(f"gap({ex},{_id(a)},{_id(b)},{_sz(g, t)}).")
+        observed_sizes.add(g)
+        La, Lb = lengths[a], lengths[b]
+        total = La + g + Lb
+        if total <= w:
             facts.append(
-                f"component_len({ex},{_bid(comp_start, t)},{_sz(span, t)})."
+                f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
             )
-            observed_sizes.add(span)
+        for x, y in ((La, g), (1, g)):
+            s = x + y
+            if s <= w and x >= 0 and y >= 0:
+                facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
+                observed_sizes.add(s)
+    for bid in colored_ids:
+        L = lengths[bid]
+        if L >= 2 and L <= w:
+            facts.append(f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)}).")
+            observed_sizes.add(L - 1)
+    sizes = sorted(s for s in observed_sizes if s >= 0)
+    for a in sizes:
+        for b in sizes:
+            if a < b:
+                facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
+    for i in sizes:
+        if 0 <= i < w:
+            facts.append(f"cardinal_ordinal({_sz(i, t)},{_pos(i, t)}).")
 
-    if not lean:
-        for i in range(n_runs):
-            for j in range(n_runs):
-                if i == j:
-                    continue
-                Li, Lj = lengths[i], lengths[j]
-                bi, bj = _bid(i, t), _bid(j, t)
-                if Li < Lj:
-                    facts.append(f"shorter({ex},{bi},{bj}).")
-                elif Li > Lj:
-                    facts.append(f"longer({ex},{bi},{bj}).")
-                else:
-                    facts.append(f"same_len({ex},{bi},{bj}).")
-
-    if lean:
-        # Obj_succ-only gaps (drop neighbor-only empty/run gaps — search clutter).
-        for a, b in zip(colored_ids, colored_ids[1:]):
-            _s1, e1, _c1 = runs[a]
-            s2, _e2, _c2 = runs[b]
-            bi, bj = _id(a), _id(b)
-            g = s2 - e1 - 1
-            facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
-            observed_sizes.add(g)
-        # Ternary length sum for each colored succession (arithmetic only).
-        for a, b in zip(colored_ids, colored_ids[1:]):
-            La, Lb = lengths[a], lengths[b]
-            _s1, e1, _ = runs[a]
-            s2, _e2, _ = runs[b]
-            g = s2 - e1 - 1
-            total = La + g + Lb
-            if total <= w:
-                facts.append(
-                    f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
-                )
-            # Binary size_add over observed succession lengths/gaps (uniform).
-            for x, y in ((La, g), (1, g)):
-                s = x + y
-                if s <= w and x >= 0 and y >= 0:
-                    facts.append(f"size_add({_sz(x, t)},{_sz(y, t)},{_sz(s, t)}).")
-                    observed_sizes.add(s)
-        # size_add(1, L-1, L) for each colored length (uniform arith closure).
-        for bid in colored_ids:
-            L = lengths[bid]
-            if L >= 2 and L <= w:
-                facts.append(
-                    f"size_add({_sz(1, t)},{_sz(L - 1, t)},{_sz(L, t)})."
-                )
-                observed_sizes.add(L - 1)
-        # Within-type cardinal comparison over observed sizes (lean).
-        sizes = sorted(s for s in observed_sizes if s >= 0)
-        for a in sizes:
-            for b in sizes:
-                if a < b:
-                    facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
-        # Bridge: observed cardinal equals valid position index (uniform).
-        for i in sizes:
-            if 0 <= i < w:
-                facts.append(f"cardinal_ordinal({_sz(i, t)},{_pos(i, t)}).")
-    else:
-        for i in range(n_runs):
-            for j in range(i + 1, n_runs):
-                s1, e1, c1 = runs[i]
-                s2, e2, c2 = runs[j]
-                bi, bj = _bid(i, t), _bid(j, t)
-                facts.append(f"left_of({ex},{bi},{bj}).")
-                g = s2 - e1 - 1
-                facts.append(f"gap({ex},{bi},{bj},{_sz(g, t)}).")
-                observed_sizes.add(g)
-                if g == 0:
-                    facts.append(f"adjacent({ex},{bi},{bj}).")
-                    facts.append(f"adjacent({ex},{bj},{bi}).")
-                if not cell:
-                    continue
-                both_colored = c1 != 0 and c2 != 0
-                if both_colored:
-                    if lengths[i] < lengths[j]:
-                        fill_c: Optional[int] = c1
-                    elif lengths[j] < lengths[i]:
-                        fill_c = c2
-                    else:
-                        fill_c = None
-                else:
-                    fill_c = None
-                for p in range(e1 + 1, s2):
-                    facts.append(f"in_gap({ex},{bi},{bj},{_pos(p, t)}).")
-                    if fill_c is not None:
-                        facts.append(
-                            f"gap_cell({ex},{bi},{bj},{_pos(p, t)},{_col(fill_c, t)})."
-                        )
-
-    if colored_lengths and not lean:
-        max_L = max(L for L, _ in colored_lengths)
-        min_L = min(L for L, _ in colored_lengths)
-        for L, bid in colored_lengths:
-            bb = _bid(bid, t)
-            if L == max_L:
-                facts.append(f"largest({ex},{bb}).")
-            else:
-                facts.append(f"non_largest({ex},{bb}).")
-                if cell:
-                    s, e, c = runs[bid]
-                    for p in range(s, e + 1):
-                        facts.append(
-                            f"solid_cell({ex},{bb},{_pos(p, t)},{_col(c, t)})."
-                        )
-            if L == min_L:
-                facts.append(f"smallest({ex},{bb}).")
-        unique_lens = sorted({L for L, _ in colored_lengths}, reverse=True)
-        rank = {L: r + 1 for r, L in enumerate(unique_lens)}
-        for L, bid in colored_lengths:
-            facts.append(f"len_rank({ex},{_bid(bid, t)},{_rank(rank[L], t)}).")
-
-    if not lean:
-        sizes = sorted(observed_sizes | {len(colored_ids), len(empty_ids)})
-        for a in sizes:
-            for b in sizes:
-                if a < b:
-                    facts.append(f"size_lt({_sz(a, t)},{_sz(b, t)}).")
-
-        size_universe = sorted(set(sizes) | set(range(0, w + 1)))
-        for a in size_universe:
-            for b in size_universe:
-                s = a + b
-                if s <= w:
-                    facts.append(f"size_add({_sz(a, t)},{_sz(b, t)},{_sz(s, t)}).")
-
-    if cell:
-        for k in (1, 2, 3):
-            for p in range(w):
-                if p + k < w:
-                    facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p + k, t)}).")
-                if p - k >= 0:
-                    facts.append(f"offset_pos({_pos(p, t)},{_sz(k, t)},{_pos(p - k, t)}).")
-
-    if not lean:
-        for c, n in color_counts.items():
-            facts.append(f"color_count({ex},{_col(c, t)},{_sz(n, t)}).")
-            if n == 1:
-                facts.append(f"unique_color({ex},{_col(c, t)}).")
-
-    if lean:
-        # Belt-and-suspenders: BK emit == bias allowlist (drop stray preds).
-        facts = [
-            f
-            for f in facts
-            if any(f.startswith(n + "(") for n in _LEAN_EMIT_ALLOW)
-        ]
+    facts = [
+        f
+        for f in facts
+        if any(f.startswith(n + "(") for n in _LEAN_EMIT_ALLOW)
+    ]
     return facts
 
 
@@ -504,31 +267,11 @@ def _exs_pos_neg(examples: List[ExampleGrids], max_color: int = 9) -> List[str]:
     return pos + neg
 
 
-_AGG_NAMES = (
-    "largest",
-    "smallest",
-    "non_largest",
-    "block_count",
-    "empty_block_count",
-    "color_count",
-    "unique_color",
-    "len_rank",
-)
-
-
 def _bk_lines_for(examples: Sequence[ExampleGrids], *, max_w: int) -> List[str]:
-    """Lean typed-role block facts for ``examples`` (object path only)."""
+    """Typed-role block facts for ``examples`` (object path only)."""
     lines: List[str] = []
     for eg in examples:
-        lines.extend(
-            _block_and_derived(
-                eg.ex_id,
-                eg.inp,
-                typed_roles=True,
-                include_cell_bridges=False,
-                include_pixel_anchors=False,
-            )
-        )
+        lines.extend(_block_and_derived(eg.ex_id, eg.inp))
     lines.extend(_typed_constant_unaries(max_w))
     return lines
 

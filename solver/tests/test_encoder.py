@@ -8,16 +8,7 @@ from solver.predicates import PREDICATES
 
 
 def _facts(row):
-    return set(
-        _block_and_derived(
-            0,
-            row,
-            typed_roles=True,
-            include_cell_bridges=False,
-            include_pixel_anchors=False,
-        )
-        + _typed_constant_unaries(len(row))
-    )
+    return set(_block_and_derived(0, row) + _typed_constant_unaries(len(row)))
 
 
 def test_lean_block_atoms_typed():
