@@ -4,7 +4,7 @@ from pathlib import Path
 
 from solver.bias_gen import render_object_bias, render_object_bias_from_bk
 from solver.encoder import _block_and_derived, _typed_constant_unaries, encode_instance
-from solver.predicates import PREDICATES
+from solver.predicates import OBJECT_BODY_ALLOWLIST, PREDICATES
 
 
 def _facts(row):
@@ -224,36 +224,24 @@ def test_mechanical_bias_from_bk_no_category():
     assert "head_pred(out_block,5)." in text
 
 
-def test_lean_omits_extrema_and_named_macros():
-    """Closed theory: no largest/parity/pairing/component facts."""
+def test_object_bk_and_bias_use_allowlist():
+    """Searchable object facts and bias bodies are the allowlisted preds."""
     facts = _facts([2, 2, 2, 0, 5, 5, 0, 7])
-    banned = (
-        "largest(",
-        "non_largest(",
-        "smallest(",
-        "size_even(",
-        "size_odd(",
-        "obj_pair(",
-        "component_start(",
-        "component_len(",
-    )
-    for prefix in banned:
-        assert not any(f.startswith(prefix) for f in facts), prefix
+    for f in facts:
+        name = f.split("(", 1)[0]
+        if name[:1] in "vsb" and name[1:].isdigit():
+            continue
+        if name.startswith("sm") and name[2:].isdigit():
+            continue
+        assert name in OBJECT_BODY_ALLOWLIST, name
     text = render_object_bias()
-    for name in (
-        "largest",
-        "non_largest",
-        "size_even",
-        "size_odd",
-        "obj_pair",
-        "component_start",
-        "component_len",
-    ):
-        assert f"body_pred({name}," not in text
+    for line in text.splitlines():
+        if not line.startswith("body_pred(") or line.startswith("body_pred(C,"):
+            continue
+        name = line.split("(", 1)[1].split(",", 1)[0]
+        assert name in OBJECT_BODY_ALLOWLIST, name
 
 
-def test_predicates_inventory_has_no_size_parity():
-    """size_even / size_odd must not exist even as unused inventory."""
+def test_object_allowlist_is_in_inventory():
     names = {p.name for p in PREDICATES}
-    assert "size_even" not in names
-    assert "size_odd" not in names
+    assert OBJECT_BODY_ALLOWLIST <= names

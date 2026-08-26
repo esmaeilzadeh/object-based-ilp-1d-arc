@@ -1,15 +1,13 @@
-"""Frozen predicate inventory for the object-only 1D-ARC solver.
+"""Frozen predicate inventory for the 1D-ARC solver.
 
 Number roles (types — never cross-role arithmetic):
   value    — color symbols
   position — grid ordinals (pixel index / binders)
   size     — cardinals (block lengths, counts)
   block_id — object ordinals
-  rank     — length-rank ordinals (1 = longest)
 
-Runtime bias uses object-head exposure only (`body_preds_for_level(4)`).
-Entries tagged with other levels are unused legacy inventory and are not a
-second solver path.
+Runtime object bias uses `body_preds_for_level(4)` intersected with
+`OBJECT_BODY_ALLOWLIST` and the instance BK.
 """
 
 from __future__ import annotations
@@ -46,7 +44,6 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("block", 4, ("ex", "block_id", "size", "value"), "block", frozenset({2, 3, 4})),
     Predicate("empty_block", 3, ("ex", "block_id", "size"), "block", frozenset({2, 3, 4})),
     Predicate("block_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({3, 4})),
-    Predicate("obj_index", 3, ("ex", "block_id", "rank"), "block", frozenset({2, 3, 4})),
     # geometry (object–object)
     Predicate("left_of", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("adjacent", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
@@ -57,20 +54,11 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("touches_edge", 3, ("ex", "block_id", "edge"), "geometry", frozenset({2, 3, 4})),
     Predicate("block_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("obj_succ", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({3, 4})),
-    # length comparison
-    Predicate("shorter", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
-    Predicate("longer", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
-    Predicate("same_len", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({2, 3, 4})),
     Predicate("size_lt", 2, ("size", "size"), "geometry", frozenset({3, 4})),
-    # aggregation
-    Predicate("largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3, 4})),
-    Predicate("smallest", 2, ("ex", "block_id"), "agg", frozenset({2, 3, 4})),
-    Predicate("non_largest", 2, ("ex", "block_id"), "agg", frozenset({2, 3, 4})),
     Predicate("block_count", 2, ("ex", "size"), "agg", frozenset({3})),
     Predicate("empty_block_count", 2, ("ex", "size"), "agg", frozenset({2, 3, 4})),
     Predicate("color_count", 3, ("ex", "value", "size"), "agg", frozenset({3})),
     Predicate("unique_color", 2, ("ex", "value"), "agg", frozenset({2, 3, 4})),
-    Predicate("len_rank", 3, ("ex", "block_id", "rank"), "agg", frozenset({3})),
     # anchors
     Predicate("mid", 2, ("ex", "position"), "anchors", frozenset({3})),
     Predicate("mirror_index", 3, ("ex", "position", "position"), "anchors", frozenset({3})),
@@ -86,11 +74,6 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("size_add", 3, ("size", "size", "size"), "arith", frozenset({2, 3, 4})),
     # Ternary size sum for object-head (typed path); not a block-merge prior.
     Predicate("size_sum3", 4, ("size", "size", "size", "size"), "arith", frozenset({4})),
-    # Every-other colored succession (padded-fill pairing); input geometry only.
-    Predicate("obj_pair", 3, ("ex", "block_id", "block_id"), "geometry", frozenset({4})),
-    # Maximal contiguous non-zero component: leftmost block + pixel span length.
-    Predicate("component_start", 2, ("ex", "block_id"), "geometry", frozenset({4})),
-    Predicate("component_len", 3, ("ex", "block_id", "size"), "geometry", frozenset({4})),
     # bridges — grounded; hide naked Start/End constants
     Predicate("pixel_block", 3, ("ex", "position", "block_id"), "bridge", frozenset({2, 3})),
     Predicate("in_block", 3, ("ex", "block_id", "position"), "bridge", frozenset({2, 3})),
@@ -103,8 +86,6 @@ PREDICATES: Tuple[Predicate, ...] = (
     Predicate("block_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("edge_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("interior_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
-    # Full paint of non-largest blocks (legacy inventory; not object-head)
-    Predicate("solid_cell", 4, ("ex", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
     Predicate("gap_cell", 5, ("ex", "block_id", "block_id", "position", "value"), "bridge", frozenset({2, 3})),
 )
 
@@ -129,8 +110,7 @@ def head_pred_unit() -> Predicate:
     return next(p for p in PREDICATES if p.layer == "head_unit")
 
 
-# Block-primary / object-head: closed theory (no extrema / named macros).
-# Individuals + succ/add/lt on sorts, plus measured gap and a size↔position bridge.
+# Object-head body language: individuals, succession, measured gap, size arith.
 OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
     {
         "block",
