@@ -84,6 +84,7 @@ The object encoder writes facts such as:
 - **`obj_succ`** — which colored run sits to the right of which.
 - **`bind`** — output object rank corresponds to an input object rank.
 - **`gap`** — background length between successive colored runs.
+- **`size_lt` / `size_add`** — compare and add observed lengths and gaps (same family as Decom `lt` / `add`).
 - Size/color constants use typed prefixes (`s7`, `v8`) so lengths are not confused with block ids.
 
 A sketch for example 0 (colored ranks only — open `work/tut/encode/bk.pl` after a real run for exact ids):

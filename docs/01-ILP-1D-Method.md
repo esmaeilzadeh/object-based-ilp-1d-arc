@@ -8,7 +8,7 @@ Why this repository solves 1D-ARC with a **census-routed hybrid** of object-leve
 
 Many rules are naturally stated over **objects**: contiguous runs of the same color (“move the left block past the pivot,” “recolor by length,” “flip the unit to the other end of the bar”). Stating the same ideas only in pixel coordinates is possible but verbose and brittle. Other rules change how many runs exist or stretch structure in ways that are awkward for a fixed object inventory (for example, duplicating a pattern across the row). A single representation therefore leaves blind spots.
 
-The result this repo measures is **not** “blocks always beat pixels.” It is that a **block-level representation** plus Decom-family arithmetic on block sizes (no transform DSL) solves census-match categories that pixel Decom misses. A name-free train-grid **census** then routes the rest to the pixel encoding so those wins are not paid for by collapsing duplication-style tasks.
+The result this repo measures is that a **block-level representation** plus Decom-family arithmetic on block sizes (no transform DSL) solves census-match categories that pixel Decom misses. A name-free train-grid **census** then routes the rest to the pixel encoding so those wins are not paid for by collapsing duplication-style tasks. That is not “blocks always beat pixels,” and not a per-category transform language.
 
 ## Three recent ILP strategies
 

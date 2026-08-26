@@ -69,7 +69,7 @@ Campaign entrypoints:
 ./scripts/run_census_match33_1h_j3.sh
 ```
 
-## Why routing helps (qualitative)
+## Why two roads (qualitative)
 
 Neither representation wins everywhere:
 
