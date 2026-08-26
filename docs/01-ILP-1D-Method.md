@@ -6,7 +6,7 @@ Why this repository solves 1D-ARC with a **census-routed hybrid** of object-leve
 
 1D-ARC tasks are one-dimensional grids. A task shows a few input/output pairs (typically three training examples and one test input). The solver must infer the transformation rule and apply it to the test input.
 
-Many rules are naturally stated over **objects**: contiguous runs of the same color (“keep the largest block,” “recolor the shorter block,” “move the left block past the pivot”). Stating the same ideas only in pixel coordinates is possible but verbose and brittle. Other rules change how many runs exist or stretch structure in ways that are awkward for a fixed object inventory (for example, duplicating a pattern across the row). A single representation therefore leaves blind spots.
+Many rules are naturally stated over **objects**: contiguous runs of the same color (“move the left block past the pivot,” “recolor by length,” “flip the unit to the other end of the bar”). Stating the same ideas only in pixel coordinates is possible but verbose and brittle. Other rules change how many runs exist or stretch structure in ways that are awkward for a fixed object inventory (for example, duplicating a pattern across the row). A single representation therefore leaves blind spots.
 
 This project’s answer is not “always use blocks” or “always use pixels.” It is **route each instance** to the representation that fits, using a mechanical check on the training grids only.
 
@@ -18,7 +18,7 @@ This project’s answer is not “always use blocks” or “always use pixels.�
 
 **Why it matters.** Domain-light, interpretable, and exact on the pixel level. It showed that standard ILP can solve ARC-style tasks without a neural network or a hand-crafted domain-specific language (DSL).
 
-**The limitation.** Because background knowledge is pixel-level, the learner must reconstruct object concepts from coordinates when the true rule is about blocks. That forces long clauses and struggles with counting and “the largest block” as a first-class idea.
+**The limitation.** Because background knowledge is pixel-level, the learner must reconstruct object concepts from coordinates when the true rule is about blocks. That forces long clauses and struggles with counting and first-class block sizes.
 
 In this repo we treat Decom as the **shared-engine baseline**: same Popper family, same 54-task evaluation slice, different representation (and, in our case, a router).
 
@@ -43,7 +43,7 @@ Neither road is chosen by reading the category name (`1d_mirror`, `1d_pcopy_1c`,
 
 **How it differs from A.** We still use Popper and we still score pixels, but we do not force every instance through a pixel-only language. When bulky/unit run counts are stable across train input→output, we give Popper first-class blocks.
 
-**How it differs from B.** We do not ship a rich hand-authored transform DSL. Object background knowledge is segmentation plus aggregations and relations computed from that instance’s grids. Pixel background knowledge follows the Decom-style encoding path when the census fails.
+**How it differs from B.** We do not ship a rich hand-authored transform DSL. Object background knowledge is segmentation plus relations and size arithmetic computed from that instance’s grids. Pixel background knowledge follows the Decom-style encoding path when the census fails.
 
 **What we claim.** The scientific claim is that **routing to a fitting representation** improves exact accuracy versus locking the system to one language—especially versus pixel-only Decom under the same protocol—not that blocks alone always dominate pixels.
 
@@ -86,7 +86,7 @@ The output invents a different run inventory (structure/length profile changes).
 |--------|----------------|-----------------|-------------------------------|----------|
 | Pixel relational decomposition (A) | pixels only | pixel `out` rules | arithmetic over indices | no first-class objects |
 | ILPAR (B) | objects + DSL | object-generating rules | rich hand-designed DSL | DSL completeness; scale |
-| **This repo (hybrid)** | **census → objects or pixels** | `out_block` **or** `out` | segmentation + aggregation, or Decom-style pixels | census is a heuristic, not an oracle |
+| **This repo (hybrid)** | **census → objects or pixels** | `out_block` **or** `out` | segmentation + size relations, or Decom-style pixels | census is a heuristic, not an oracle |
 
 The baseline to beat for headline numbers is **A** (pixel Decom): same ILP engine family and the same evaluation protocol. The comparison is “hybrid routing under uniform mechanical encodings” versus “pixels only,” not “we secretly switched vocabulary by task name.”
 

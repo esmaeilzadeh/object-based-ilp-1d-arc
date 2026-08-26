@@ -60,7 +60,7 @@ Neither representation wins everywhere:
 
 | Situation | Typical road | Why |
 |-----------|--------------|-----|
-| Train I/O preserve bulky/unit **counts** (move, flip, many recolors, …) | Object (`out_block`) | First-class blocks, sizes, “largest,” gaps |
+| Train I/O preserve bulky/unit **counts** (move, flip, many recolors, …) | Object (`out_block`) | First-class blocks, sizes, succession, gaps |
 | Train I/O change run inventory (many `pcopy_*`, some structure-changing transforms) | Pixel (`out`) | Can invent colors at new indices without anchoring only to existing input blocks |
 
 The hybrid claim is that **choosing per instance** recovers both kinds of wins under one mechanical gate—not that object ILP alone matches Decom on duplication tasks, and not that pixel ILP alone matches object ILP on counting/recolor tasks.

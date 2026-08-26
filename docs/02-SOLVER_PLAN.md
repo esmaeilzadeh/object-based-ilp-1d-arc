@@ -72,14 +72,12 @@ Used by `solve` / the match branch of `solve_hybrid`. Goal: learn which **input 
 
 ### Segmentation
 
-Each row becomes maximal runs. IDs are left-to-right: `b0`, `b1`, …. Example row `0 0 4 4 4 0 2 2`:
+Each row becomes maximal **colored** runs (background is not a searchable object). IDs are left-to-right dense ranks: `b0`, `b1`, …. Example row `0 0 4 4 4 0 2 2`:
 
 | ID | Cells | Length | Color |
 |----|-------|--------|-------|
-| `b0` | two zeros | 2 | 0 (background) |
-| `b1` | three fours | 3 | 4 |
-| `b2` | one zero | 1 | 0 |
-| `b3` | two twos | 2 | 2 |
+| `b0` | three fours | 3 | 4 |
+| `b1` | two twos | 2 | 2 |
 
 Geometry (start/end per block) is kept in Python for painting; searchable BK uses typed constants.
 
@@ -90,7 +88,6 @@ Geometry (start/end per block) is kept in Python for painting; searchable BK use
 | Block id | `b*` | `b3` | Which run |
 | Size | `s*` | `s10` | Length or offset |
 | Value | `v*` | `v4` | Color |
-| Rank | `r*` | `r2` | Ordinal (when used) |
 
 Typing stops the learner from treating “block 3” as “length 3.”
 
@@ -98,12 +95,14 @@ Typing stops the learner from treating “block 3” as “length 3.”
 
 For each training example the encoder emits facts such as:
 
-- **`block(Example, BlockId, Length, Color)`** — “example 0 has a colored run `b3` of length 10 and color 4” → `block(0, b3, s10, v4).`
-- **`largest` / `non_largest`** — which colored run is longest.
-- **`gap`** — background cells between two colored runs.
+- **`block(Example, BlockId, Length, Color)`** — “example 0 has a colored run `b0` of length 10 and color 4” → `block(0, b0, s10, v4).`
 - **`obj_succ`** — next colored run to the right.
+- **`bind`** — output object rank corresponds to an input object rank.
+- **`gap`** — background length between two successive colored runs.
+- **`size_lt` / `size_add` / `size_sum3`** — compare and add sizes that appear in this instance.
+- **`cardinal_ordinal`** — a size constant that coincides with a position index.
 
-Arithmetic sugar (`size_lt`, `size_add`, …) is emitted only for sizes that actually appear in this instance. The bias only allows body predicates that show up in BK.
+The bias only allows body predicates that show up in this instance’s BK (from that same set).
 
 **Code:** `solver/encoder.py`, `solver/bias_gen.py`, `solver/predicates.py`.
 
@@ -123,16 +122,16 @@ Mechanically generated search grammar: max vars/body/clauses, `head_pred(out_blo
 
 ### Induction
 
-`solver/induce.py` runs Popper once on BK + exs + bias. Example program (denoising-style):
+`solver/induce.py` runs Popper once on BK + exs + bias. Example program (copy a bound input block):
 
 ```prolog
 out_block(V0, V1, V2, V3, V4) :-
-    largest(V0, V1),
-    s0(V2),
-    block(V0, V1, V3, V4).
+    bind(V0, V1, V5),
+    block(V0, V5, V3, V4),
+    s0(V2).
 ```
 
-English: “Paint the largest colored block at offset 0 with its own length and color.”
+English: “Paint the bound input block at offset 0 with its own length and color.”
 
 ### Verification (acceptance gate)
 

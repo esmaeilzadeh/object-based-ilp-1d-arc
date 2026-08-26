@@ -74,7 +74,7 @@ Ignore background for a moment; the interesting colored runs are:
 | unit | one cell of `4` | 1 | 4 | marker |
 | bulky | seven cells of `8` | 7 | 8 | bar |
 
-(The encoder also numbers background runs; object facts focus on colored blocks and relations between them.)
+(Object facts number **colored** runs only; background gaps are `gap/4`, not extra block ids.)
 
 ## Background knowledge (English then Prolog)
 
@@ -82,9 +82,11 @@ The object encoder writes facts such as:
 
 - **`block(Example, BlockId, Length, Color)`** — “this example has a colored run with this length and color.”
 - **`obj_succ`** — which colored run sits to the right of which.
+- **`bind`** — output object rank corresponds to an input object rank.
+- **`gap`** — background length between successive colored runs.
 - Size/color constants use typed prefixes (`s7`, `v8`) so lengths are not confused with block ids.
 
-A sketch for example 0 (ids depend on full segmentation including background):
+A sketch for example 0 (colored ranks only — open `work/tut/encode/bk.pl` after a real run for exact ids):
 
 ```prolog
 % Conceptual — open work/tut/encode/bk.pl after a real run for exact ids
