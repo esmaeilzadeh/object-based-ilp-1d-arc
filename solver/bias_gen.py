@@ -144,11 +144,6 @@ def render_object_bias_from_bk(
             "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
             "A != 2, A != 3, B != 2, B != 3, R != 2, R != 3."
         )
-    if "size_sum3" in body_names:
-        parts.append(
-            "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), "
-            "A != 2, A != 3, B != 2, B != 3, C != 2, C != 3, R != 2, R != 3."
-        )
     parts.append("")
     return "\n".join(parts) + "\n"
 
@@ -219,11 +214,6 @@ def render_unit_bias_from_bk(
         parts.append(
             "bad_body(size_add, Vars):- vars(_, Vars), Vars = (A,B,R), "
             "A != 2, B != 2, R != 2."
-        )
-    if "size_sum3" in body_names:
-        parts.append(
-            "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), "
-            "A != 2, B != 2, C != 2, R != 2."
         )
     parts.append("")
     return "\n".join(parts) + "\n"

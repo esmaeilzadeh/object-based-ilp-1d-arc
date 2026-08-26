@@ -99,7 +99,7 @@ For each training example the encoder emits facts such as:
 - **`obj_succ`** — next colored run to the right.
 - **`bind`** — output object rank corresponds to an input object rank.
 - **`gap`** — background length between two successive colored runs.
-- **`size_lt` / `size_add` / `size_sum3`** — compare and add sizes that appear in this instance.
+- **`size_lt` / `size_add`** — compare and add sizes that appear in this instance (Decom `lt` / `add` lifted to block cardinals).
 - **`cardinal_ordinal`** — a size constant that coincides with a position index.
 
 The bias only allows body predicates that show up in this instance’s BK (from that same set).
@@ -213,7 +213,7 @@ These remain out of bounds for the scientific claim:
 
 - **No category-named bias or BK switches** (`1d_mirror` → special vocabulary).
 - **No answer-leaking BK** (precomputed correct `out_block` / mirrored answers as “facts”).
-- **No marker / reflect geometry hacks** that encode the transform instead of neutral relations.
+- **No transform-shaped geometry** (`marker_block`, `reflect_*`, mirror index, fill recipes) that encodes the rule instead of segmentation plus Decom-family size arithmetic.
 - **Do not report pixel-road solves as “block-only wins.”** Tag and discuss them as the pixel road.
 
 The hybrid **does** use pixel ILP when the census fails—that is intentional and must be described honestly.

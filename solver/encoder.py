@@ -130,7 +130,7 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
     Colored runs only, dense ranks ``0..n-1`` so ``OutBid`` can unify with
     ``InBid``. Typed atoms ``b*`` / ``p*`` / ``s*`` / ``v*`` keep roles apart.
     Facts are the object-body allowlist: ``block``, ``bind``, ``obj_succ``,
-    ``gap``, ``size_sum3``, ``size_add``, ``size_lt``, ``cardinal_ordinal``.
+    ``gap``, ``size_add``, ``size_lt``, ``cardinal_ordinal``.
     Pixel starts live in Python ``block_geometry`` for decode, not in BK.
     """
     t = True
@@ -170,12 +170,7 @@ def _block_and_derived(ex: int, row: Sequence[int]) -> List[str]:
         g = s2 - e1 - 1
         facts.append(f"gap({ex},{_id(a)},{_id(b)},{_sz(g, t)}).")
         observed_sizes.add(g)
-        La, Lb = lengths[a], lengths[b]
-        total = La + g + Lb
-        if total <= w:
-            facts.append(
-                f"size_sum3({_sz(La, t)},{_sz(g, t)},{_sz(Lb, t)},{_sz(total, t)})."
-            )
+        La = lengths[a]
         for x, y in ((La, g), (1, g)):
             s = x + y
             if s <= w and x >= 0 and y >= 0:

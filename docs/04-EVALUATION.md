@@ -2,7 +2,9 @@
 
 This document describes how we evaluate the **census-routed hybrid** solver (`hybrid_census`) against the pixel-level Relational Decomposition (Decom) baseline from Hocquette & Cropper (IJCAI 2025).
 
-Both systems use the same ILP engine family (Popper) and the same 54-task slice (18 categories × trials `0,1,2`). The difference is the **system**: Decom is pixels-only; ours **routes** each instance to object-head or pixel-head induction via a train-grid census (see [02 — Method](02-SOLVER_PLAN.md)).
+Both systems use the same ILP engine family (Popper) and the same 54-task slice (18 categories × trials `0,1,2`). Decom is pixels-only. Ours induces an **object** program when a name-free train-grid census says bulky/unit run counts are preserved, and a Decom-style **pixel** program otherwise (see [02 — Method](02-SOLVER_PLAN.md)).
+
+The result to read first is the **census-match 33** (object road vs Decom on those same tasks). The hybrid /54 is that lift plus the pixel road on the mismatch 21, so duplication-style tasks are not dumped.
 
 ## What “Ours” means
 
@@ -14,7 +16,20 @@ Both systems use the same ILP engine family (Popper) and the same 54-task slice 
 
 Do **not** report a pixel-road solve as a “block-only win.” Use `failure_detail.road` when discussing which path succeeded.
 
-## Headline scoreboard (exact match /54)
+## Object-road result (census-match 33)
+
+Same campaigns as below. Road is object (`out_block`) on every trial in this slice.
+
+| Budget | Ours (object road) | Decom on the same 33 | Margin |
+|--------|--------------------|----------------------|--------|
+| **600 s** | **26/33** | 17/33 | **+9** |
+| **3600 s** | **27/33** | 19/33 | **+8** |
+
+Decom on this slice is the sum of the match rows in the per-category table. The lift is concentrated here (`flip`, `move_dp`, `recolor_cnt`, `move_2p_dp`). Pixel-road mismatch at 3600 s ties Decom (18/21); at 600 s it is +1 (`hollow`).
+
+## Hybrid scoreboard (exact match /54)
+
+Census-match 33 + census-mismatch 21. Use this number so object-road wins are not read as “we dropped pcopy.”
 
 | Budget | Ours (hybrid_census) | Decom (pixel, paper) | Margin |
 |--------|----------------------|----------------------|--------|
@@ -22,7 +37,7 @@ Do **not** report a pixel-road solve as a “block-only win.” Use `failure_det
 | **600 s (10 min)** | **44/54** | 34/54 | **+10** |
 | **3600 s (1 h)** | **45/54** | 37/54 | **+8** |
 
-**Finding:** at **600 s** the hybrid already jumps past Decom (+10 exact). At **3600 s** the lead is **+8**. Short **60 s** is behind Decom (−13); most of the lift appears between 1 min and 10 min.
+**Finding:** at **600 s** the hybrid is past Decom (+10 exact), almost entirely from the object-road slice above. At **3600 s** the lead is **+8**, all from object-road categories. Short **60 s** is behind Decom (−13); most of the lift appears between 1 min and 10 min.
 
 ## Soft accuracy (%)
 
@@ -63,7 +78,7 @@ Neither representation wins everywhere:
 | Train I/O preserve bulky/unit **counts** (move, flip, many recolors, …) | Object (`out_block`) | First-class blocks, sizes, succession, gaps |
 | Train I/O change run inventory (many `pcopy_*`, some structure-changing transforms) | Pixel (`out`) | Can invent colors at new indices without anchoring only to existing input blocks |
 
-The hybrid claim is that **choosing per instance** recovers both kinds of wins under one mechanical gate—not that object ILP alone matches Decom on duplication tasks, and not that pixel ILP alone matches object ILP on counting/recolor tasks.
+The object-road claim is that **blocks plus Decom-family size arithmetic** beat pixel Decom on the match slice. The census is how the hybrid keeps the mismatch slice instead of locking the whole /54 to objects.
 
 ### Per-category exact (x/3)
 

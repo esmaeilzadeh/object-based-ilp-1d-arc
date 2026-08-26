@@ -8,7 +8,7 @@ Why this repository solves 1D-ARC with a **census-routed hybrid** of object-leve
 
 Many rules are naturally stated over **objects**: contiguous runs of the same color (“move the left block past the pivot,” “recolor by length,” “flip the unit to the other end of the bar”). Stating the same ideas only in pixel coordinates is possible but verbose and brittle. Other rules change how many runs exist or stretch structure in ways that are awkward for a fixed object inventory (for example, duplicating a pattern across the row). A single representation therefore leaves blind spots.
 
-This project’s answer is not “always use blocks” or “always use pixels.” It is **route each instance** to the representation that fits, using a mechanical check on the training grids only.
+The result this repo measures is **not** “blocks always beat pixels.” It is that a **block-level representation** plus Decom-family arithmetic on block sizes (no transform DSL) solves census-match categories that pixel Decom misses. A name-free train-grid **census** then routes the rest to the pixel encoding so those wins are not paid for by collapsing duplication-style tasks.
 
 ## Three recent ILP strategies
 
@@ -43,9 +43,9 @@ Neither road is chosen by reading the category name (`1d_mirror`, `1d_pcopy_1c`,
 
 **How it differs from A.** We still use Popper and we still score pixels, but we do not force every instance through a pixel-only language. When bulky/unit run counts are stable across train input→output, we give Popper first-class blocks.
 
-**How it differs from B.** We do not ship a rich hand-authored transform DSL. Object background knowledge is segmentation plus relations and size arithmetic computed from that instance’s grids. Pixel background knowledge follows the Decom-style encoding path when the census fails.
+**How it differs from B.** We do not ship a rich hand-authored transform DSL (no marker/reflect/mirror-index/fill recipes). Object background knowledge is the block individuals produced by segmentation, the ordinal/cardinal facts those individuals induce (`obj_succ`; `gap` as the empty span between successive blocks, as a size), and Decom-family binary arithmetic on those cardinals (`size_lt` ≈ `lt`, `size_add` ≈ `add`), all computed from that instance’s grids. Pixel background knowledge follows the Decom-style encoding path when the census fails.
 
-**What we claim.** The scientific claim is that **routing to a fitting representation** improves exact accuracy versus locking the system to one language—especially versus pixel-only Decom under the same protocol—not that blocks alone always dominate pixels.
+**What we claim.** On tasks where a name-free run-count census says object structure is stable, first-class blocks plus that Decom-style arithmetic on block sizes solve categories pixel Decom does not. The census only routes the rest to the pixel encoding. The /54 hybrid number is that object-road lift **plus** not dumping mismatch tasks—not a claim that routing itself is the capability.
 
 ## The census in plain language
 
@@ -86,9 +86,9 @@ The output invents a different run inventory (structure/length profile changes).
 |--------|----------------|-----------------|-------------------------------|----------|
 | Pixel relational decomposition (A) | pixels only | pixel `out` rules | arithmetic over indices | no first-class objects |
 | ILPAR (B) | objects + DSL | object-generating rules | rich hand-designed DSL | DSL completeness; scale |
-| **This repo (hybrid)** | **census → objects or pixels** | `out_block` **or** `out` | segmentation + size relations, or Decom-style pixels | census is a heuristic, not an oracle |
+| **This repo (hybrid)** | **census → objects or pixels** | `out_block` **or** `out` | blocks + succession/gap-as-size + Decom-family size arith, or Decom-style pixels | census is a heuristic, not an oracle |
 
-The baseline to beat for headline numbers is **A** (pixel Decom): same ILP engine family and the same evaluation protocol. The comparison is “hybrid routing under uniform mechanical encodings” versus “pixels only,” not “we secretly switched vocabulary by task name.”
+The baseline to beat is **A** (pixel Decom): same ILP engine family and the same evaluation protocol. Lead with the **census-match object-road** comparison vs Decom on those tasks; the hybrid /54 is the same encoding plus the pixel road on mismatch. Neither number is “we secretly switched vocabulary by task name.”
 
 ## Why per-task from scratch (not curriculum)
 

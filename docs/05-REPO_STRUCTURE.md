@@ -114,4 +114,4 @@ Each file is typically three train pairs + one test. The hybrid **does not** bra
 
 ## Agent / direction notes
 
-Project rules under `.cursor/rules/` describe the allowed scientific claim (census-routed hybrid, no task-name vocabulary switches, no answer-leaking BK, no marker/mirror hacks). Keep docs and code aligned with that claim.
+Project rules under `.cursor/rules/` describe the allowed scientific claim (block representation plus Decom-family size arith on the object road, census-routed hybrid as the /54 system, no task-name vocabulary switches, no answer-leaking BK, no marker/mirror hacks). Keep docs and code aligned with that claim.

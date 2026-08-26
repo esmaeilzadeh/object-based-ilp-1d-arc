@@ -25,7 +25,7 @@ _Avoid_: Extra facts the learner cannot mention
 ### Object language
 
 **Object body language**:
-Individuals plus succession, measured gap, and less-than / add on sizes: `block`, `bind`, `obj_succ`, `gap`, `size_lt`, `size_add`, `size_sum3`, `cardinal_ordinal`.
+Individuals plus succession, measured gap, and less-than / add on sizes: `block`, `bind`, `obj_succ`, `gap`, `size_lt`, `size_add`, `cardinal_ordinal`.
 _Avoid_: Pixel `in` / `out` as the object-road vocabulary
 
 **Size less-than**:

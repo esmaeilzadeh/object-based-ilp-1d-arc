@@ -24,10 +24,10 @@ Worked examples of both roads: [docs/03-TUTORIAL.md](docs/03-TUTORIAL.md).
 
 | Doc | Summary |
 |-----|---------|
-| [01 — Approach & Landscape](docs/01-ILP-1D-Method.md) | For researchers. Explains the 1D-ARC few-shot setting, compares pixel Relational Decomposition (Decom) and ILPAR to this repo, and states the claim: **routing** each instance to object-level or pixel-level induction via a name-free census—not “blocks always beat pixels.” |
+| [01 — Approach & Landscape](docs/01-ILP-1D-Method.md) | For researchers. Explains the 1D-ARC few-shot setting, compares pixel Relational Decomposition (Decom) and ILPAR to this repo, and states the claim: **block individuals plus Decom-family size arithmetic** beat pixel Decom on census-match tasks; a name-free census routes the rest to pixels—not “blocks always beat pixels,” and not a transform DSL. |
 | [02 — Method](docs/02-SOLVER_PLAN.md) | For method readers. Walks through `solve_hybrid`: the census gate, the object road (encode → induce → paint-verify → decode), the pixel road (Decom-style `out/3` encode → induce → soft-score → decode), and how modes `hybrid_census` vs `block_primary` differ. |
 | [03 — Tutorial](docs/03-TUTORIAL.md) | For newcomers. Two end-to-end walks: a census-match flip task on the object road, and a census-fail structure-changing task on the pixel road, including grids, work-dir artifacts, and how to read the result JSON. |
-| [04 — Evaluation](docs/04-EVALUATION.md) | For empirical readers. Protocol for the 54-task slice vs Decom, metric definitions, and the hybrid scoreboard (**19/54** @60 s, **44/54** @600 s, **45/54** @3600 s exact; +10 vs Decom at 10 min). |
+| [04 — Evaluation](docs/04-EVALUATION.md) | For empirical readers. Protocol vs Decom: **census-match 33 first** (26/33 @600 s, 27/33 @3600 s object road), then hybrid /54 (**44/54** @600 s, **45/54** @3600 s). |
 | [05 — Repository Guide](docs/05-REPO_STRUCTURE.md) | For developers. Folder map, which module owns census / object encode / pixel encode / harness, dual-path dataflow, and “where to change what.” |
 | [06 — Running](docs/06-RUNNING.md) | For practitioners. Install, CLI `--mode`, smoke scripts, parallel 54-task eval with `hybrid_census`, reading `summary.json`, and troubleshooting common failure reasons. |
 
@@ -35,7 +35,7 @@ Also: [solver package notes](solver/README.md) · [Decom paper (IJCAI 2025)](htt
 
 ## Eval (54-task slice)
 
-Headline exact match (`hybrid_census` vs paper Decom on the same 54-task slice):
+Headline exact match (`hybrid_census` vs paper Decom). Object-road census-match 33 is the capability result; /54 includes the pixel road on mismatch:
 
 | Budget | Ours | Decom |
 |--------|------|-------|

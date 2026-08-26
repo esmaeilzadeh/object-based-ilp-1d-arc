@@ -214,7 +214,7 @@ def test_object_bias_size_add_bidirectional():
     # Old result-only guard must be gone.
     assert "Vars = (_,_,R), R != 2, R != 3." not in text
     assert "Vars = (_,_,_,R), R != 2, R != 3." not in text
-    assert "bad_body(size_sum3, Vars):- vars(_, Vars), Vars = (A,B,C,R), " in text
+    assert "size_sum3" not in text
 
 
 def test_mechanical_bias_from_bk_no_category():

@@ -117,7 +117,6 @@ OBJECT_BODY_ALLOWLIST: FrozenSet[str] = frozenset(
         "bind",
         "obj_succ",
         "gap",
-        "size_sum3",
         "size_add",
         "size_lt",
         "cardinal_ordinal",
